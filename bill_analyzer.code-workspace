@@ -1,0 +1,49 @@
+{
+    "folders": [
+        {
+            "path": "."
+        }
+    ],
+    "settings": {
+        // Python Interpreter
+        "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+
+        // isort Settings
+        "isort.args":["--profile", "black"],
+
+        // Python-specific Editor Settings
+        "[python]": {
+            "editor.defaultFormatter": "ms-python.black-formatter",
+            "editor.formatOnSave": true,
+            "editor.formatOnPaste": true,
+            "editor.codeActionsOnSave": {
+                "source.organizeImports": "explicit",
+            },
+            "editor.tabSize": 4,
+            "editor.insertSpaces": true,
+        },
+
+        // Files to exclude from explorer
+        "files.exclude": {
+            "**/__pycache__": true,
+            "**/*.pyc": true,
+            "**/.pytest_cache": true,
+            "**/.mypy_cache": true,
+            "**/.ruff_cache": true,
+            "**/.coverage": true,
+            "**/.DS_Store": true
+        },
+
+        // Terminal
+        "terminal.integrated.env.linux": {
+            "PYTHONPATH": "${workspaceFolder}"
+        }
+    },
+    "extensions": {
+        "recommendations": [
+            "ms-python.python",
+            "ms-python.black-formatter",
+            "ms-python.isort",
+        ],
+    },
+}
