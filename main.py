@@ -29,7 +29,8 @@ from odf.opendocument import load
 ODS_FILE = "/home/juli/Downloads/Alltags-Ausgaben.ods"
 
 # Claude API configuration
-CLAUDE_MODEL = "claude-sonnet-4-5-20250929"
+# CLAUDE_MODEL = "claude-sonnet-4-5-20250929"
+CLAUDE_MODEL = "claude-opus-4-5-20251101"
 CLAUDE_MAX_TOKENS = 2048
 
 # ODS column indices
@@ -445,6 +446,127 @@ def find_date_row(sheet: table.Table, target_date: dt.date) -> Optional[int]:
     return None
 
 
+def create_new_date_row(sheet: table.Table, new_date: dt.date) -> int:
+    """
+    Create a new row after the last entry with the given date.
+    Inserts a blank separator row before the new date row.
+
+    Args:
+        sheet: ODS sheet to add row to
+        new_date: Date to insert
+
+    Returns:
+        Index of the newly created date row
+    """
+    rows = sheet.getElementsByType(table.TableRow)
+
+    # Find the last row with actual data and collect template info
+    last_data_row_idx = None
+    template_row = None
+    template_cells = None
+    template_row_style = None
+    cell_styles = {}
+
+    for idx, row in enumerate(rows):
+        cells = row.getElementsByType(table.TableCell)
+        if len(cells) <= COL_TOTAL:
+            continue
+
+        # Check if this row has data in any column
+        has_data = False
+        for col_idx in range(COL_STORE, COL_TOTAL + 1):
+            if col_idx < len(cells):
+                cell_value = get_cell_value(cells[col_idx])
+                if cell_value and str(cell_value).strip():
+                    has_data = True
+                    break
+
+        # If this row has data, remember it as last data row
+        if has_data:
+            last_data_row_idx = idx
+
+        # Use first row with date as template
+        if template_row is None:
+            cell_value = get_cell_value(cells[COL_DATE])
+            if cell_value:
+                template_row = row
+                template_cells = cells
+                template_row_style = row.getAttrNS(TABLENS, "style-name")
+
+                # Collect cell styles (stop at repeated columns)
+                for col_idx in range(min(COL_TOTAL + 1, len(cells))):
+                    if cells[col_idx].getAttrNS(TABLENS, "number-columns-repeated"):
+                        break
+                    style = cells[col_idx].getAttrNS(TABLENS, "style-name")
+                    if style:
+                        cell_styles[col_idx] = style
+
+    # Determine insertion point (after last data row)
+    insert_after_idx = (
+        last_data_row_idx if last_data_row_idx is not None else len(rows) - 1
+    )
+    reference_row = (
+        rows[insert_after_idx + 1] if insert_after_idx + 1 < len(rows) else None
+    )
+
+    # Create blank separator row (without formatting)
+    blank_row = table.TableRow()
+
+    for col_idx in range(COL_TOTAL + 1):
+        blank_cell = table.TableCell()
+        blank_cell.appendChild(text.P(text=""))
+        blank_row.appendChild(blank_cell)
+
+    # Insert blank row
+    if reference_row is not None:
+        sheet.insertBefore(blank_row, reference_row)
+    else:
+        sheet.addElement(blank_row)
+
+    # Create new date row (without formatting)
+    date_row = table.TableRow()
+
+    for col_idx in range(COL_TOTAL + 1):
+        new_cell = table.TableCell()
+
+        if col_idx == COL_DATE:
+            # Format date as ISO string
+            date_str = new_date.isoformat()
+            new_cell.setAttrNS(OFFICENS, "value-type", "date")
+            new_cell.setAttrNS(OFFICENS, "date-value", date_str)
+            p = text.P(text=date_str)
+            new_cell.appendChild(p)
+        else:
+            new_cell.appendChild(text.P(text=""))
+
+        date_row.appendChild(new_cell)
+
+    # Insert date row (after blank row)
+    if reference_row is not None:
+        sheet.insertBefore(date_row, reference_row)
+    else:
+        sheet.addElement(date_row)
+
+    # Reload rows and find the index of the new date row
+    updated_rows = sheet.getElementsByType(table.TableRow)
+
+    # Find the new date row by looking for our date value
+    for idx, row in enumerate(updated_rows):
+        cells = row.getElementsByType(table.TableCell)
+        if len(cells) > COL_DATE:
+            cell_value = get_cell_value(cells[COL_DATE])
+            try:
+                if isinstance(cell_value, str) and cell_value.startswith("20"):
+                    cell_date = dparser.parse(cell_value).date()
+                    if cell_date == new_date:
+                        return idx
+            except:
+                pass
+
+    # Fallback: return the row before last (should be our new row)
+    return len(updated_rows) - 1
+
+
 def has_existing_data(cells: List[table.TableCell]) -> bool:
     """
     Check if a row has existing data in store/item columns.
@@ -610,11 +732,12 @@ def insert_bill_into_ods(bill_data: Dict[str, Any]) -> None:
             print(f"⚠ Sheet '{sheet_name}' not found")
             return
 
-        # Find date row
+        # Find or create date row
         target_row_idx = find_date_row(target_sheet, date_parsed.date())
         if target_row_idx is None:
-            print(f"⚠ No row found for date {date_parsed.date()}")
-            return
+            # Date not found - create new row at the end
+            print(f"Creating new row for date {date_parsed.date()}")
+            target_row_idx = create_new_date_row(target_sheet, date_parsed.date())
 
         # Get row and cells
         rows = target_sheet.getElementsByType(table.TableRow)
@@ -622,7 +745,7 @@ def insert_bill_into_ods(bill_data: Dict[str, Any]) -> None:
         cells = target_row.getElementsByType(table.TableCell)
         row_style = target_row.getAttrNS(TABLENS, "style-name")
 
-        # Save existing data
+        # Save existing data (will be empty for newly created rows)
         old_data_exists = has_existing_data(cells)
         old_row_data = save_existing_row_data(cells) if old_data_exists else None
 
