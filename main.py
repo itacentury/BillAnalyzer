@@ -195,9 +195,13 @@ def read_ods(data):
         set_cell_value(cells[3], first_item["name"])
         set_cell_value(cells[4], first_item["price"])
 
+        # If only one item, add total to first row
+        if len(data["item"]) == 1:
+            set_cell_value(cells[5], data["total"])
+
         # Insert new rows for remaining items
-        for item in data["item"][1:]:
-            from odf.namespaces import TABLENS
+        for idx, item in enumerate(data["item"][1:]):
+            is_last_item = idx == len(data["item"][1:]) - 1
 
             new_row = table.TableRow()
 
@@ -220,6 +224,9 @@ def read_ods(data):
                     set_cell_value(new_cell, item["name"])
                 elif col_idx == 4:
                     set_cell_value(new_cell, item["price"])
+                elif col_idx == 5 and is_last_item:
+                    # Add total price in column 5 of the last item row
+                    set_cell_value(new_cell, data["total"])
                 else:
                     # Empty cell with preserved style
                     new_cell.appendChild(text.P(text=""))
@@ -228,29 +235,6 @@ def read_ods(data):
 
             # Insert after target row
             target_sheet.insertBefore(new_row, rows[target_row_idx + 1])
-
-        # Add final row with total
-        from odf.namespaces import TABLENS
-
-        total_row = table.TableRow()
-        row_style = target_row.getAttrNS(TABLENS, "style-name")
-        if row_style:
-            total_row.setAttrNS(TABLENS, "style-name", row_style)
-
-        for col_idx in range(len(cells)):
-            new_cell = table.TableCell()
-            cell_style = cells[col_idx].getAttrNS(TABLENS, "style-name")
-            if cell_style:
-                new_cell.setAttrNS(TABLENS, "style-name", cell_style)
-
-            if col_idx == 4:
-                set_cell_value(new_cell, data["total"])
-            else:
-                new_cell.appendChild(text.P(text=""))
-
-            total_row.appendChild(new_cell)
-
-        target_sheet.insertBefore(total_row, rows[target_row_idx + 1])
 
         print(f"✓ Inserted {len(data['item'])} items + total for {data['store']}")
 
