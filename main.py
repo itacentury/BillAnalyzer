@@ -58,13 +58,13 @@ def pdf_analysis(pdf):
                     {
                         "type": "text",
                         "text": """Bitte extrahiere folgende Daten aus der Rechnung:
-                        1. Name des Supermarkts, ohne Gewerbeform, also nur 'REWE' oder 'Edeka'
-                        2. Datum ohne Uhrzeit
-                        3. Alle Artikel inklusive Preis, wandle die Artikel in korrekte deutsche Groß- und Kleinschreibung um
-                        4. Gesamtpreis
+                        1. Name des Supermarkts, ohne Gewerbeform, also nur 'REWE' oder 'Edeka'.
+                        2. Datum ohne Uhrzeit.
+                        3. Alle Artikel inklusive Preis, ein Artikel pro Zeile, wandle die Artikel in korrekte deutsche Groß- und Kleinschreibung um.
+                        4. Gesamtpreis.
 
                         Gebe mir die Daten im JSON-Format zurück, mit folgenden Namen und Datentypen:
-                        'store' (str), 'date' (str), 'item' (list[dict[str, str | float]]), 'total' (float)""",
+                        'store' (str), 'date' (str), 'item' (list[dict[str, str | float]]), 'total' (float).""",
                     },
                 ],
             }
@@ -207,20 +207,73 @@ def read_ods(data):
         set_cell_value(cells[3], first_item["name"])
         set_cell_value(cells[4], first_item["price"])
 
+        # Clear column 5 and beyond (total column) - make sure to clear old data
+        print(f"DEBUG: Number of cells in row: {len(cells)}")
+        for col_idx in range(5, len(cells)):
+            print(f"DEBUG: Clearing cell at index {col_idx}")
+            cell = cells[col_idx]
+
+            # Debug: Show all attributes before clearing
+            print(f"  Attributes before: {cell.attributes}")
+
+            # Remove all child nodes
+            for child in list(cell.childNodes):
+                cell.removeChild(child)
+
+            # Remove ALL possible value and formula attributes
+            for attr_name in [
+                "value",
+                "date-value",
+                "time-value",
+                "boolean-value",
+                "string-value",
+                "value-type",
+                "currency",
+            ]:
+                try:
+                    cell.removeAttrNS(OFFICENS, attr_name)
+                    print(f"  Removed office:{attr_name}")
+                except KeyError:
+                    pass
+
+            for attr_name in ["formula"]:
+                try:
+                    cell.removeAttrNS(TABLENS, attr_name)
+                    print(f"  Removed table:{attr_name}")
+                except KeyError:
+                    pass
+
+            # Remove LibreOffice Calc extension attributes
+            CALCEXTNS = (
+                "urn:org:documentfoundation:names:experimental:calc:xmlns:calcext:1.0"
+            )
+            for attr_name in ["value-type"]:
+                try:
+                    cell.removeAttrNS(CALCEXTNS, attr_name)
+                    print(f"  Removed calcext:{attr_name}")
+                except KeyError:
+                    pass
+
+            # Don't add any paragraph - leave completely empty
+            # cell.appendChild(text.P(text=""))
+
+            print(f"  Attributes after: {cell.attributes}")
+
         # If only one item, add total to first row
-        if len(data["item"]) == 1:
+        if len(data["item"]) == 1 and len(cells) > 5:
             set_cell_value(cells[5], data["total"])
-        else:
-            # Clear column 5 if there are more items
-            set_cell_value(cells[5], "")
 
         # Step 3: Insert remaining items as new rows
+        # insertBefore with constant reference puts items in correct order
         reference_row = (
             rows[target_row_idx + 1] if target_row_idx + 1 < len(rows) else None
         )
 
-        for idx, item in enumerate(reversed(data["item"][1:])):
-            is_last_item = idx == 0  # First in reversed = last in original
+        # Process items in NORMAL order - insertBefore will place them correctly
+        remaining_items = list(data["item"][1:])
+        for idx, item in enumerate(remaining_items):
+            # Last item in the list gets the total
+            is_last_item = idx == len(remaining_items) - 1
 
             new_row = table.TableRow()
 
