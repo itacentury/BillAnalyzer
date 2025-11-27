@@ -60,7 +60,7 @@ def pdf_analysis(pdf):
                         "text": """Bitte extrahiere folgende Daten aus der Rechnung:
                         1. Name des Supermarkts, ohne Gewerbeform, also nur 'REWE' oder 'Edeka'
                         2. Datum ohne Uhrzeit
-                        3. Alle Artikel inklusive Preis
+                        3. Alle Artikel inklusive Preis, wandle die Artikel in korrekte deutsche Groß- und Kleinschreibung um
                         4. Gesamtpreis
 
                         Gebe mir die Daten im JSON-Format zurück, mit folgenden Namen und Datentypen:
