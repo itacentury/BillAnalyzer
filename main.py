@@ -11,14 +11,15 @@ import os
 import re
 import shutil
 import tkinter as tk
+from datetime import date
 from datetime import datetime as dt
 from tkinter import filedialog
 from typing import Any, Dict, List, Optional, Tuple
 
 import anthropic
 import dateutil.parser as dparser
-from odf import table, text
-from odf.namespaces import OFFICENS, TABLENS
+from odf import number, style, table, text
+from odf.namespaces import NUMBERNS, OFFICENS, STYLENS, TABLENS
 from odf.opendocument import load
 
 # ==============================================================================
@@ -48,7 +49,7 @@ EXTRACTION_PROMPT = """Bitte extrahiere folgende Daten aus der Rechnung:
 4. Gesamtpreis.
 
 Gebe mir die Daten im JSON-Format zurück, mit folgenden Namen und Datentypen:
-'store' (str), 'date' (str), 'item' (list[dict[str, str | float]]), 'total' (float)."""
+'store' (str), 'date' (str), 'items' (list[dict[str, str | float]]), 'total' (float)."""
 
 # Namespaces for ODS attribute removal
 CALCEXT_NS = "urn:org:documentfoundation:names:experimental:calc:xmlns:calcext:1.0"
@@ -65,6 +66,63 @@ OFFICE_ATTRS_TO_CLEAR = [
 ]
 TABLE_ATTRS_TO_CLEAR = ["formula"]
 CALCEXT_ATTRS_TO_CLEAR = ["value-type"]
+
+
+# ==============================================================================
+# ODS DATE STYLE MANAGEMENT
+# ==============================================================================
+
+
+def ensure_date_style_exists(doc: Any) -> str:
+    """
+    Ensure a date-only style exists in the document and return its name.
+
+    This creates a number-style that formats dates as DD.MM.YY without time.
+
+    Args:
+        doc: ODS document object
+
+    Returns:
+        Name of the date style to use
+    """
+    style_name = "date-short-year-style"
+    number_style_name = "N_DATE_SHORT_YEAR"
+
+    # Check if style already exists
+    if hasattr(doc, "styles"):
+        for existing_style in doc.styles.getElementsByType(style.Style):
+            if existing_style.getAttribute("name") == style_name:
+                return style_name
+
+    # Create the number:date-style
+    date_style = number.DateStyle(name=number_style_name)
+
+    # Add day (DD)
+    date_style.addElement(number.Day(style="long"))
+
+    # Add separator
+    date_style.addElement(number.Text(text="."))
+
+    # Add month (MM)
+    date_style.addElement(number.Month(style="long"))
+
+    # Add separator
+    date_style.addElement(number.Text(text="."))
+
+    # Add year (YY)
+    date_style.addElement(number.Year(style="short"))
+
+    # Add the number style to the document
+    doc.styles.addElement(date_style)
+
+    # Create a cell style that uses this number style
+    cell_style = style.Style(name=style_name, family="table-cell")
+    cell_style.setAttrNS(STYLENS, "data-style-name", number_style_name)
+
+    # Add the cell style to the document
+    doc.styles.addElement(cell_style)
+
+    return style_name
 
 
 # ==============================================================================
@@ -219,27 +277,65 @@ def get_cell_value(cell: table.TableCell) -> Any:
     return "".join(text_content) if text_content else ""
 
 
-def set_cell_value(cell: table.TableCell, value: Any) -> None:
+def set_cell_value(
+    cell: table.TableCell, value: Any, doc: Optional[Any] = None
+) -> None:
     """
     Set value in an ODS cell while preserving its style.
 
     Args:
         cell: ODS table cell
-        value: Value to set (will be converted to string)
+        value: Value to set (can be string, number, date, or datetime)
+        doc: Optional ODS document (required for date values to apply proper formatting)
     """
     # Clear existing content
     for child in list(cell.childNodes):
         cell.removeChild(child)
 
-    # Add new text content
-    p = text.P(text=str(value))
-    cell.appendChild(p)
+    # Handle different value types
+    # Note: Check datetime before date since datetime is a subclass of date
+    if isinstance(value, dt):
+        # Datetime object - store as date with ISO format
+        date_iso = value.strftime("%Y-%m-%d")
+        date_display = value.strftime("%d.%m.%y")
 
-    # Set appropriate value type
-    if isinstance(value, (int, float)):
+        p = text.P(text=date_display)
+        cell.appendChild(p)
+
+        cell.setAttrNS(OFFICENS, "value-type", "date")
+        cell.setAttrNS(OFFICENS, "date-value", date_iso)
+
+        # Apply date-only style if doc is provided
+        if doc:
+            style_name = ensure_date_style_exists(doc)
+            cell.setAttrNS(TABLENS, "style-name", style_name)
+    elif isinstance(value, date):
+        # Date object - store as date with ISO format
+        date_iso = value.strftime("%Y-%m-%d")
+
+        # Don't set display text - let the style format it
+        p = text.P(text="")
+        cell.appendChild(p)
+
+        cell.setAttrNS(OFFICENS, "value-type", "date")
+        cell.setAttrNS(OFFICENS, "date-value", date_iso)
+
+        # Apply date-only style if doc is provided
+        if doc:
+            style_name = ensure_date_style_exists(doc)
+            cell.setAttrNS(TABLENS, "style-name", style_name)
+    elif isinstance(value, (int, float)):
+        # Numeric value
+        p = text.P(text=str(value))
+        cell.appendChild(p)
+
         cell.setAttrNS(OFFICENS, "value-type", "float")
         cell.setAttrNS(OFFICENS, "value", str(value))
     else:
+        # String value
+        p = text.P(text=str(value))
+        cell.appendChild(p)
+
         cell.setAttrNS(OFFICENS, "value-type", "string")
 
 
@@ -414,9 +510,13 @@ def find_sheet_by_name(doc: Any, sheet_name: str) -> Optional[table.Table]:
     return None
 
 
-def find_date_row(sheet: table.Table, target_date: dt.date) -> Optional[int]:
+def find_date_row(sheet: table.Table, target_date: date) -> Optional[int]:
     """
     Find the row index containing a specific date.
+
+    Handles both:
+    - New format: date-value attribute with ISO format (YYYY-MM-DD)
+    - Old format: text content with German format (DD.MM.YY)
 
     Args:
         sheet: ODS sheet to search
@@ -434,10 +534,10 @@ def find_date_row(sheet: table.Table, target_date: dt.date) -> Optional[int]:
 
         cell_value = get_cell_value(cells[COL_DATE])
 
-        # Try to parse as date
+        # Try to parse as date (handles both ISO and German formats)
         try:
-            if isinstance(cell_value, str) and cell_value.startswith("20"):
-                cell_date = dparser.parse(cell_value).date()
+            if isinstance(cell_value, str) and cell_value.strip():
+                cell_date = dparser.parse(cell_value, dayfirst=True).date()
                 if cell_date == target_date:
                     return idx
         except Exception:
@@ -446,7 +546,7 @@ def find_date_row(sheet: table.Table, target_date: dt.date) -> Optional[int]:
     return None
 
 
-def create_new_date_row(sheet: table.Table, new_date: dt.date) -> int:
+def create_new_date_row(sheet: table.Table, new_date: date, doc: Any) -> int:
     """
     Create a new row after the last entry with the given date.
     Inserts a blank separator row before the new date row.
@@ -454,23 +554,27 @@ def create_new_date_row(sheet: table.Table, new_date: dt.date) -> int:
     Args:
         sheet: ODS sheet to add row to
         new_date: Date to insert
+        doc: ODS document object (needed for date style)
 
     Returns:
         Index of the newly created date row
     """
     rows = sheet.getElementsByType(table.TableRow)
 
-    # Find the last row with actual data and collect template info
+    # Find the last row with actual data and determine number of cells needed
     last_data_row_idx = None
-    template_row = None
     template_cells = None
-    template_row_style = None
-    cell_styles = {}
+    num_cells_to_create = COL_TOTAL + 1  # Default: at least 6 cells
 
     for idx, row in enumerate(rows):
         cells = row.getElementsByType(table.TableCell)
         if len(cells) <= COL_TOTAL:
             continue
+
+        # Update number of cells to create based on existing rows
+        # Limit to 10 to avoid issues with repeated columns
+        if len(cells) > num_cells_to_create and len(cells) <= 10:
+            num_cells_to_create = len(cells)
 
         # Check if this row has data in any column
         has_data = False
@@ -481,25 +585,10 @@ def create_new_date_row(sheet: table.Table, new_date: dt.date) -> int:
                     has_data = True
                     break
 
-        # If this row has data, remember it as last data row
+        # If this row has data, remember it as last data row and save cell styles
         if has_data:
             last_data_row_idx = idx
-
-        # Use first row with date as template
-        if template_row is None:
-            cell_value = get_cell_value(cells[COL_DATE])
-            if cell_value:
-                template_row = row
-                template_cells = cells
-                template_row_style = row.getAttrNS(TABLENS, "style-name")
-
-                # Collect cell styles (stop at repeated columns)
-                for col_idx in range(min(COL_TOTAL + 1, len(cells))):
-                    if cells[col_idx].getAttrNS(TABLENS, "number-columns-repeated"):
-                        break
-                    style = cells[col_idx].getAttrNS(TABLENS, "style-name")
-                    if style:
-                        cell_styles[col_idx] = style
+            template_cells = cells
 
     # Determine insertion point (after last data row)
     insert_after_idx = (
@@ -509,11 +598,18 @@ def create_new_date_row(sheet: table.Table, new_date: dt.date) -> int:
         rows[insert_after_idx + 1] if insert_after_idx + 1 < len(rows) else None
     )
 
-    # Create blank separator row (without formatting)
+    # Create blank separator row (with formatting copied from template)
     blank_row = table.TableRow()
 
-    for col_idx in range(COL_TOTAL + 1):
+    for col_idx in range(num_cells_to_create):
         blank_cell = table.TableCell()
+
+        # Copy cell style from template if available
+        if template_cells and col_idx < len(template_cells):
+            cell_style = template_cells[col_idx].getAttrNS(TABLENS, "style-name")
+            if cell_style:
+                blank_cell.setAttrNS(TABLENS, "style-name", cell_style)
+
         blank_cell.appendChild(text.P(text=""))
         blank_row.appendChild(blank_cell)
 
@@ -523,19 +619,21 @@ def create_new_date_row(sheet: table.Table, new_date: dt.date) -> int:
     else:
         sheet.addElement(blank_row)
 
-    # Create new date row (without formatting)
+    # Create new date row (with formatting copied from template)
     date_row = table.TableRow()
 
-    for col_idx in range(COL_TOTAL + 1):
+    for col_idx in range(num_cells_to_create):
         new_cell = table.TableCell()
 
+        # Copy cell style from template if available (but NOT for date column)
+        if template_cells and col_idx < len(template_cells) and col_idx != COL_DATE:
+            cell_style = template_cells[col_idx].getAttrNS(TABLENS, "style-name")
+            if cell_style:
+                new_cell.setAttrNS(TABLENS, "style-name", cell_style)
+
         if col_idx == COL_DATE:
-            # Format date as ISO string
-            date_str = new_date.isoformat()
-            new_cell.setAttrNS(OFFICENS, "value-type", "date")
-            new_cell.setAttrNS(OFFICENS, "date-value", date_str)
-            p = text.P(text=date_str)
-            new_cell.appendChild(p)
+            # Insert date as proper date object (not just text)
+            set_cell_value(new_cell, new_date, doc)
         else:
             new_cell.appendChild(text.P(text=""))
 
@@ -550,18 +648,14 @@ def create_new_date_row(sheet: table.Table, new_date: dt.date) -> int:
     # Reload rows and find the index of the new date row
     updated_rows = sheet.getElementsByType(table.TableRow)
 
-    # Find the new date row by looking for our date value
+    # Find the new date row by looking for our date value (in ISO format from date-value attribute)
+    target_date_iso = new_date.strftime("%Y-%m-%d")
     for idx, row in enumerate(updated_rows):
         cells = row.getElementsByType(table.TableCell)
         if len(cells) > COL_DATE:
             cell_value = get_cell_value(cells[COL_DATE])
-            try:
-                if isinstance(cell_value, str) and cell_value.startswith("20"):
-                    cell_date = dparser.parse(cell_value).date()
-                    if cell_date == new_date:
-                        return idx
-            except:
-                pass
+            if isinstance(cell_value, str) and cell_value == target_date_iso:
+                return idx
 
     # Fallback: return the row before last (should be our new row)
     return len(updated_rows) - 1
@@ -737,7 +831,7 @@ def insert_bill_into_ods(bill_data: Dict[str, Any]) -> None:
         if target_row_idx is None:
             # Date not found - create new row at the end
             print(f"Creating new row for date {date_parsed.date()}")
-            target_row_idx = create_new_date_row(target_sheet, date_parsed.date())
+            target_row_idx = create_new_date_row(target_sheet, date_parsed.date(), doc)
 
         # Get row and cells
         rows = target_sheet.getElementsByType(table.TableRow)
@@ -750,7 +844,7 @@ def insert_bill_into_ods(bill_data: Dict[str, Any]) -> None:
         old_row_data = save_existing_row_data(cells) if old_data_exists else None
 
         # Overwrite date row with first item
-        first_item = bill_data["item"][0]
+        first_item = bill_data["items"][0]
         set_cell_value(cells[COL_STORE], bill_data["store"])
         set_cell_value(cells[COL_ITEM], first_item["name"])
         set_cell_value(cells[COL_PRICE], first_item["price"])
@@ -760,7 +854,7 @@ def insert_bill_into_ods(bill_data: Dict[str, Any]) -> None:
             clear_cell_completely(cells[col_idx])
 
         # Add total if only one item
-        if len(bill_data["item"]) == 1 and len(cells) > COL_TOTAL:
+        if len(bill_data["items"]) == 1 and len(cells) > COL_TOTAL:
             set_cell_value(cells[COL_TOTAL], bill_data["total"])
 
         # Insert remaining items as new rows
@@ -768,7 +862,7 @@ def insert_bill_into_ods(bill_data: Dict[str, Any]) -> None:
             rows[target_row_idx + 1] if target_row_idx + 1 < len(rows) else None
         )
 
-        remaining_items = bill_data["item"][1:]
+        remaining_items = bill_data["items"][1:]
         for idx, item in enumerate(remaining_items):
             is_last_item = idx == len(remaining_items) - 1
             total = bill_data["total"] if is_last_item else None
@@ -797,7 +891,7 @@ def insert_bill_into_ods(bill_data: Dict[str, Any]) -> None:
                 target_sheet.addElement(old_row)
 
         print(
-            f"✓ Inserted {len(bill_data['item'])} items + total for {bill_data['store']}"
+            f"✓ Inserted {len(bill_data['items'])} items + total for {bill_data['store']}"
         )
 
         # Save document
