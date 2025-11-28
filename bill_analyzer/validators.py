@@ -6,17 +6,13 @@ from typing import Any
 
 
 def evaluate_price_value(price_value: float | int | str) -> float:
-    """
-    Evaluate a price value, which can be a number, string, or formula.
+    """Evaluate a price value, which can be a number, string, or formula.
 
-    Args:
-        price_value: Price value (float, int, str, or formula string like "=4*0,19")
-
-    Returns:
-        Evaluated numeric price value
-
-    Raises:
-        ValueError: If the value cannot be evaluated
+    :param price_value: Price value (float, int, str, or formula string like "=4*0,19")
+    :type price_value: float | int | str
+    :return: Evaluated numeric price value
+    :rtype: float
+    :raises ValueError: If the value cannot be evaluated
     """
     # If already a number, return it
     if isinstance(price_value, (int, float)):
@@ -52,26 +48,15 @@ def evaluate_price_value(price_value: float | int | str) -> float:
 def validate_bill_total(
     bill_data: dict[str, float | int | str],
 ) -> dict[str, bool | float | str]:
-    """
-    Validate that the sum of item prices equals the total price in the bill.
+    """Validate that the sum of item prices equals the total price in the bill.
 
-    Args:
-        bill_data: Bill dictionary with 'items' and 'total' keys
-        tolerance: Acceptable difference (default 0.01 for rounding errors)
-
-    Returns:
-        Dictionary with validation results:
-        {
-            'valid': bool,
-            'calculated_sum': float,
-            'declared_total': float,
-            'difference': float,
-            'message': str
-        }
-
-    Raises:
-        KeyError: If required keys are missing from bill_data
-        ValueError: If any price value cannot be evaluated
+    :param bill_data: Bill dictionary with 'items' and 'total' keys
+    :type bill_data: dict[str, float | int | str]
+    :return: Dictionary with validation results containing 'valid' (bool), 'calculated_sum' (float),
+        'declared_total' (float), 'difference' (float), and 'message' (str)
+    :rtype: dict[str, bool | float | str]
+    :raises KeyError: If required keys are missing from bill_data
+    :raises ValueError: If any price value cannot be evaluated
     """
     # Extract data
     items = bill_data.get("items", [])

@@ -9,16 +9,14 @@ from odf.namespaces import STYLENS
 
 
 def ensure_date_style_exists(doc: Any) -> str:
-    """
-    Ensure a date-only style exists in the document and return its name.
+    """Ensure a date-only style exists in the document and return its name.
 
     This creates a number-style that formats dates as DD.MM.YY without time.
 
-    Args:
-        doc: ODS document object
-
-    Returns:
-        Name of the date style to use
+    :param doc: ODS document object
+    :type doc: Any
+    :return: Name of the date style to use
+    :rtype: str
     """
     style_name = "date-short-year-style"
     number_style_name = "N_DATE_SHORT_YEAR"

@@ -14,18 +14,14 @@ client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
 
 
 def analyze_bill_pdf(pdf_path: str) -> str:
-    """
-    Analyze a bill PDF using Claude AI to extract structured data.
+    """Analyze a bill PDF using Claude AI to extract structured data.
 
-    Args:
-        pdf_path: Path to the PDF file
-
-    Returns:
-        Raw response text from Claude (contains JSON in markdown format)
-
-    Raises:
-        FileNotFoundError: If PDF file doesn't exist
-        anthropic.APIError: If Claude API call fails
+    :param pdf_path: Path to the PDF file
+    :type pdf_path: str
+    :return: Raw response text from Claude (contains JSON in markdown format)
+    :rtype: str
+    :raises FileNotFoundError: If PDF file doesn't exist
+    :raises anthropic.APIError: If Claude API call fails
     """
     with open(pdf_path, "rb") as pdf_file:
         pdf_data = base64.standard_b64encode(pdf_file.read()).decode("utf-8")

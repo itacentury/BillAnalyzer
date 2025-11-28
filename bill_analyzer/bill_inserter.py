@@ -29,19 +29,18 @@ from .ods_sheets import (
 def _insert_single_bill_data(
     doc: Any, bill_data: dict[str, Any], verbose: bool = True
 ) -> None:
-    """
-    Insert a single bill's data into an already-loaded ODS document.
+    """Insert a single bill's data into an already-loaded ODS document.
 
     This is an internal function that performs the actual data insertion
     without handling file I/O (loading/saving/backup).
 
-    Args:
-        doc: Loaded ODS document object
-        bill_data: Dictionary containing 'store', 'date', 'items', 'total'
-        verbose: Whether to print progress messages
-
-    Raises:
-        Exception: If sheet is not found or data insertion fails
+    :param doc: Loaded ODS document object
+    :type doc: Any
+    :param bill_data: Dictionary containing 'store', 'date', 'items', 'total'
+    :type bill_data: dict[str, Any]
+    :param verbose: Whether to print progress messages
+    :type verbose: bool
+    :raises Exception: If sheet is not found or data insertion fails
     """
     # Parse date and determine sheet name
     date_parsed = dparser.parse(bill_data["date"], dayfirst=True)
@@ -126,8 +125,7 @@ def _insert_single_bill_data(
 
 
 def process_multiple_bills(bills_data: list[dict[str, Any]]) -> None:
-    """
-    Process multiple bills and insert them into the ODS file in a single transaction.
+    """Process multiple bills and insert them into the ODS file in a single transaction.
 
     This function:
     1. Creates a backup of the ODS file (once)
@@ -139,11 +137,9 @@ def process_multiple_bills(bills_data: list[dict[str, Any]]) -> None:
     This is more efficient than calling insert_bill_into_ods() multiple times,
     as it only performs file I/O once instead of for each bill.
 
-    Args:
-        bills_data: List of bill dictionaries, each containing 'store', 'date', 'items', 'total'
-
-    Raises:
-        Exception: If any step fails (backup is automatically restored)
+    :param bills_data: List of bill dictionaries, each containing 'store', 'date', 'items', 'total'
+    :type bills_data: list[dict[str, Any]]
+    :raises Exception: If any step fails (backup is automatically restored)
     """
     if not bills_data:
         print("No bills to process.")
@@ -179,17 +175,14 @@ def process_multiple_bills(bills_data: list[dict[str, Any]]) -> None:
 
 
 def insert_bill_into_ods(bill_data: dict[str, Any]) -> None:
-    """
-    Insert a single bill into the ODS file.
+    """Insert a single bill into the ODS file.
 
     This is a convenience wrapper around process_multiple_bills() for
     processing a single bill. For processing multiple bills, use
     process_multiple_bills() directly for better performance.
 
-    Args:
-        bill_data: Dictionary containing 'store', 'date', 'items', 'total'
-
-    Raises:
-        Exception: If any step fails (backup is automatically restored)
+    :param bill_data: Dictionary containing 'store', 'date', 'items', 'total'
+    :type bill_data: dict[str, Any]
+    :raises Exception: If any step fails (backup is automatically restored)
     """
     process_multiple_bills([bill_data])

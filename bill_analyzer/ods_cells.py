@@ -19,17 +19,15 @@ from .ods_styles import ensure_date_style_exists
 
 
 def get_cell_value(cell: table.TableCell) -> Any:
-    """
-    Extract the value from an ODS cell.
+    """Extract the value from an ODS cell.
 
     Tries multiple attribute types (value, date-value, string-value)
     and falls back to text content if no attributes are found.
 
-    Args:
-        cell: ODS table cell
-
-    Returns:
-        Cell value (float, str, or empty string)
+    :param cell: ODS table cell
+    :type cell: table.TableCell
+    :return: Cell value (float, str, or empty string)
+    :rtype: Any
     """
     # Try numeric value
     value_attr = cell.getAttrNS(OFFICENS, "value")
@@ -54,13 +52,14 @@ def get_cell_value(cell: table.TableCell) -> Any:
 
 
 def set_cell_value(cell: table.TableCell, value: Any, doc: Any | None = None) -> None:
-    """
-    Set value in an ODS cell while preserving its style.
+    """Set value in an ODS cell while preserving its style.
 
-    Args:
-        cell: ODS table cell
-        value: Value to set (can be string, number, date, or datetime)
-        doc: Optional ODS document (required for date values to apply proper formatting)
+    :param cell: ODS table cell
+    :type cell: table.TableCell
+    :param value: Value to set (can be string, number, date, or datetime)
+    :type value: Any
+    :param doc: Optional ODS document (required for date values to apply proper formatting)
+    :type doc: Any | None
     """
     # Clear existing content
     for child in list(cell.childNodes):
@@ -152,8 +151,7 @@ def set_cell_value(cell: table.TableCell, value: Any, doc: Any | None = None) ->
 
 
 def clear_cell_completely(cell: table.TableCell) -> None:
-    """
-    Clear all content and value attributes from an ODS cell.
+    """Clear all content and value attributes from an ODS cell.
 
     This removes:
     - All child nodes (text content)
@@ -161,8 +159,8 @@ def clear_cell_completely(cell: table.TableCell) -> None:
     - Table formulas
     - LibreOffice Calc extension attributes
 
-    Args:
-        cell: ODS table cell to clear
+    :param cell: ODS table cell to clear
+    :type cell: table.TableCell
     """
     # Remove all child nodes
     for child in list(cell.childNodes):
@@ -198,14 +196,12 @@ def clear_cell_completely(cell: table.TableCell) -> None:
 def create_empty_cell_with_style(
     reference_cell: table.TableCell,
 ) -> table.TableCell:
-    """
-    Create a new empty cell with the same style as a reference cell.
+    """Create a new empty cell with the same style as a reference cell.
 
-    Args:
-        reference_cell: Cell to copy style from
-
-    Returns:
-        New empty cell with copied style
+    :param reference_cell: Cell to copy style from
+    :type reference_cell: table.TableCell
+    :return: New empty cell with copied style
+    :rtype: table.TableCell
     """
     new_cell = table.TableCell()
 

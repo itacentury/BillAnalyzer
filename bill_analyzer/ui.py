@@ -8,11 +8,10 @@ from tkinter import filedialog
 
 
 def select_pdf_files() -> tuple[str, ...]:
-    """
-    Open a file dialog to let the user select PDF files.
+    """Open a file dialog to let the user select PDF files.
 
-    Returns:
-        Tuple of selected file paths (empty if cancelled)
+    :return: Tuple of selected file paths (empty if cancelled)
+    :rtype: tuple[str, ...]
     """
     root = tk.Tk()
     root.withdraw()

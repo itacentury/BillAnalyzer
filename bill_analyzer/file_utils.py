@@ -8,14 +8,12 @@ from datetime import datetime as dt
 
 
 def create_backup(file_path: str) -> str:
-    """
-    Create a timestamped backup of a file.
+    """Create a timestamped backup of a file.
 
-    Args:
-        file_path: Path to the file to backup
-
-    Returns:
-        Path to the backup file
+    :param file_path: Path to the file to backup
+    :type file_path: str
+    :return: Path to the backup file
+    :rtype: str
     """
     timestamp = dt.now().strftime("%Y%m%d_%H%M%S")
     backup_path = file_path.replace(".ods", f"_backup_{timestamp}.ods")
@@ -25,12 +23,12 @@ def create_backup(file_path: str) -> str:
 
 
 def restore_from_backup(backup_path: str, target_path: str) -> None:
-    """
-    Restore a file from its backup.
+    """Restore a file from its backup.
 
-    Args:
-        backup_path: Path to the backup file
-        target_path: Path to restore to
+    :param backup_path: Path to the backup file
+    :type backup_path: str
+    :param target_path: Path to restore to
+    :type target_path: str
     """
     print(f"Restoring from backup...")
     shutil.copy2(backup_path, target_path)
@@ -38,11 +36,10 @@ def restore_from_backup(backup_path: str, target_path: str) -> None:
 
 
 def remove_backup(backup_path: str) -> None:
-    """
-    Remove a backup file if it exists.
+    """Remove a backup file if it exists.
 
-    Args:
-        backup_path: Path to the backup file
+    :param backup_path: Path to the backup file
+    :type backup_path: str
     """
     if os.path.exists(backup_path):
         os.remove(backup_path)

@@ -19,19 +19,22 @@ def create_item_row(
     store_name: str | None = None,
     total_price: float | None = None,
 ) -> table.TableRow:
-    """
-    Create a new row for a bill item with proper formatting.
+    """Create a new row for a bill item with proper formatting.
 
-    Args:
-        template_cells: List of cells to copy styles from
-        template_row_style: Row style to apply
-        item_name: Name of the item
-        item_price: Price of the item
-        store_name: Store name (only for first row)
-        total_price: Total price (only for last row)
-
-    Returns:
-        New table row with all cells properly formatted
+    :param template_cells: List of cells to copy styles from
+    :type template_cells: list[table.TableCell]
+    :param template_row_style: Row style to apply
+    :type template_row_style: str | None
+    :param item_name: Name of the item
+    :type item_name: str
+    :param item_price: Price of the item
+    :type item_price: float
+    :param store_name: Store name (only for first row)
+    :type store_name: str | None
+    :param total_price: Total price (only for last row)
+    :type total_price: float | None
+    :return: New table row with all cells properly formatted
+    :rtype: table.TableRow
     """
     new_row = table.TableRow()
 
@@ -68,15 +71,14 @@ def create_item_row(
 def create_blank_separator_row(
     template_cells: list[table.TableCell], template_row_style: str | None
 ) -> table.TableRow:
-    """
-    Create a blank row to separate different bills on the same date.
+    """Create a blank row to separate different bills on the same date.
 
-    Args:
-        template_cells: List of cells to copy styles from
-        template_row_style: Row style to apply
-
-    Returns:
-        New blank table row with proper formatting
+    :param template_cells: List of cells to copy styles from
+    :type template_cells: list[table.TableCell]
+    :param template_row_style: Row style to apply
+    :type template_row_style: str | None
+    :return: New blank table row with proper formatting
+    :rtype: table.TableRow
     """
     blank_row = table.TableRow()
 
@@ -93,14 +95,12 @@ def create_blank_separator_row(
 def save_existing_row_data(
     cells: list[table.TableCell],
 ) -> list[tuple[Any, str | None]]:
-    """
-    Save all data and styles from a row before modifying it.
+    """Save all data and styles from a row before modifying it.
 
-    Args:
-        cells: List of cells to save
-
-    Returns:
-        List of tuples (cell_value, cell_style)
+    :param cells: List of cells to save
+    :type cells: list[table.TableCell]
+    :return: List of tuples (cell_value, cell_style)
+    :rtype: list[tuple[Any, str | None]]
     """
     from .ods_cells import get_cell_value
 
@@ -116,15 +116,14 @@ def restore_row_as_new(
     old_row_data: list[tuple[Any, str | None]],
     template_row_style: str | None,
 ) -> table.TableRow:
-    """
-    Create a new row from saved row data.
+    """Create a new row from saved row data.
 
-    Args:
-        old_row_data: List of tuples (cell_value, cell_style) from save_existing_row_data()
-        template_row_style: Row style to apply
-
-    Returns:
-        New table row with restored data
+    :param old_row_data: List of tuples (cell_value, cell_style) from save_existing_row_data()
+    :type old_row_data: list[tuple[Any, str | None]]
+    :param template_row_style: Row style to apply
+    :type template_row_style: str | None
+    :return: New table row with restored data
+    :rtype: table.TableRow
     """
     old_row = table.TableRow()
 

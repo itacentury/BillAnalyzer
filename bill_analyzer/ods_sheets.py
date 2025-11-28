@@ -14,15 +14,14 @@ from .ods_cells import get_cell_value, set_cell_value
 
 
 def find_sheet_by_name(doc: Any, sheet_name: str) -> table.Table | None:
-    """
-    Find a sheet in an ODS document by name.
+    """Find a sheet in an ODS document by name.
 
-    Args:
-        doc: ODS document object
-        sheet_name: Name of the sheet to find
-
-    Returns:
-        Sheet object if found, None otherwise
+    :param doc: ODS document object
+    :type doc: Any
+    :param sheet_name: Name of the sheet to find
+    :type sheet_name: str
+    :return: Sheet object if found, None otherwise
+    :rtype: table.Table | None
     """
     sheets = doc.spreadsheet.getElementsByType(table.Table)
     for sheet in sheets:
@@ -32,19 +31,18 @@ def find_sheet_by_name(doc: Any, sheet_name: str) -> table.Table | None:
 
 
 def find_date_row(sheet: table.Table, target_date: date) -> int | None:
-    """
-    Find the row index containing a specific date.
+    """Find the row index containing a specific date.
 
     Handles both:
     - New format: date-value attribute with ISO format (YYYY-MM-DD)
     - Old format: text content with German format (DD.MM.YY)
 
-    Args:
-        sheet: ODS sheet to search
-        target_date: Date to find
-
-    Returns:
-        Row index if found, None otherwise
+    :param sheet: ODS sheet to search
+    :type sheet: table.Table
+    :param target_date: Date to find
+    :type target_date: date
+    :return: Row index if found, None otherwise
+    :rtype: int | None
     """
     rows = sheet.getElementsByType(table.TableRow)
 
@@ -68,17 +66,18 @@ def find_date_row(sheet: table.Table, target_date: date) -> int | None:
 
 
 def create_new_date_row(sheet: table.Table, new_date: date, doc: Any) -> int:
-    """
-    Create a new row after the last entry with the given date.
+    """Create a new row after the last entry with the given date.
+
     Inserts a blank separator row before the new date row.
 
-    Args:
-        sheet: ODS sheet to add row to
-        new_date: Date to insert
-        doc: ODS document object (needed for date style)
-
-    Returns:
-        Index of the newly created date row
+    :param sheet: ODS sheet to add row to
+    :type sheet: table.Table
+    :param new_date: Date to insert
+    :type new_date: date
+    :param doc: ODS document object (needed for date style)
+    :type doc: Any
+    :return: Index of the newly created date row
+    :rtype: int
     """
     rows = sheet.getElementsByType(table.TableRow)
 
@@ -183,14 +182,12 @@ def create_new_date_row(sheet: table.Table, new_date: date, doc: Any) -> int:
 
 
 def has_existing_data(cells: list[table.TableCell]) -> bool:
-    """
-    Check if a row has existing data in store/item columns.
+    """Check if a row has existing data in store/item columns.
 
-    Args:
-        cells: List of cells to check
-
-    Returns:
-        True if data exists, False otherwise
+    :param cells: List of cells to check
+    :type cells: list[table.TableCell]
+    :return: True if data exists, False otherwise
+    :rtype: bool
     """
     for col_idx in range(COL_STORE, COL_TOTAL):
         if col_idx >= len(cells):
