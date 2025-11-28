@@ -4,7 +4,7 @@ JSON parsing utilities
 
 import json
 import re
-from typing import Any
+from typing import Any, cast
 
 
 def parse_json_from_markdown(text: str) -> dict[str, Any]:
@@ -29,4 +29,5 @@ def parse_json_from_markdown(text: str) -> dict[str, Any]:
         # If no markdown block found, assume the entire text is JSON
         json_str = text
 
-    return json.loads(json_str.strip())
+    result = json.loads(json_str.strip())
+    return cast(dict[str, Any], result)

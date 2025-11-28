@@ -62,7 +62,10 @@ def validate_bill_total(
     """
     # Extract data
     items: list = bill_data.get("items", [])  # type: ignore[assignment]
-    declared_total: float | int | str | None = bill_data.get("total")
+    declared_total_raw = bill_data.get("total")
+    declared_total: float | int | str | None = (
+        declared_total_raw if not isinstance(declared_total_raw, list) else None
+    )
 
     if declared_total is None:
         raise KeyError("Bill data is missing 'total' key")

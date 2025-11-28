@@ -23,4 +23,7 @@ def select_pdf_files() -> tuple[str, ...]:
         initialdir=os.path.expanduser("~/Downloads"),
     )
 
+    # askopenfilenames returns empty string if cancelled, otherwise tuple
+    if isinstance(file_paths, str):
+        return ()
     return file_paths

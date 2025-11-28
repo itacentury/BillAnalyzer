@@ -6,11 +6,14 @@ import base64
 import os
 
 import anthropic
+from anthropic.types import TextBlock
 
 from .config import CLAUDE_MAX_TOKENS, CLAUDE_MODEL, EXTRACTION_PROMPT
 
 # Initialize Anthropic API client
-client: anthropic.Anthropic = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+client: anthropic.Anthropic = anthropic.Anthropic(
+    api_key=os.environ.get("ANTHROPIC_API_KEY")
+)
 
 
 def analyze_bill_pdf(pdf_path: str) -> str:
@@ -22,6 +25,7 @@ def analyze_bill_pdf(pdf_path: str) -> str:
     :rtype: str
     :raises FileNotFoundError: If PDF file doesn't exist
     :raises anthropic.APIError: If Claude API call fails
+    :raises TypeError: If Claude returns unexpected content type
     """
     with open(pdf_path, "rb") as pdf_file:
         pdf_data: str = base64.standard_b64encode(pdf_file.read()).decode("utf-8")
@@ -47,4 +51,10 @@ def analyze_bill_pdf(pdf_path: str) -> str:
         ],
     )
 
-    return message.content[0].text
+    # Extract text from response, ensuring it's a TextBlock
+    content_block = message.content[0]
+    if isinstance(content_block, TextBlock):
+        return content_block.text
+
+    # Fallback for unexpected content types
+    raise TypeError(f"Expected TextBlock, got {type(content_block).__name__}")
