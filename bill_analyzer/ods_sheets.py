@@ -13,6 +13,134 @@ from .config import COL_DATE, COL_STORE, COL_TOTAL
 from .ods_cells import get_cell_value, set_cell_value
 
 
+def _find_last_data_row_and_template(
+    rows: list[table.TableRow],
+) -> tuple[int | None, list[table.TableCell] | None, int]:
+    """Find the last row with data and determine cell count.
+
+    :param rows: List of table rows
+    :type rows: list[table.TableRow]
+    :return: Tuple of (last_data_row_idx, template_cells, num_cells_to_create)
+    :rtype: tuple[int | None, list[table.TableCell] | None, int]
+    """
+    last_data_row_idx: int | None = None
+    template_cells: list[table.TableCell] | None = None
+    num_cells_to_create: int = COL_TOTAL + 1  # Default: at least 6 cells
+
+    for idx, row in enumerate(rows):
+        cells: list[table.TableCell] = row.getElementsByType(table.TableCell)
+        if len(cells) <= COL_TOTAL:
+            continue
+
+        # Update number of cells to create based on existing rows
+        # Limit to 10 to avoid issues with repeated columns
+        if len(cells) > num_cells_to_create and len(cells) <= 10:
+            num_cells_to_create = len(cells)
+
+        # Check if this row has data in any column
+        has_data: bool = False
+        for col_idx in range(COL_STORE, COL_TOTAL + 1):
+            if col_idx < len(cells):
+                cell_value: Any = get_cell_value(cells[col_idx])
+                if cell_value and str(cell_value).strip():
+                    has_data = True
+                    break
+
+        # If this row has data, remember it as last data row and save cell styles
+        if has_data:
+            last_data_row_idx = idx
+            template_cells = cells
+
+    return last_data_row_idx, template_cells, num_cells_to_create
+
+
+def _create_row_with_cells(
+    num_cells: int,
+    template_cells: list[table.TableCell] | None,
+    date_col_idx: int | None = None,
+    new_date: date | None = None,
+    doc: Any | None = None,
+) -> table.TableRow:
+    """Create a row with specified number of cells.
+
+    :param num_cells: Number of cells to create
+    :type num_cells: int
+    :param template_cells: Template cells for styling (or None)
+    :type template_cells: list[table.TableCell] | None
+    :param date_col_idx: Column index for date (or None for blank row)
+    :type date_col_idx: int | None
+    :param new_date: Date to insert (required if date_col_idx is set)
+    :type new_date: date | None
+    :param doc: Document for date styling (required if date_col_idx is set)
+    :type doc: Any | None
+    :return: New table row
+    :rtype: table.TableRow
+    """
+    new_row: table.TableRow = table.TableRow()
+
+    for col_idx in range(num_cells):
+        new_cell: table.TableCell = table.TableCell()
+
+        # Copy cell style from template if available (but NOT for date column)
+        if template_cells and col_idx < len(template_cells) and col_idx != date_col_idx:
+            cell_style: str | None = template_cells[col_idx].getAttrNS(
+                TABLENS, "style-name"
+            )
+            if cell_style:
+                new_cell.setAttrNS(TABLENS, "style-name", cell_style)
+
+        # Set cell content
+        if col_idx == date_col_idx and new_date is not None and doc is not None:
+            set_cell_value(new_cell, new_date, doc)
+        else:
+            new_cell.appendChild(text.P(text=""))
+
+        new_row.appendChild(new_cell)
+
+    return new_row
+
+
+def _insert_row(
+    sheet: table.Table, row: table.TableRow, reference_row: table.TableRow | None
+) -> None:
+    """Insert a row into the sheet.
+
+    :param sheet: Target sheet
+    :type sheet: table.Table
+    :param row: Row to insert
+    :type row: table.TableRow
+    :param reference_row: Row to insert before (or None to append)
+    :type reference_row: table.TableRow | None
+    """
+    if reference_row is not None:
+        sheet.insertBefore(row, reference_row)
+    else:
+        sheet.addElement(row)
+
+
+def _find_new_row_index(sheet: table.Table, target_date_iso: str) -> int:
+    """Find the index of a newly created date row.
+
+    :param sheet: Sheet containing the row
+    :type sheet: table.Table
+    :param target_date_iso: ISO format date string
+    :type target_date_iso: str
+    :return: Row index
+    :rtype: int
+    """
+    updated_rows: list[table.TableRow] = sheet.getElementsByType(table.TableRow)
+
+    for idx, row in enumerate(updated_rows):
+        cells: list[table.TableCell] = row.getElementsByType(table.TableCell)
+        if len(cells) > COL_DATE:
+            cell_value: Any = get_cell_value(cells[COL_DATE])
+            if isinstance(cell_value, str) and cell_value == target_date_iso:
+                return idx
+
+    # Fallback: return the row before last (should be our new row)
+    return len(updated_rows) - 1
+
+
 def find_sheet_by_name(doc: Any, sheet_name: str) -> table.Table | None:
     """Find a sheet in an ODS document by name.
 
@@ -59,7 +187,8 @@ def find_date_row(sheet: table.Table, target_date: date) -> int | None:
                 cell_date = dparser.parse(cell_value, dayfirst=True).date()
                 if cell_date == target_date:
                     return idx
-        except Exception:
+        except (ValueError, TypeError, OverflowError):
+            # Skip cells that can't be parsed as dates
             pass
 
     return None
@@ -79,106 +208,36 @@ def create_new_date_row(sheet: table.Table, new_date: date, doc: Any) -> int:
     :return: Index of the newly created date row
     :rtype: int
     """
-    rows = sheet.getElementsByType(table.TableRow)
+    rows: list[table.TableRow] = sheet.getElementsByType(table.TableRow)
 
     # Find the last row with actual data and determine number of cells needed
-    last_data_row_idx = None
-    template_cells = None
-    num_cells_to_create = COL_TOTAL + 1  # Default: at least 6 cells
-
-    for idx, row in enumerate(rows):
-        cells = row.getElementsByType(table.TableCell)
-        if len(cells) <= COL_TOTAL:
-            continue
-
-        # Update number of cells to create based on existing rows
-        # Limit to 10 to avoid issues with repeated columns
-        if len(cells) > num_cells_to_create and len(cells) <= 10:
-            num_cells_to_create = len(cells)
-
-        # Check if this row has data in any column
-        has_data = False
-        for col_idx in range(COL_STORE, COL_TOTAL + 1):
-            if col_idx < len(cells):
-                cell_value = get_cell_value(cells[col_idx])
-                if cell_value and str(cell_value).strip():
-                    has_data = True
-                    break
-
-        # If this row has data, remember it as last data row and save cell styles
-        if has_data:
-            last_data_row_idx = idx
-            template_cells = cells
+    last_data_row_idx, template_cells, num_cells_to_create = (
+        _find_last_data_row_and_template(rows)
+    )
 
     # Determine insertion point (after last data row)
-    insert_after_idx = (
+    insert_after_idx: int = (
         last_data_row_idx if last_data_row_idx is not None else len(rows) - 1
     )
-    reference_row = (
+    reference_row: table.TableRow | None = (
         rows[insert_after_idx + 1] if insert_after_idx + 1 < len(rows) else None
     )
 
-    # Create blank separator row (with formatting copied from template)
-    blank_row = table.TableRow()
+    # Create and insert blank separator row
+    blank_row: table.TableRow = _create_row_with_cells(
+        num_cells_to_create, template_cells
+    )
+    _insert_row(sheet, blank_row, reference_row)
 
-    for col_idx in range(num_cells_to_create):
-        blank_cell = table.TableCell()
+    # Create and insert date row
+    date_row: table.TableRow = _create_row_with_cells(
+        num_cells_to_create, template_cells, COL_DATE, new_date, doc
+    )
+    _insert_row(sheet, date_row, reference_row)
 
-        # Copy cell style from template if available
-        if template_cells and col_idx < len(template_cells):
-            cell_style = template_cells[col_idx].getAttrNS(TABLENS, "style-name")
-            if cell_style:
-                blank_cell.setAttrNS(TABLENS, "style-name", cell_style)
-
-        blank_cell.appendChild(text.P(text=""))
-        blank_row.appendChild(blank_cell)
-
-    # Insert blank row
-    if reference_row is not None:
-        sheet.insertBefore(blank_row, reference_row)
-    else:
-        sheet.addElement(blank_row)
-
-    # Create new date row (with formatting copied from template)
-    date_row = table.TableRow()
-
-    for col_idx in range(num_cells_to_create):
-        new_cell = table.TableCell()
-
-        # Copy cell style from template if available (but NOT for date column)
-        if template_cells and col_idx < len(template_cells) and col_idx != COL_DATE:
-            cell_style = template_cells[col_idx].getAttrNS(TABLENS, "style-name")
-            if cell_style:
-                new_cell.setAttrNS(TABLENS, "style-name", cell_style)
-
-        if col_idx == COL_DATE:
-            # Insert date as proper date object (not just text)
-            set_cell_value(new_cell, new_date, doc)
-        else:
-            new_cell.appendChild(text.P(text=""))
-
-        date_row.appendChild(new_cell)
-
-    # Insert date row (after blank row)
-    if reference_row is not None:
-        sheet.insertBefore(date_row, reference_row)
-    else:
-        sheet.addElement(date_row)
-
-    # Reload rows and find the index of the new date row
-    updated_rows = sheet.getElementsByType(table.TableRow)
-
-    # Find the new date row by looking for our date value (in ISO format from date-value attribute)
-    target_date_iso = new_date.strftime("%Y-%m-%d")
-    for idx, row in enumerate(updated_rows):
-        cells = row.getElementsByType(table.TableCell)
-        if len(cells) > COL_DATE:
-            cell_value = get_cell_value(cells[COL_DATE])
-            if isinstance(cell_value, str) and cell_value == target_date_iso:
-                return idx
-
-    # Fallback: return the row before last (should be our new row)
-    return len(updated_rows) - 1
+    # Find and return the index of the new date row
+    target_date_iso: str = new_date.strftime("%Y-%m-%d")
+    return _find_new_row_index(sheet, target_date_iso)
 
 
 def has_existing_data(cells: list[table.TableCell]) -> bool:

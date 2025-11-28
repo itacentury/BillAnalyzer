@@ -26,6 +26,135 @@ from .ods_sheets import (
 )
 
 
+def _find_target_sheet_and_row(
+    doc: Any, bill_data: dict[str, Any], verbose: bool
+) -> tuple[table.Table | None, int | None]:
+    """Find or create the target sheet and row for bill insertion.
+
+    :param doc: ODS document object
+    :type doc: Any
+    :param bill_data: Bill data dictionary
+    :type bill_data: dict[str, Any]
+    :param verbose: Whether to print messages
+    :type verbose: bool
+    :return: Tuple of (target_sheet, target_row_idx) or (None, None) if sheet not found
+    :rtype: tuple[table.Table | None, int | None]
+    """
+    # Parse date and determine sheet name
+    date_parsed: Any = dparser.parse(bill_data["date"], dayfirst=True)
+    month: str = date_parsed.strftime("%b")
+    year: str = date_parsed.strftime("%y")
+    sheet_name: str = f"{month} {year}"
+
+    # Find sheet
+    target_sheet: table.Table | None = find_sheet_by_name(doc, sheet_name)
+    if not target_sheet:
+        if verbose:
+            print(f"⚠ Sheet '{sheet_name}' not found - skipping bill")
+        return None, None
+
+    # Find or create date row
+    target_row_idx: int | None = find_date_row(target_sheet, date_parsed.date())
+    if target_row_idx is None:
+        if verbose:
+            print(f"Creating new row for date {date_parsed.date()}")
+        target_row_idx = create_new_date_row(target_sheet, date_parsed.date(), doc)
+
+    return target_sheet, target_row_idx
+
+
+def _write_first_bill_item(
+    cells: list[table.TableCell], bill_data: dict[str, Any]
+) -> None:
+    """Write the first bill item to the target row.
+
+    :param cells: List of cells in the target row
+    :type cells: list[table.TableCell]
+    :param bill_data: Bill data dictionary
+    :type bill_data: dict[str, Any]
+    """
+    first_item: dict[str, Any] = bill_data["items"][0]
+    set_cell_value(cells[COL_STORE], bill_data["store"])
+    set_cell_value(cells[COL_ITEM], first_item["name"])
+    set_cell_value(cells[COL_PRICE], first_item["price"])
+
+    # Clear total column
+    for col_idx in range(COL_TOTAL, len(cells)):
+        clear_cell_completely(cells[col_idx])
+
+    # Add total if only one item
+    if len(bill_data["items"]) == 1 and len(cells) > COL_TOTAL:
+        set_cell_value(cells[COL_TOTAL], bill_data["total"])
+
+
+def _insert_remaining_items(
+    target_sheet: table.Table,
+    cells: list[table.TableCell],
+    row_style: str | None,
+    bill_data: dict[str, Any],
+    reference_row: table.TableRow | None,
+) -> None:
+    """Insert remaining bill items as new rows.
+
+    :param target_sheet: Target ODS sheet
+    :type target_sheet: table.Table
+    :param cells: Template cells for styling
+    :type cells: list[table.TableCell]
+    :param row_style: Row style to apply
+    :type row_style: str | None
+    :param bill_data: Bill data dictionary
+    :type bill_data: dict[str, Any]
+    :param reference_row: Row to insert before (or None to append)
+    :type reference_row: table.TableRow | None
+    """
+    remaining_items: list[dict[str, Any]] = bill_data["items"][1:]
+    for idx, item in enumerate(remaining_items):
+        is_last_item: bool = idx == len(remaining_items) - 1
+        total: float | None = bill_data["total"] if is_last_item else None
+
+        new_row: table.TableRow = create_item_row(
+            cells, row_style, item["name"], item["price"], total_price=total
+        )
+
+        if reference_row is not None:
+            target_sheet.insertBefore(new_row, reference_row)
+        else:
+            target_sheet.addElement(new_row)
+
+
+def _restore_old_data(
+    target_sheet: table.Table,
+    old_row_data: list[tuple[Any, str | None]],
+    cells: list[table.TableCell],
+    row_style: str | None,
+    reference_row: table.TableRow | None,
+) -> None:
+    """Restore old row data that existed before overwriting.
+
+    :param target_sheet: Target ODS sheet
+    :type target_sheet: table.Table
+    :param old_row_data: Saved old row data (must not be None)
+    :type old_row_data: list[tuple[Any, str | None]]
+    :param cells: Template cells for styling
+    :type cells: list[table.TableCell]
+    :param row_style: Row style to apply
+    :type row_style: str | None
+    :param reference_row: Row to insert before (or None to append)
+    :type reference_row: table.TableRow | None
+    """
+    blank_row: table.TableRow = create_blank_separator_row(cells, row_style)
+    if reference_row is not None:
+        target_sheet.insertBefore(blank_row, reference_row)
+    else:
+        target_sheet.addElement(blank_row)
+
+    old_row: table.TableRow = restore_row_as_new(old_row_data, row_style)
+    if reference_row is not None:
+        target_sheet.insertBefore(old_row, reference_row)
+    else:
+        target_sheet.addElement(old_row)
+
+
 def _insert_single_bill_data(
     doc: Any, bill_data: dict[str, Any], verbose: bool = True
 ) -> None:
@@ -42,26 +171,10 @@ def _insert_single_bill_data(
     :type verbose: bool
     :raises Exception: If sheet is not found or data insertion fails
     """
-    # Parse date and determine sheet name
-    date_parsed: Any = dparser.parse(bill_data["date"], dayfirst=True)
-    month: str = date_parsed.strftime("%b")
-    year: str = date_parsed.strftime("%y")
-    sheet_name: str = f"{month} {year}"
-
-    # Find sheet
-    target_sheet: table.Table | None = find_sheet_by_name(doc, sheet_name)
-    if not target_sheet:
-        if verbose:
-            print(f"⚠ Sheet '{sheet_name}' not found - skipping bill")
+    # Find target sheet and row
+    target_sheet, target_row_idx = _find_target_sheet_and_row(doc, bill_data, verbose)
+    if target_sheet is None or target_row_idx is None:
         return
-
-    # Find or create date row
-    target_row_idx: int | None = find_date_row(target_sheet, date_parsed.date())
-    if target_row_idx is None:
-        # Date not found - create new row at the end
-        if verbose:
-            print(f"Creating new row for date {date_parsed.date()}")
-        target_row_idx = create_new_date_row(target_sheet, date_parsed.date(), doc)
 
     # Get row and cells
     rows: list[table.TableRow] = target_sheet.getElementsByType(table.TableRow)
@@ -71,52 +184,24 @@ def _insert_single_bill_data(
 
     # Save existing data (will be empty for newly created rows)
     old_data_exists: bool = has_existing_data(cells)
-    old_row_data: list[tuple[Any, str | None]] | None = save_existing_row_data(cells) if old_data_exists else None
+    old_row_data: list[tuple[Any, str | None]] | None = (
+        save_existing_row_data(cells) if old_data_exists else None
+    )
 
-    # Overwrite date row with first item
-    first_item: dict[str, Any] = bill_data["items"][0]
-    set_cell_value(cells[COL_STORE], bill_data["store"])
-    set_cell_value(cells[COL_ITEM], first_item["name"])
-    set_cell_value(cells[COL_PRICE], first_item["price"])
+    # Write first item to the target row
+    _write_first_bill_item(cells, bill_data)
 
-    # Clear total column
-    for col_idx in range(COL_TOTAL, len(cells)):
-        clear_cell_completely(cells[col_idx])
-
-    # Add total if only one item
-    if len(bill_data["items"]) == 1 and len(cells) > COL_TOTAL:
-        set_cell_value(cells[COL_TOTAL], bill_data["total"])
+    # Calculate reference row for inserting additional rows
+    reference_row: table.TableRow | None = (
+        rows[target_row_idx + 1] if target_row_idx + 1 < len(rows) else None
+    )
 
     # Insert remaining items as new rows
-    reference_row: table.TableRow | None = rows[target_row_idx + 1] if target_row_idx + 1 < len(rows) else None
+    _insert_remaining_items(target_sheet, cells, row_style, bill_data, reference_row)
 
-    remaining_items: list[dict[str, Any]] = bill_data["items"][1:]
-    for idx, item in enumerate(remaining_items):
-        is_last_item: bool = idx == len(remaining_items) - 1
-        total: float | None = bill_data["total"] if is_last_item else None
-
-        new_row: table.TableRow = create_item_row(
-            cells, row_style, item["name"], item["price"], total_price=total
-        )
-
-        if reference_row is not None:
-            target_sheet.insertBefore(new_row, reference_row)
-        else:
-            target_sheet.addElement(new_row)
-
-    # Insert separator and old data if it exists
-    if old_data_exists:
-        blank_row: table.TableRow = create_blank_separator_row(cells, row_style)
-        if reference_row is not None:
-            target_sheet.insertBefore(blank_row, reference_row)
-        else:
-            target_sheet.addElement(blank_row)
-
-        old_row: table.TableRow = restore_row_as_new(old_row_data, row_style)
-        if reference_row is not None:
-            target_sheet.insertBefore(old_row, reference_row)
-        else:
-            target_sheet.addElement(old_row)
+    # Restore old data if it existed
+    if old_data_exists and old_row_data is not None:
+        _restore_old_data(target_sheet, old_row_data, cells, row_style, reference_row)
 
     if verbose:
         print(
@@ -150,7 +235,7 @@ def process_multiple_bills(bills_data: list[dict[str, Any]]) -> None:
 
     try:
         # Load document once
-        print(f"Loading ODS file...")
+        print("Loading ODS file...")
         doc = load(ODS_FILE)
 
         # Insert all bills
@@ -161,7 +246,7 @@ def process_multiple_bills(bills_data: list[dict[str, Any]]) -> None:
             _insert_single_bill_data(doc, bill_data, verbose=True)
 
         # Save document once
-        print(f"\nSaving all changes to document...")
+        print("\nSaving all changes to document...")
         doc.save(ODS_FILE)
         print(f"✓ Successfully saved {len(bills_data)} bill(s) to {ODS_FILE}")
 

@@ -8,14 +8,15 @@ from odf import table, text
 from odf.namespaces import TABLENS
 
 from .config import COL_ITEM, COL_PRICE, COL_STORE, COL_TOTAL
-from .ods_cells import create_empty_cell_with_style, set_cell_value
+from .ods_cells import create_empty_cell_with_style, get_cell_value, set_cell_value
 
 
-def create_item_row(
+def create_item_row(  # pylint: disable=too-many-arguments
     template_cells: list[table.TableCell],
     template_row_style: str | None,
     item_name: str,
     item_price: float,
+    *,
     store_name: str | None = None,
     total_price: float | None = None,
 ) -> table.TableRow:
@@ -43,11 +44,11 @@ def create_item_row(
         new_row.setAttrNS(TABLENS, "style-name", template_row_style)
 
     # Create cells for each column
-    for col_idx in range(len(template_cells)):
+    for col_idx, template_cell in enumerate(template_cells):
         new_cell = table.TableCell()
 
         # Copy cell style
-        cell_style = template_cells[col_idx].getAttrNS(TABLENS, "style-name")
+        cell_style = template_cell.getAttrNS(TABLENS, "style-name")
         if cell_style:
             new_cell.setAttrNS(TABLENS, "style-name", cell_style)
 
@@ -102,8 +103,6 @@ def save_existing_row_data(
     :return: List of tuples (cell_value, cell_style)
     :rtype: list[tuple[Any, str | None]]
     """
-    from .ods_cells import get_cell_value
-
     row_data = []
     for cell in cells:
         cell_value = get_cell_value(cell)

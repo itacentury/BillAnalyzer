@@ -30,9 +30,9 @@ def restore_from_backup(backup_path: str, target_path: str) -> None:
     :param target_path: Path to restore to
     :type target_path: str
     """
-    print(f"Restoring from backup...")
+    print("Restoring from backup...")
     shutil.copy2(backup_path, target_path)
-    print(f"✓ Restored from backup")
+    print("✓ Restored from backup")
 
 
 def remove_backup(backup_path: str) -> None:
@@ -43,4 +43,4 @@ def remove_backup(backup_path: str) -> None:
     """
     if os.path.exists(backup_path):
         os.remove(backup_path)
-        print(f"✓ Removed backup file")
+        print("✓ Removed backup file")

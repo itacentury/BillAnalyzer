@@ -2,8 +2,6 @@
 Validation functions for bill data
 """
 
-from typing import Any
-
 
 def evaluate_price_value(price_value: float | int | str) -> float:
     """Evaluate a price value, which can be a number, string, or formula.
@@ -34,24 +32,28 @@ def evaluate_price_value(price_value: float | int | str) -> float:
             # Evaluate the formula using eval (safe for simple math expressions)
             # Note: This only works for basic arithmetic, which is fine for prices
             try:
-                return float(eval(formula, {"__builtins__": {}}, {}))
+                return float(
+                    eval(formula, {"__builtins__": {}}, {})  # pylint: disable=eval-used
+                )
             except Exception as e:
-                raise ValueError(f"Cannot evaluate formula '{price_value}': {e}")
-        else:
-            # Try to parse as a regular number (with comma or dot)
-            try:
-                return float(price_value.replace(",", "."))
-            except ValueError:
-                raise ValueError(f"Cannot convert '{price_value}' to a number")
+                raise ValueError(f"Cannot evaluate formula '{price_value}': {e}") from e
+        # Try to parse as a regular number (with comma or dot)
+        try:
+            return float(price_value.replace(",", "."))
+        except ValueError as exc:
+            raise ValueError(f"Cannot convert '{price_value}' to a number") from exc
+
+    # If we get here, the type is unexpected
+    raise ValueError(f"Unsupported price value type: {type(price_value).__name__}")
 
 
 def validate_bill_total(
-    bill_data: dict[str, float | int | str],
+    bill_data: dict[str, float | int | str | list],
 ) -> dict[str, bool | float | str]:
     """Validate that the sum of item prices equals the total price in the bill.
 
     :param bill_data: Bill dictionary with 'items' and 'total' keys
-    :type bill_data: dict[str, float | int | str]
+    :type bill_data: dict[str, float | int | str | list]
     :return: Dictionary with validation results containing 'valid' (bool), 'calculated_sum' (float),
         'declared_total' (float), 'difference' (float), and 'message' (str)
     :rtype: dict[str, bool | float | str]
@@ -59,7 +61,7 @@ def validate_bill_total(
     :raises ValueError: If any price value cannot be evaluated
     """
     # Extract data
-    items: list = bill_data.get("items", [])
+    items: list = bill_data.get("items", [])  # type: ignore[assignment]
     declared_total: float | int | str | None = bill_data.get("total")
 
     if declared_total is None:

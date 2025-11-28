@@ -18,6 +18,111 @@ from .config import (
 from .ods_styles import ensure_date_style_exists
 
 
+def _set_datetime_value(cell: table.TableCell, value: dt, doc: Any | None) -> None:
+    """Set a datetime value in a cell.
+
+    :param cell: ODS table cell
+    :type cell: table.TableCell
+    :param value: Datetime value to set
+    :type value: dt
+    :param doc: Optional ODS document for date style
+    :type doc: Any | None
+    """
+    date_iso: str = value.strftime("%Y-%m-%d")
+    date_display: str = value.strftime("%d.%m.%y")
+
+    p: text.P = text.P(text=date_display)
+    cell.appendChild(p)
+
+    cell.setAttrNS(OFFICENS, "value-type", "date")
+    cell.setAttrNS(OFFICENS, "date-value", date_iso)
+
+    if doc:
+        style_name: str = ensure_date_style_exists(doc)
+        cell.setAttrNS(TABLENS, "style-name", style_name)
+
+
+def _set_date_value(cell: table.TableCell, value: date, doc: Any | None) -> None:
+    """Set a date value in a cell.
+
+    :param cell: ODS table cell
+    :type cell: table.TableCell
+    :param value: Date value to set
+    :type value: date
+    :param doc: Optional ODS document for date style
+    :type doc: Any | None
+    """
+    date_iso: str = value.strftime("%Y-%m-%d")
+
+    p: text.P = text.P(text="")
+    cell.appendChild(p)
+
+    cell.setAttrNS(OFFICENS, "value-type", "date")
+    cell.setAttrNS(OFFICENS, "date-value", date_iso)
+
+    if doc:
+        style_name: str = ensure_date_style_exists(doc)
+        cell.setAttrNS(TABLENS, "style-name", style_name)
+
+
+def _set_numeric_value(cell: table.TableCell, value: int | float) -> None:
+    """Set a numeric value in a cell.
+
+    :param cell: ODS table cell
+    :type cell: table.TableCell
+    :param value: Numeric value to set
+    :type value: int | float
+    """
+    p: text.P = text.P(text=str(value))
+    cell.appendChild(p)
+
+    cell.setAttrNS(OFFICENS, "value-type", "float")
+    cell.setAttrNS(OFFICENS, "value", str(value))
+
+
+def _set_formula_value(cell: table.TableCell, value: str) -> None:
+    """Set a formula value in a cell.
+
+    :param cell: ODS table cell
+    :type cell: table.TableCell
+    :param value: Formula string (starting with =)
+    :type value: str
+    """
+    p: text.P = text.P(text="")
+    cell.appendChild(p)
+
+    # Convert commas to dots in formula (LibreOffice requires dots as decimal separator)
+    formula: str = value.replace(",", ".")
+
+    cell.setAttrNS(TABLENS, "formula", f"of:{formula}")
+    cell.setAttrNS(OFFICENS, "value-type", "float")
+
+
+def _set_string_value(cell: table.TableCell, value: str) -> None:
+    """Set a string value in a cell, attempting to parse as numeric first.
+
+    :param cell: ODS table cell
+    :type cell: table.TableCell
+    :param value: String value to set
+    :type value: str
+    """
+    # Try to parse as numeric value
+    try:
+        numeric_value: float = float(value.replace(",", "."))
+
+        p: text.P = text.P(text=str(numeric_value))
+        cell.appendChild(p)
+
+        cell.setAttrNS(OFFICENS, "value-type", "float")
+        cell.setAttrNS(OFFICENS, "value", str(numeric_value))
+    except (ValueError, AttributeError):
+        # Not a number - treat as string
+        p = text.P(text=str(value))
+        cell.appendChild(p)
+
+        cell.setAttrNS(OFFICENS, "value-type", "string")
+
+
 def get_cell_value(cell: table.TableCell) -> Any:
     """Extract the value from an ODS cell.
 
@@ -73,80 +178,20 @@ def set_cell_value(cell: table.TableCell, value: Any, doc: Any | None = None) ->
     # Handle different value types
     # Note: Check datetime before date since datetime is a subclass of date
     if isinstance(value, dt):
-        # Datetime object - store as date with ISO format
-        date_iso: str = value.strftime("%Y-%m-%d")
-        date_display: str = value.strftime("%d.%m.%y")
-
-        p: text.P = text.P(text=date_display)
-        cell.appendChild(p)
-
-        cell.setAttrNS(OFFICENS, "value-type", "date")
-        cell.setAttrNS(OFFICENS, "date-value", date_iso)
-
-        # Apply date-only style if doc is provided
-        if doc:
-            style_name: str = ensure_date_style_exists(doc)
-            cell.setAttrNS(TABLENS, "style-name", style_name)
+        _set_datetime_value(cell, value, doc)
     elif isinstance(value, date):
-        # Date object - store as date with ISO format
-        date_iso: str = value.strftime("%Y-%m-%d")
-
-        # Don't set display text - let the style format it
-        p: text.P = text.P(text="")
-        cell.appendChild(p)
-
-        cell.setAttrNS(OFFICENS, "value-type", "date")
-        cell.setAttrNS(OFFICENS, "date-value", date_iso)
-
-        # Apply date-only style if doc is provided
-        if doc:
-            style_name: str = ensure_date_style_exists(doc)
-            cell.setAttrNS(TABLENS, "style-name", style_name)
+        _set_date_value(cell, value, doc)
     elif isinstance(value, (int, float)):
-        # Numeric value
-        p: text.P = text.P(text=str(value))
-        cell.appendChild(p)
-
-        cell.setAttrNS(OFFICENS, "value-type", "float")
-        cell.setAttrNS(OFFICENS, "value", str(value))
+        _set_numeric_value(cell, value)
     elif isinstance(value, str):
-        # Try to convert string to numeric value (e.g., "1,99" or "1.99")
-        # Check for formula first
         if value.startswith("="):
-            # Formula value
-            # Add empty paragraph - LibreOffice will calculate and display the result
-            p: text.P = text.P(text="")
-            cell.appendChild(p)
-
-            # Convert commas to dots in formula (LibreOffice requires dots as decimal separator)
-            formula: str = value.replace(",", ".")
-
-            # Set formula attribute
-            cell.setAttrNS(TABLENS, "formula", f"of:{formula}")
-            cell.setAttrNS(OFFICENS, "value-type", "float")
+            _set_formula_value(cell, value)
         else:
-            # Try to parse as numeric value
-            try:
-                # Replace comma with dot for parsing
-                numeric_value: float = float(value.replace(",", "."))
-
-                # It's a valid number - treat as float
-                p: text.P = text.P(text=str(numeric_value))
-                cell.appendChild(p)
-
-                cell.setAttrNS(OFFICENS, "value-type", "float")
-                cell.setAttrNS(OFFICENS, "value", str(numeric_value))
-            except (ValueError, AttributeError):
-                # Not a number - treat as string
-                p: text.P = text.P(text=str(value))
-                cell.appendChild(p)
-
-                cell.setAttrNS(OFFICENS, "value-type", "string")
+            _set_string_value(cell, value)
     else:
         # Fallback: treat as string
         p: text.P = text.P(text=str(value))
         cell.appendChild(p)
-
         cell.setAttrNS(OFFICENS, "value-type", "string")
 
 
