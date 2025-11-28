@@ -39,11 +39,12 @@ EXTRACTION_PROMPT = """Bitte extrahiere folgende Daten aus der Rechnung:
 3. Alle Artikel inklusive Preis, Artikel in korrekter deutschen Groß- und Kleinschreibung.
 4. Gesamtpreis.
 
-Addiere den Pfand direkt auf den Preis des dazugehörigen Getränks.
+Wenn der gleiche Artikel mehrfach gekauft wurde, dann schreibe als Preis für den Artikel: Anzahl * Einzelpreis (z.B. '=4*0,59').
+Wenn ein Artikel Pfand hat, dann schreibe als Preis für den Artikel: Artikelpreis + Pfand (z.B. '=0,89+0,08').
 Schreibe das Gewicht bei zum Beispiel Gemüse oder Obst, hinten an den Namen des dazugehörigen Gemüse oder Obstes.
 
 Gebe mir die Daten im JSON-Format zurück, mit folgenden Namen und Datentypen:
-'store' (str), 'date' (str), 'items' (list[dict[str, str | float]]), 'total' (float)."""
+'store' (str), 'date' (str), 'items' (list[dict[str, str]]), 'total' (float)."""
 
 
 # ==============================================================================

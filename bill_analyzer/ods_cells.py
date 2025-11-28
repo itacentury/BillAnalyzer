@@ -110,8 +110,41 @@ def set_cell_value(cell: table.TableCell, value: Any, doc: Any | None = None) ->
 
         cell.setAttrNS(OFFICENS, "value-type", "float")
         cell.setAttrNS(OFFICENS, "value", str(value))
+    elif isinstance(value, str):
+        # Try to convert string to numeric value (e.g., "1,99" or "1.99")
+        # Check for formula first
+        if value.startswith("="):
+            # Formula value
+            # Add empty paragraph - LibreOffice will calculate and display the result
+            p = text.P(text="")
+            cell.appendChild(p)
+
+            # Convert commas to dots in formula (LibreOffice requires dots as decimal separator)
+            formula = value.replace(",", ".")
+
+            # Set formula attribute
+            cell.setAttrNS(TABLENS, "formula", f"of:{formula}")
+            cell.setAttrNS(OFFICENS, "value-type", "float")
+        else:
+            # Try to parse as numeric value
+            try:
+                # Replace comma with dot for parsing
+                numeric_value = float(value.replace(",", "."))
+
+                # It's a valid number - treat as float
+                p = text.P(text=str(numeric_value))
+                cell.appendChild(p)
+
+                cell.setAttrNS(OFFICENS, "value-type", "float")
+                cell.setAttrNS(OFFICENS, "value", str(numeric_value))
+            except (ValueError, AttributeError):
+                # Not a number - treat as string
+                p = text.P(text=str(value))
+                cell.appendChild(p)
+
+                cell.setAttrNS(OFFICENS, "value-type", "string")
     else:
-        # String value
+        # Fallback: treat as string
         p = text.P(text=str(value))
         cell.appendChild(p)
 
