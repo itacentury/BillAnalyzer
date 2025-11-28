@@ -14,12 +14,12 @@ import tkinter as tk
 from datetime import date
 from datetime import datetime as dt
 from tkinter import filedialog
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import anthropic
 import dateutil.parser as dparser
 from odf import number, style, table, text
-from odf.namespaces import NUMBERNS, OFFICENS, STYLENS, TABLENS
+from odf.namespaces import OFFICENS, STYLENS, TABLENS
 from odf.opendocument import load
 
 # ==============================================================================
@@ -137,7 +137,7 @@ client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
 # ==============================================================================
 
 
-def parse_json_from_markdown(text: str) -> Dict[str, Any]:
+def parse_json_from_markdown(text: str) -> dict[str, Any]:
     """
     Extract and parse JSON from a markdown code block or plain JSON string.
 
@@ -217,7 +217,7 @@ def analyze_bill_pdf(pdf_path: str) -> str:
 # ==============================================================================
 
 
-def select_pdf_files() -> Tuple[str, ...]:
+def select_pdf_files() -> tuple[str, ...]:
     """
     Open a file dialog to let the user select PDF files.
 
@@ -277,9 +277,7 @@ def get_cell_value(cell: table.TableCell) -> Any:
     return "".join(text_content) if text_content else ""
 
 
-def set_cell_value(
-    cell: table.TableCell, value: Any, doc: Optional[Any] = None
-) -> None:
+def set_cell_value(cell: table.TableCell, value: Any, doc: Any | None = None) -> None:
     """
     Set value in an ODS cell while preserving its style.
 
@@ -409,12 +407,12 @@ def create_empty_cell_with_style(
 
 
 def create_item_row(
-    template_cells: List[table.TableCell],
-    template_row_style: Optional[str],
+    template_cells: list[table.TableCell],
+    template_row_style: str | None,
     item_name: str,
     item_price: float,
-    store_name: Optional[str] = None,
-    total_price: Optional[float] = None,
+    store_name: str | None = None,
+    total_price: float | None = None,
 ) -> table.TableRow:
     """
     Create a new row for a bill item with proper formatting.
@@ -463,7 +461,7 @@ def create_item_row(
 
 
 def create_blank_separator_row(
-    template_cells: List[table.TableCell], template_row_style: Optional[str]
+    template_cells: list[table.TableCell], template_row_style: str | None
 ) -> table.TableRow:
     """
     Create a blank row to separate different bills on the same date.
@@ -492,7 +490,7 @@ def create_blank_separator_row(
 # ==============================================================================
 
 
-def find_sheet_by_name(doc: Any, sheet_name: str) -> Optional[table.Table]:
+def find_sheet_by_name(doc: Any, sheet_name: str) -> table.Table | None:
     """
     Find a sheet in an ODS document by name.
 
@@ -510,7 +508,7 @@ def find_sheet_by_name(doc: Any, sheet_name: str) -> Optional[table.Table]:
     return None
 
 
-def find_date_row(sheet: table.Table, target_date: date) -> Optional[int]:
+def find_date_row(sheet: table.Table, target_date: date) -> int | None:
     """
     Find the row index containing a specific date.
 
@@ -661,7 +659,7 @@ def create_new_date_row(sheet: table.Table, new_date: date, doc: Any) -> int:
     return len(updated_rows) - 1
 
 
-def has_existing_data(cells: List[table.TableCell]) -> bool:
+def has_existing_data(cells: list[table.TableCell]) -> bool:
     """
     Check if a row has existing data in store/item columns.
 
@@ -681,8 +679,8 @@ def has_existing_data(cells: List[table.TableCell]) -> bool:
 
 
 def save_existing_row_data(
-    cells: List[table.TableCell],
-) -> List[Tuple[Any, Optional[str]]]:
+    cells: list[table.TableCell],
+) -> list[tuple[Any, str | None]]:
     """
     Save all data and styles from a row before modifying it.
 
@@ -701,8 +699,8 @@ def save_existing_row_data(
 
 
 def restore_row_as_new(
-    old_row_data: List[Tuple[Any, Optional[str]]],
-    template_row_style: Optional[str],
+    old_row_data: list[tuple[Any, str | None]],
+    template_row_style: str | None,
 ) -> table.TableRow:
     """
     Create a new row from saved row data.
@@ -788,7 +786,7 @@ def remove_backup(backup_path: str) -> None:
 # ==============================================================================
 
 
-def insert_bill_into_ods(bill_data: Dict[str, Any]) -> None:
+def insert_bill_into_ods(bill_data: dict[str, Any]) -> None:
     """
     Insert bill data into the ODS file.
 
