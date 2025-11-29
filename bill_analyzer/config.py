@@ -2,6 +2,7 @@
 Configuration constants for the AI Bill Analyzer
 """
 
+import os
 from typing import Final
 
 # ==============================================================================
@@ -18,6 +19,17 @@ ODS_FILE: Final[str] = "/home/juli/Downloads/Alltags-Ausgaben.ods"
 # CLAUDE_MODEL: Final[str] = "claude-sonnet-4-5-20250929"
 CLAUDE_MODEL: Final[str] = "claude-opus-4-5-20251101"
 CLAUDE_MAX_TOKENS: Final[int] = 2048
+
+
+# ==============================================================================
+# PAPERLESS-NGX API CONFIGURATION
+# ==============================================================================
+
+# Paperless-ngx instance URL (from environment or default)
+PAPERLESS_URL: Final[str] = os.environ.get("PAPERLESS_URL", "http://localhost:8000")
+
+# Paperless-ngx API token (from environment)
+PAPERLESS_TOKEN: Final[str | None] = os.environ.get("PAPERLESS_API_TOKEN")
 
 
 # ==============================================================================
