@@ -2,9 +2,9 @@
 File operation utilities for backup and restore
 """
 
-import os
 import shutil
 from datetime import datetime as dt
+from pathlib import Path
 
 
 def create_backup(file_path: str) -> str:
@@ -15,11 +15,12 @@ def create_backup(file_path: str) -> str:
     :return: Path to the backup file
     :rtype: str
     """
+    path = Path(file_path)
     timestamp = dt.now().strftime("%Y%m%d_%H%M%S")
-    backup_path = file_path.replace(".ods", f"_backup_{timestamp}.ods")
+    backup_path = path.with_stem(f"{path.stem}_backup_{timestamp}")
     shutil.copy2(file_path, backup_path)
     print(f"Creating backup: {backup_path}")
-    return backup_path
+    return str(backup_path)
 
 
 def restore_from_backup(backup_path: str, target_path: str) -> None:
@@ -41,6 +42,7 @@ def remove_backup(backup_path: str) -> None:
     :param backup_path: Path to the backup file
     :type backup_path: str
     """
-    if os.path.exists(backup_path):
-        os.remove(backup_path)
+    path = Path(backup_path)
+    if path.exists():
+        path.unlink()
         print("✓ Removed backup file")

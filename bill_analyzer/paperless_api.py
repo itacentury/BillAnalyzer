@@ -2,7 +2,8 @@
 Paperless-ngx REST API integration
 """
 
-from typing import Any, cast
+import json
+from typing import Any
 
 import requests
 
@@ -20,7 +21,7 @@ def upload_to_paperless(  # pylint: disable=too-many-arguments,too-many-locals
     tags: list[int] | None = None,
     archive_serial_number: int | None = None,
     custom_fields: dict[int, Any] | list[int] | None = None,
-) -> dict[str, Any]:
+) -> str:
     """Upload a PDF document to Paperless-ngx via REST API.
 
     :param pdf_path: Path to the PDF file to upload
@@ -46,8 +47,8 @@ def upload_to_paperless(  # pylint: disable=too-many-arguments,too-many-locals
     :param custom_fields: Optional custom field assignments (dict mapping field id -> value,
         or list of field ids)
     :type custom_fields: dict[int, Any] | list[int] | None
-    :return: Response JSON from Paperless-ngx containing document information
-    :rtype: dict[str, Any]
+    :return: UUID of the consumption task that will process the document
+    :rtype: str
     :raises FileNotFoundError: If the PDF file doesn't exist
     :raises requests.HTTPError: If the API request fails
     :raises requests.RequestException: If network error occurs
@@ -88,12 +89,8 @@ def upload_to_paperless(  # pylint: disable=too-many-arguments,too-many-locals
             data["archive_serial_number"] = archive_serial_number
 
         if custom_fields is not None:
-            if isinstance(custom_fields, dict):
-                # Object mapping field id -> value
-                data["custom_fields"] = custom_fields
-            else:
-                # Array of custom field ids (with empty values)
-                data["custom_fields"] = custom_fields
+            # Custom fields must be sent as JSON string
+            data["custom_fields"] = json.dumps(custom_fields)
 
         # Make the POST request
         response: requests.Response = requests.post(
@@ -103,5 +100,12 @@ def upload_to_paperless(  # pylint: disable=too-many-arguments,too-many-locals
         # Raise exception for HTTP errors
         response.raise_for_status()
 
-        # Return the JSON response
-        return cast(dict[str, Any], response.json())
+        # Return the task UUID (API returns JSON string with the UUID)
+        task_uuid: str | dict[str, Any] = response.json()
+
+        # Handle both string UUID and dict responses
+        if isinstance(task_uuid, str):
+            return task_uuid
+
+        # Fallback: if it's a dict, try to extract task_id or return as string
+        return str(task_uuid.get("task_id", task_uuid))

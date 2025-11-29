@@ -2,8 +2,8 @@
 User interface functions
 """
 
-import os
 import tkinter as tk
+from pathlib import Path
 from tkinter import filedialog
 
 
@@ -20,7 +20,7 @@ def select_pdf_files() -> tuple[str, ...]:
         parent=root,
         title="Select Bills to Analyze",
         filetypes=[("PDF files", "*.pdf")],
-        initialdir=os.path.expanduser("~/Downloads"),
+        initialdir=str(Path.home() / "Downloads"),
     )
 
     # askopenfilenames returns empty string if cancelled, otherwise tuple

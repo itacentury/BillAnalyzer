@@ -3,13 +3,16 @@ Configuration constants for the AI Bill Analyzer
 """
 
 import os
+from pathlib import Path
 from typing import Final
 
 # ==============================================================================
 # FILE PATHS
 # ==============================================================================
 
-ODS_FILE: Final[str] = "/home/juli/Downloads/Alltags-Ausgaben.ods"
+ODS_FILE: Final[str] = str(
+    Path.home() / "SeaDrive" / "My Libraries" / "Dokumente" / "Alltags-Ausgaben.ods"
+)
 
 
 # ==============================================================================
@@ -26,7 +29,7 @@ CLAUDE_MAX_TOKENS: Final[int] = 2048
 # ==============================================================================
 
 # Paperless-ngx instance URL (from environment or default)
-PAPERLESS_URL: Final[str] = os.environ.get("PAPERLESS_URL", "http://localhost:8000")
+PAPERLESS_URL: Final[str | None] = os.environ.get("PAPERLESS_URL")
 
 # Paperless-ngx API token (from environment)
 PAPERLESS_TOKEN: Final[str | None] = os.environ.get("PAPERLESS_API_TOKEN")

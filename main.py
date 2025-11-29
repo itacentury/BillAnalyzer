@@ -57,23 +57,27 @@ def main() -> None:
             print(f"⚠ Validation error: {e}")
 
         # Upload to Paperless-ngx if enabled
-        if PAPERLESS_TOKEN:
+        if PAPERLESS_TOKEN and PAPERLESS_URL:
             try:
                 print("\n📤 Uploading to Paperless-ngx...")
 
                 # Create a title from store and date
                 title: str = f"{bill_data.get('store', 'Bill')}"
 
+                # Get total price for custom field
+                total_price: float = bill_data.get("total", 0.0)
+
                 # Upload the PDF
-                result: dict[str, Any] = upload_to_paperless(
+                task_uuid: str = upload_to_paperless(
                     pdf_path=pdf,
                     token=PAPERLESS_TOKEN,
                     paperless_url=PAPERLESS_URL,
                     title=title,
                     created=bill_data.get("date"),
+                    custom_fields={1: total_price},
                 )
 
-                print(f"✓ Uploaded successfully (ID: {result.get('id', 'N/A')})")
+                print(f"✓ Uploaded successfully (Task UUID: {task_uuid})")
 
             except requests.RequestException as e:
                 print(f"⚠ Paperless upload failed: {e}")
