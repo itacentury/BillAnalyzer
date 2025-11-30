@@ -16,7 +16,7 @@ load_dotenv()
 # ==============================================================================
 
 ODS_FILE: Final[str] = str(
-    Path.home() / "SeaDrive" / "My Libraries" / "Dokumente" / "Alltags-Ausgaben.ods"
+    Path.home() / "SeaDrive" / "My Libraries" / "Dokumente" / "personal_expenses.ods"
 )
 
 
