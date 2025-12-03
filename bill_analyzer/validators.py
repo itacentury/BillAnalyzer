@@ -90,8 +90,9 @@ def validate_bill_total(
     # Calculate difference
     difference: float = abs(calculated_sum - declared_total_value)
 
-    # Check if is valid
-    is_valid: bool = difference == 0
+    # Check if is valid (use epsilon for floating-point comparison)
+    # Allow 1 cent tolerance for rounding errors
+    is_valid: bool = difference < 0.01
 
     # Create result
     result: dict[str, bool | float | str] = {
