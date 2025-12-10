@@ -2,6 +2,8 @@
 Main logic for inserting bill data into ODS files
 """
 
+# pyright: reportGeneralTypeIssues=false
+
 from typing import Any
 
 import dateutil.parser as dparser
@@ -215,9 +217,10 @@ def process_multiple_bills(bills_data: list[dict[str, Any]]) -> None:
     This function:
     1. Creates a backup of the ODS file (once)
     2. Loads the document (once)
-    3. Inserts all bills into the document
-    4. Saves the document (once)
-    5. Removes backup on success
+    3. Sorts bills by date (chronologically)
+    4. Inserts all bills into the document
+    5. Saves the document (once)
+    6. Removes backup on success
 
     This is more efficient than calling insert_bill_into_ods() multiple times,
     as it only performs file I/O once instead of for each bill.
@@ -230,6 +233,11 @@ def process_multiple_bills(bills_data: list[dict[str, Any]]) -> None:
         print("No bills to process.")
         return
 
+    # Sort bills by date (chronologically) to ensure correct insertion order
+    sorted_bills = sorted(
+        bills_data, key=lambda bill: dparser.parse(bill["date"], dayfirst=True).date()
+    )
+
     # Create backup
     backup_path: str = create_backup(ODS_FILE)
 
@@ -238,10 +246,10 @@ def process_multiple_bills(bills_data: list[dict[str, Any]]) -> None:
         print("Loading ODS file...")
         doc = load(ODS_FILE)
 
-        # Insert all bills
-        for idx, bill_data in enumerate(bills_data, 1):
+        # Insert all bills in chronological order
+        for idx, bill_data in enumerate(sorted_bills, 1):
             print(
-                f"\n[{idx}/{len(bills_data)}] Processing {bill_data.get('store', 'Unknown')}..."
+                f"\n[{idx}/{len(sorted_bills)}] Processing {bill_data.get('store', 'Unknown')}..."
             )
             _insert_single_bill_data(doc, bill_data, verbose=True)
 

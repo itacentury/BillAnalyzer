@@ -2,6 +2,8 @@
 ODS sheet operations
 """
 
+# pyright: reportGeneralTypeIssues=false
+
 from datetime import date
 from typing import Any
 
@@ -194,10 +196,48 @@ def find_date_row(sheet: table.Table, target_date: date) -> int | None:
     return None
 
 
+def _find_chronological_insertion_point(
+    rows: list[table.TableRow], new_date: date
+) -> int | None:
+    """Find the correct row index to insert a new date chronologically.
+
+    Returns the index of the first row with a date that is AFTER the new_date.
+    Returns None if the new date should be inserted at the end.
+
+    :param rows: List of table rows
+    :type rows: list[table.TableRow]
+    :param new_date: Date to insert
+    :type new_date: date
+    :return: Row index to insert before, or None to append at end
+    :rtype: int | None
+    """
+    for idx, row in enumerate(rows):
+        cells: list[table.TableCell] = row.getElementsByType(table.TableCell)
+        if len(cells) <= COL_DATE:
+            continue
+
+        cell_value: Any = get_cell_value(cells[COL_DATE])
+
+        # Try to parse as date
+        try:
+            if isinstance(cell_value, str) and cell_value.strip():
+                cell_date: date = dparser.parse(cell_value, dayfirst=True).date()
+                # If we found a date that's after our new date, insert before it
+                if cell_date > new_date:
+                    return idx
+        except (ValueError, TypeError, OverflowError):
+            # Skip cells that can't be parsed as dates
+            pass
+
+    # No date found that's after new_date, so insert at end
+    return None
+
+
 def create_new_date_row(sheet: table.Table, new_date: date, doc: Any) -> int:
-    """Create a new row after the last entry with the given date.
+    """Create a new row in chronological order with the given date.
 
     Inserts a blank separator row before the new date row.
+    The new date row is inserted in the correct chronological position.
 
     :param sheet: ODS sheet to add row to
     :type sheet: table.Table
@@ -215,13 +255,23 @@ def create_new_date_row(sheet: table.Table, new_date: date, doc: Any) -> int:
         _find_last_data_row_and_template(rows)
     )
 
-    # Determine insertion point (after last data row)
-    insert_after_idx: int = (
-        last_data_row_idx if last_data_row_idx is not None else len(rows) - 1
+    # Find the correct chronological position for this date
+    chronological_insert_idx: int | None = _find_chronological_insertion_point(
+        rows, new_date
     )
-    reference_row: table.TableRow | None = (
-        rows[insert_after_idx + 1] if insert_after_idx + 1 < len(rows) else None
-    )
+
+    # Determine the reference row for insertion
+    if chronological_insert_idx is not None:
+        # Insert before this row (which has a later date)
+        reference_row: table.TableRow | None = rows[chronological_insert_idx]
+    else:
+        # Insert at the end (after last data row)
+        insert_after_idx: int = (
+            last_data_row_idx if last_data_row_idx is not None else len(rows) - 1
+        )
+        reference_row = (
+            rows[insert_after_idx + 1] if insert_after_idx + 1 < len(rows) else None
+        )
 
     # Create and insert blank separator row
     blank_row: table.TableRow = _create_row_with_cells(
