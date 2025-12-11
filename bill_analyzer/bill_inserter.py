@@ -4,6 +4,7 @@ Main logic for inserting bill data into ODS files
 
 # pyright: reportGeneralTypeIssues=false
 
+from dataclasses import dataclass
 from typing import Any
 
 import dateutil.parser as dparser
@@ -31,22 +32,28 @@ from .ods_sheets import (
 __all__ = ["process_multiple_bills", "insert_bill_into_ods", "check_duplicate_bill"]
 
 
-def _is_bill_start_row(
-    cells: list[table.TableCell], target_date_str: str, target_store: str
-) -> bool:
-    """Check if a row is the start of a bill entry (has date and store).
+@dataclass
+class _BillSearchCriteria:
+    """Criteria for searching bills during duplicate detection."""
+
+    date_str: str  # ISO format date string (YYYY-MM-DD)
+    store_normalized: str  # Lowercase, trimmed store name
+    total: float  # Total bill amount
+    epsilon: float = 0.01  # Float comparison tolerance
+
+
+def _has_matching_date(cells: list[table.TableCell], target_date_str: str) -> bool:
+    """Check if a row has a matching date (is a bill start row for this date).
 
     :param cells: Row cells to check
     :param target_date_str: Target date in ISO format (YYYY-MM-DD)
-    :param target_store: Target store name
-    :return: True if row is a bill start with matching date and store
+    :return: True if row has matching date
     """
-    if len(cells) <= max(COL_DATE, COL_STORE):
+    if len(cells) <= COL_DATE:
         return False
 
-    # Get cell values
+    # Get date value
     date_value: Any = get_cell_value(cells[COL_DATE])
-    store_value: Any = get_cell_value(cells[COL_STORE])
 
     # Parse and check date
     try:
@@ -64,8 +71,22 @@ def _is_bill_start_row(
     except (ValueError, TypeError, OverflowError):
         return False
 
-    # Check if date and store match
-    return row_date_str == target_date_str and store_value == target_store
+    # Check if date matches
+    return row_date_str == target_date_str
+
+
+def _get_store_from_bill_start(cells: list[table.TableCell]) -> str:
+    """Get normalized store name from a bill start row.
+
+    :param cells: Row cells
+    :return: Normalized store name (lowercase, trimmed)
+    """
+    if len(cells) <= COL_STORE:
+        return ""
+
+    store_value = get_cell_value(cells[COL_STORE])
+    # Normalize: case-insensitive, trimmed
+    return str(store_value).strip().lower() if store_value else ""
 
 
 def _find_total_in_bill_group(
@@ -74,12 +95,15 @@ def _find_total_in_bill_group(
     """Find the total price in a bill group starting from the given row.
 
     A bill group consists of multiple rows (one per item), with the total
-    appearing in the last row of the group.
+    appearing in the last row of the group. For single-item bills where
+    the total column is empty, the price column value is used as fallback.
 
     :param rows: All rows in the sheet
     :param start_idx: Index of the first row of the bill group
     :return: Total price if found, None otherwise
     """
+    single_item_candidate = None  # Fallback for single-item bills
+
     # Scan forward from start_idx to find the row with a total value
     for idx in range(start_idx, len(rows)):
         cells = rows[idx].getElementsByType(table.TableCell)
@@ -97,14 +121,126 @@ def _find_total_in_bill_group(
                 # Invalid total value, continue searching
                 pass
 
-        # Stop if we encounter a new bill entry (has a date)
-        if len(cells) > COL_DATE:
-            date_value = get_cell_value(cells[COL_DATE])
-            if isinstance(date_value, str) and date_value.strip() and idx != start_idx:
-                # Found a new bill entry, stop searching
-                return None
+        # Special case: For single-item bills, total might be missing but price exists
+        # Remember the price from the first row as a fallback
+        if idx == start_idx and len(cells) > COL_PRICE:
+            price_value = get_cell_value(cells[COL_PRICE])
+            if price_value is not None and price_value != "":
+                try:
+                    single_item_candidate = float(price_value)
+                except (ValueError, TypeError):
+                    pass
 
-    return None
+        # Stop if we encounter a new bill entry
+        # A new bill has either a date OR a store name in a different row
+        if idx != start_idx:
+            # Check for date (most reliable indicator)
+            if len(cells) > COL_DATE:
+                date_value = get_cell_value(cells[COL_DATE])
+                if isinstance(date_value, str) and date_value.strip():
+                    # Found a row with a date - new bill starts here
+                    # Return fallback candidate if we have one
+                    return single_item_candidate
+
+            # Check for store name (indicates continuation is from different bill)
+            if len(cells) > COL_STORE:
+                store_value = get_cell_value(cells[COL_STORE])
+                if isinstance(store_value, str) and store_value.strip():
+                    # Found a row with a store - new bill starts here
+                    # Return fallback candidate if we have one
+                    return single_item_candidate
+
+    # Reached end of sheet without finding total or new bill
+    # Return fallback candidate if we have one
+    return single_item_candidate
+
+
+def _log_duplicate_mismatch(
+    idx: int, found_store: str, found_total: float, criteria: _BillSearchCriteria
+) -> None:
+    """Log details about bills that partially match search criteria.
+
+    :param idx: Row index of the found bill
+    :param found_store: Store name found in the row
+    :param found_total: Total price found in the bill
+    :param criteria: Search criteria containing target values
+    """
+    store_matches = found_store == criteria.store_normalized
+    diff = abs(found_total - criteria.total)
+    total_matches = diff < criteria.epsilon
+
+    if store_matches and not total_matches:
+        print(
+            f"  [Duplicate Check] Row {idx}: Same store but different total "
+            f"({found_total}€, diff: {diff:.2f}€)"
+        )
+    elif not store_matches and total_matches:
+        print(
+            f"  [Duplicate Check] Row {idx}: Same total but different store "
+            f"('{found_store}' vs '{criteria.store_normalized}')"
+        )
+
+
+def _check_bill_match(
+    found_store: str, found_total: float, criteria: _BillSearchCriteria
+) -> bool:
+    """Check if a found bill matches the target bill.
+
+    :param found_store: Store name from the found bill
+    :param found_total: Total price from the found bill
+    :param criteria: Search criteria containing target values
+    :return: True if both store and total match
+    """
+    store_matches = found_store == criteria.store_normalized
+    diff = abs(found_total - criteria.total)
+    total_matches = diff < criteria.epsilon
+    return store_matches and total_matches
+
+
+def _process_bill_row_for_duplicate(
+    rows: list[table.TableRow],
+    idx: int,
+    criteria: _BillSearchCriteria,
+    verbose: bool,
+    bills_on_date: list[tuple[int, str, float]],
+) -> bool:
+    """Process a single row to check if it matches the target bill.
+
+    :param rows: All rows in the sheet
+    :param idx: Current row index
+    :param criteria: Search criteria containing target values
+    :param verbose: Whether to print debug info
+    :param bills_on_date: List to append found bills to (for debugging)
+    :return: True if duplicate found, False otherwise
+    """
+    cells = rows[idx].getElementsByType(table.TableCell)
+
+    # Check if this row has the target date
+    if not _has_matching_date(cells, criteria.date_str):
+        return False
+
+    # Get store name and total from this bill
+    found_store = _get_store_from_bill_start(cells)
+    found_total = _find_total_in_bill_group(rows, idx)
+
+    if found_total is None:
+        return False
+
+    bills_on_date.append((idx, found_store, found_total))
+
+    # Check if both store AND total match
+    if _check_bill_match(found_store, found_total, criteria):
+        if verbose:
+            print(
+                f"  [Duplicate Check] ✓ Found matching bill at row {idx} "
+                f"(store: {found_store}, total: {found_total}€) - IS DUPLICATE"
+            )
+        return True
+
+    if verbose:
+        _log_duplicate_mismatch(idx, found_store, found_total, criteria)
+
+    return False
 
 
 def _check_duplicate_bill(
@@ -125,8 +261,6 @@ def _check_duplicate_bill(
     :return: True if duplicate exists, False otherwise
     :rtype: bool
     """
-    epsilon = 0.01  # 1 cent tolerance for float comparison
-
     # Parse date and determine sheet name
     date_parsed = dparser.parse(bill_data["date"], dayfirst=True)
     sheet_name = f"{date_parsed.strftime('%b')} {date_parsed.strftime('%y')}"
@@ -142,37 +276,33 @@ def _check_duplicate_bill(
         return False
 
     # Prepare search criteria
-    target_date_str = date_parsed.date().strftime("%Y-%m-%d")
-    target_store = bill_data["store"]
-    target_total = bill_data["total"]
+    criteria = _BillSearchCriteria(
+        date_str=date_parsed.date().strftime("%Y-%m-%d"),
+        store_normalized=bill_data["store"].strip().lower(),
+        total=bill_data["total"],
+    )
 
     if verbose:
         print(
             f"  [Duplicate Check] Searching for: "
-            f"{target_store} | {target_date_str} | {target_total}€"
+            f"{bill_data['store']} | {criteria.date_str} | {criteria.total}€"
         )
 
-    # Search for matching bill start rows
+    # Search for bills on the target date
     rows = target_sheet.getElementsByType(table.TableRow)
-    for idx, row in enumerate(rows):
-        cells = row.getElementsByType(table.TableCell)
+    bills_on_date: list[tuple[int, str, float]] = []
 
-        # Check if this row starts a bill with matching date and store
-        if _is_bill_start_row(cells, target_date_str, target_store):
-            # Find the total price in this bill group
-            found_total = _find_total_in_bill_group(rows, idx)
+    for idx in range(len(rows)):
+        if _process_bill_row_for_duplicate(rows, idx, criteria, verbose, bills_on_date):
+            return True  # Duplicate found
 
-            if found_total is not None:
-                # Compare with target total using epsilon tolerance
-                if abs(found_total - target_total) < epsilon:
-                    if verbose:
-                        print(
-                            "  [Duplicate Check] ✓ Found matching bill "
-                            "- IS DUPLICATE"
-                        )
-                    return True
-
+    # No duplicate found
     if verbose:
+        if bills_on_date:
+            print(
+                f"  [Duplicate Check] Found {len(bills_on_date)} bill(s) on {criteria.date_str}, "
+                "but none matched both store and total"
+            )
         print("  [Duplicate Check] No match found - not a duplicate")
     return False
 
