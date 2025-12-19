@@ -14,9 +14,9 @@ import requests
 from bill_analyzer.bill_inserter import check_duplicate_bill, process_multiple_bills
 from bill_analyzer.claude_api import analyze_bill_pdf
 from bill_analyzer.config import PAPERLESS_TOKEN, PAPERLESS_URL
-from bill_analyzer.json_utils import parse_json_from_markdown
 from bill_analyzer.paperless_api import upload_to_paperless
 from bill_analyzer.ui import select_pdf_files
+from bill_analyzer.utils import parse_json_from_markdown
 from bill_analyzer.validators import validate_bill_total
 
 

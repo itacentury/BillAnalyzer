@@ -12,7 +12,8 @@ from odf import table, text
 from odf.namespaces import TABLENS
 
 from .config import COL_DATE, COL_STORE, COL_TOTAL
-from .ods_cells import get_cell_value, set_cell_value
+from .ods_cells import set_cell_value
+from .utils import parse_date
 
 
 def _find_last_data_row_and_template(
@@ -43,8 +44,8 @@ def _find_last_data_row_and_template(
         has_data: bool = False
         for col_idx in range(COL_STORE, COL_TOTAL + 1):
             if col_idx < len(cells):
-                cell_value: Any = get_cell_value(cells[col_idx])
-                if cell_value and str(cell_value).strip():
+                cell_value: str = str(cells[col_idx])
+                if cell_value and cell_value.strip():
                     has_data = True
                     break
 
@@ -135,8 +136,8 @@ def _find_new_row_index(sheet: table.Table, target_date_iso: str) -> int:
     for idx, row in enumerate(updated_rows):
         cells: list[table.TableCell] = row.getElementsByType(table.TableCell)
         if len(cells) > COL_DATE:
-            cell_value: Any = get_cell_value(cells[COL_DATE])
-            if isinstance(cell_value, str) and cell_value == target_date_iso:
+            cell_value: str = str(cells[COL_DATE])
+            if cell_value and cell_value == target_date_iso:
                 return idx
 
     # Fallback: return the row before last (should be our new row)
@@ -174,24 +175,24 @@ def find_date_row(sheet: table.Table, target_date: date) -> int | None:
     :return: Row index if found, None otherwise
     :rtype: int | None
     """
-    rows = sheet.getElementsByType(table.TableRow)
+    rows: list[table.TableRow] = sheet.getElementsByType(table.TableRow)
 
     for idx, row in enumerate(rows):
-        cells = row.getElementsByType(table.TableCell)
+        cells: list[table.TableCell] = row.getElementsByType(table.TableCell)
         if len(cells) <= COL_DATE:
             continue
 
-        cell_value = get_cell_value(cells[COL_DATE])
+        cell_value: str = str(cells[COL_DATE])
+        if not cell_value:
+            return None
 
-        # Try to parse as date (handles both ISO and German formats)
-        try:
-            if isinstance(cell_value, str) and cell_value.strip():
-                cell_date = dparser.parse(cell_value, dayfirst=True).date()
-                if cell_date == target_date:
-                    return idx
-        except (ValueError, TypeError, OverflowError):
-            # Skip cells that can't be parsed as dates
-            pass
+        row_date: str | None = parse_date(cell_value)
+        if row_date is None:
+            return None
+
+        date_parsed: date = dparser.parse(row_date)
+        if date_parsed == target_date:
+            return idx
 
     return None
 
@@ -216,11 +217,11 @@ def _find_chronological_insertion_point(
         if len(cells) <= COL_DATE:
             continue
 
-        cell_value: Any = get_cell_value(cells[COL_DATE])
+        cell_value: str = str(cells[COL_DATE])
 
         # Try to parse as date
         try:
-            if isinstance(cell_value, str) and cell_value.strip():
+            if cell_value and cell_value.strip():
                 cell_date: date = dparser.parse(cell_value, dayfirst=True).date()
                 # If we found a date that's after our new date, insert before it
                 if cell_date > new_date:
@@ -301,7 +302,7 @@ def has_existing_data(cells: list[table.TableCell]) -> bool:
     for col_idx in range(COL_STORE, COL_TOTAL):
         if col_idx >= len(cells):
             continue
-        cell_value = get_cell_value(cells[col_idx])
-        if cell_value and str(cell_value).strip():
+        cell_value: str = str(cells[col_idx])
+        if cell_value and cell_value.strip():
             return True
     return False

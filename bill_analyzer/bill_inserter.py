@@ -14,8 +14,7 @@ from odf.namespaces import TABLENS
 from odf.opendocument import load
 
 from .config import COL_DATE, COL_ITEM, COL_PRICE, COL_STORE, COL_TOTAL, ODS_FILE
-from .file_utils import create_backup, remove_backup, restore_from_backup
-from .ods_cells import clear_cell_completely, get_cell_value, set_cell_value
+from .ods_cells import clear_cell_completely, set_cell_value
 from .ods_rows import (
     create_blank_separator_row,
     create_item_row,
@@ -27,6 +26,14 @@ from .ods_sheets import (
     find_date_row,
     find_sheet_by_name,
     has_existing_data,
+)
+from .utils import (
+    create_backup,
+    extract_price_number,
+    is_number,
+    parse_date,
+    remove_backup,
+    restore_from_backup,
 )
 
 # Export the duplicate check function for use in other modules
@@ -59,25 +66,19 @@ def _has_matching_date(cells: list[table.TableCell], target_date_str: str) -> bo
         return False
 
     # Get date value
-    date_value: str | float = get_cell_value(cells[COL_DATE])
+    date_value: str = str(cells[COL_DATE])
 
     # Parse and check date
-    try:
-        if not isinstance(date_value, str) or not date_value.strip():
-            return False
+    if not date_value:
+        return False
 
-        try:
-            row_date: dt.date = dt.date.fromisoformat(date_value.replace("Z", "+00:00"))
-            row_date_str: str = row_date.strftime("%Y-%m-%d")
-        except (TypeError, ValueError):
-            # Parse non-ISO format (e.g., "10.12.25") with dayfirst=True
-            row_date = dparser.parse(date_value, dayfirst=True).date()
-            row_date_str = row_date.strftime("%Y-%m-%d")
-    except (ValueError, TypeError, OverflowError):
+    row_date: str | None = parse_date(date_value)
+
+    if row_date is None:
         return False
 
     # Check if date matches
-    return row_date_str == target_date_str
+    return row_date == target_date_str
 
 
 def _get_store_from_bill_start(
@@ -100,11 +101,11 @@ def _get_store_from_bill_start(
         if len(cells) <= COL_STORE:
             continue
 
-        if start_idx != idx and get_cell_value(cells[COL_DATE]):
+        if start_idx != idx and str(cells[COL_DATE]):
             return None
 
-        found_store: str | float = get_cell_value(cells[COL_STORE])
-        if not isinstance(found_store, str):
+        found_store: str = str(cells[COL_STORE])
+        if not found_store:
             continue
 
         found_store = found_store.strip().lower()
@@ -136,17 +137,18 @@ def _find_total_in_bill_group(
         if len(cells) <= COL_TOTAL:
             continue
 
-        if start_idx != idx and (
-            get_cell_value(cells[COL_DATE]) or get_cell_value(cells[COL_STORE])
-        ):
+        if start_idx != idx and (str(cells[COL_DATE]) or str(cells[COL_STORE])):
             return None
 
-        found_total: str | float = get_cell_value(cells[COL_TOTAL])
-
-        if not isinstance(found_total, float):
+        found_total: str = str(cells[COL_TOTAL])
+        if not found_total:
             continue
 
-        if found_total != total:
+        found_total = extract_price_number(found_total)
+        if not is_number(found_total):
+            continue
+
+        if float(found_total) != total:
             return None
 
         return idx
@@ -227,6 +229,7 @@ def _process_bill_row_for_duplicate(
 
         idx = new_idx
         new_idx = _find_total_in_bill_group(rows, idx, criteria.total)
+        idx += 1
 
     return True
 

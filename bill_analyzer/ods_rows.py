@@ -2,13 +2,15 @@
 ODS row operations
 """
 
+# pyright: reportGeneralTypeIssues=false
+
 from typing import Any
 
 from odf import table, text
 from odf.namespaces import TABLENS
 
 from .config import COL_ITEM, COL_PRICE, COL_STORE, COL_TOTAL
-from .ods_cells import create_empty_cell_with_style, get_cell_value, set_cell_value
+from .ods_cells import create_empty_cell_with_style, set_cell_value
 
 
 def create_item_row(  # pylint: disable=too-many-arguments
@@ -95,17 +97,17 @@ def create_blank_separator_row(
 
 def save_existing_row_data(
     cells: list[table.TableCell],
-) -> list[tuple[Any, str | None]]:
+) -> list[tuple[str, Any]]:
     """Save all data and styles from a row before modifying it.
 
     :param cells: List of cells to save
     :type cells: list[table.TableCell]
     :return: List of tuples (cell_value, cell_style)
-    :rtype: list[tuple[Any, str | None]]
+    :rtype: list[tuple[str, Any]]
     """
-    row_data = []
+    row_data: list[tuple[str, Any]] = []
     for cell in cells:
-        cell_value = get_cell_value(cell)
+        cell_value = str(cell)
         cell_style = cell.getAttrNS(TABLENS, "style-name")
         row_data.append((cell_value, cell_style))
     return row_data

@@ -125,39 +125,6 @@ def _set_string_value(cell: table.TableCell, value: str) -> None:
         cell.setAttrNS(OFFICENS, "value-type", "string")
 
 
-def get_cell_value(cell: table.TableCell) -> str | float:
-    """Extract the value from an ODS cell.
-
-    Tries multiple attribute types (value, date-value, string-value)
-    and falls back to text content if no attributes are found.
-
-    :param cell: ODS table cell
-    :type cell: table.TableCell
-    :return: Cell value (float, str, or empty string)
-    :rtype: str | float
-    """
-    # Try numeric value
-    value_attr: str | None = cell.getAttrNS(OFFICENS, "value")
-    if value_attr:
-        return float(value_attr)
-
-    # Try date value
-    date_value_attr: str | None = cell.getAttrNS(OFFICENS, "date-value")
-    if date_value_attr:
-        return date_value_attr
-
-    # Try string value
-    string_value_attr: str | None = cell.getAttrNS(OFFICENS, "string-value")
-    if string_value_attr:
-        return string_value_attr
-
-    # Fallback: get text content
-    text_content: list[str] = []
-    for p_element in cell.getElementsByType(text.P):
-        text_content.append(str(p_element))
-    return "".join(text_content) if text_content else ""
-
-
 def set_cell_value(cell: table.TableCell, value: Any, doc: Any | None = None) -> None:
     """Set value in an ODS cell while preserving its style.
 
