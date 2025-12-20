@@ -126,7 +126,7 @@ def is_number(string: str) -> bool:
 def extract_price_number(string: str) -> str:
     """Extract numeric value from a price string with currency symbols.
 
-    Handles German/European number formats (comma as decimal separator).
+    Handles German number formats (comma as decimal separator).
     Examples:
     - "13,5 €" -> "13.5"
     - "1.234,56€" -> "1234.56"
@@ -140,14 +140,10 @@ def extract_price_number(string: str) -> str:
     # Remove whitespace and common currency symbols
     price = re.sub(r"[€$£¥\s]", "", string)
 
-    # Keep only digits, comma, period, and minus sign
-    price = re.sub(r"[^\d,.\-]", "", price)
+    # Keep only digits, comma, and minus sign
+    price = re.sub(r"[^\d,\-]", "", price)
 
-    # Handle German/European format: 1.234,56 -> 1234.56
-    # If there's both a period and comma, assume German format
-    if "." in price and "," in price:
-        price = price.replace(".", "").replace(",", ".")
-    elif "," in price:
-        price = price.replace(",", ".")
+    # Replace commas with periods
+    price = price.replace(",", ".")
 
     return price
