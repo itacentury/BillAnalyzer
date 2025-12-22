@@ -160,7 +160,7 @@ def main() -> None:
         if is_valid:
             # Check for duplicates in ODS before uploading to Paperless
             print("\n🔍 Checking for duplicates...")
-            is_duplicate = check_duplicate_bill(bill_data, verbose=True)
+            is_duplicate = check_duplicate_bill(bill_data)
 
             if is_duplicate:
                 print(

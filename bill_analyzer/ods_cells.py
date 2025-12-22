@@ -10,6 +10,7 @@ from typing import Any
 
 from odf import table, text
 from odf.namespaces import OFFICENS, TABLENS
+from odf.opendocument import OpenDocument
 
 from .config import (
     CALCEXT_ATTRS_TO_CLEAR,
@@ -125,7 +126,9 @@ def _set_string_value(cell: table.TableCell, value: str) -> None:
         cell.setAttrNS(OFFICENS, "value-type", "string")
 
 
-def set_cell_value(cell: table.TableCell, value: Any, doc: Any | None = None) -> None:
+def set_cell_value(
+    cell: table.TableCell, value: Any, doc: OpenDocument | None = None
+) -> None:
     """Set value in an ODS cell while preserving its style.
 
     :param cell: ODS table cell
@@ -133,7 +136,7 @@ def set_cell_value(cell: table.TableCell, value: Any, doc: Any | None = None) ->
     :param value: Value to set (can be string, number, date, or datetime)
     :type value: Any
     :param doc: Optional ODS document (required for date values to apply proper formatting)
-    :type doc: Any | None
+    :type doc: OpenDocument | None
     """
     # Clear existing content
     for child in list(cell.childNodes):
@@ -205,26 +208,3 @@ def clear_cell_completely(cell: table.TableCell) -> None:
             cell.removeAttrNS(CALCEXT_NS, attr_name)
         except KeyError:
             pass
-
-
-def create_empty_cell_with_style(
-    reference_cell: table.TableCell,
-) -> table.TableCell:
-    """Create a new empty cell with the same style as a reference cell.
-
-    :param reference_cell: Cell to copy style from
-    :type reference_cell: table.TableCell
-    :return: New empty cell with copied style
-    :rtype: table.TableCell
-    """
-    new_cell: table.TableCell = table.TableCell()
-
-    # Copy style
-    cell_style: str | None = reference_cell.getAttrNS(TABLENS, "style-name")
-    if cell_style:
-        new_cell.setAttrNS(TABLENS, "style-name", cell_style)
-
-    # Add empty paragraph
-    new_cell.appendChild(text.P(text=""))
-
-    return new_cell
