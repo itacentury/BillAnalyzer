@@ -12,6 +12,7 @@ import dateutil.parser as dparser
 from odf import table, text
 from odf.namespaces import TABLENS
 from odf.opendocument import OpenDocument, load
+
 from . import config
 
 # from .config import COL_DATE, COL_ITEM, COL_PRICE, COL_STORE, COL_TOTAL, ODS_FILE
@@ -264,16 +265,47 @@ def _insert_single_bill_data(doc: OpenDocument, bill_data: dict[str, Any]) -> No
     rows: list[table.TableRow] = target_sheet.getElementsByType(table.TableRow)
     if target_row_idx is None:
         # no row with date found, find last row
-        target_row_idx = find_chronological_insertion_point(rows, bill_data["date"])
+        date_str: str | None = parse_date(bill_data["date"])
+        if date_str is None:
+            return
+
+        target_row_idx = find_chronological_insertion_point(
+            rows, dparser.parse(date_str).date()
+        )
         if target_row_idx is None:
-            target_row_idx = find_last_row(rows) + 2
+            target_row_idx = find_last_row(rows)
+            # add two empty rows to avoid index out of bounds
+            if target_row_idx + 2 > len(rows):
+                target_sheet.appendChild(table.TableRow())
+                target_sheet.appendChild(table.TableRow())
+            target_row_idx += 2
 
+    template_row_idx: int = target_row_idx
+    if target_row_idx > len(rows):
+        template_row_idx = find_last_row(rows)
+
+    # redeclare rows to include eventually newly added rows
+    rows = target_sheet.getElementsByType(table.TableRow)
     target_row: table.TableRow = rows[target_row_idx]
-    cells: list[table.TableCell] = target_row.getElementsByType(table.TableCell)
-    row_style: str | None = target_row.getAttrNS(TABLENS, "style-name")
+    template_row: table.TableRow = rows[template_row_idx]
+    target_cells: list[table.TableCell] = target_row.getElementsByType(table.TableCell)
+    template_cells: list[table.TableCell] = template_row.getElementsByType(
+        table.TableCell
+    )
+    row_style: str | None = template_row.getAttrNS(TABLENS, "style-name")
 
-    if len(cells) >= config.COL_DATE:
-        clear_cell_completely(cells[config.COL_DATE])
+    if len(target_cells) > config.COL_DATE:
+        target_date_str: str | None = parse_date(
+            get_cell_value(target_cells[config.COL_DATE])
+        )
+        new_date_str: str | None = parse_date(bill_data["date"])
+
+        if (
+            target_date_str is not None
+            and new_date_str is not None
+            and target_date_str == new_date_str
+        ):
+            clear_cell_completely(target_cells[config.COL_DATE])
 
     # create first new row with date and bill data
     date_row: table.TableRow = table.TableRow()
@@ -311,7 +343,7 @@ def _insert_single_bill_data(doc: OpenDocument, bill_data: dict[str, Any]) -> No
         total = bill_data["total"] if is_last_item else None
 
         new_row = create_item_row(
-            cells, row_style, item["name"], item["price"], total_price=total
+            template_cells, row_style, item["name"], item["price"], total_price=total
         )
         target_sheet.insertBefore(new_row, target_row)
 
