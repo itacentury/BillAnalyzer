@@ -330,6 +330,19 @@
             color: var(--text-secondary);
         }
 
+        .section-total {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--success);
+        }
+
+        .section-total::before {
+            content: '€';
+            font-size: 0.875rem;
+            margin-right: 0.25rem;
+        }
+
         .invoice-list {
             max-height: 600px;
             overflow-y: auto;
@@ -884,6 +897,7 @@
         <div class="invoices-section">
             <div class="section-header">
                 <span class="section-title" id="results-count">0 Rechnungen</span>
+                <span class="section-total" id="results-total">0.00</span>
             </div>
             <div class="invoice-list" id="invoice-list">
                 <div class="empty-state">
@@ -1155,7 +1169,11 @@
                 `).join('');
             }
 
+            // Calculate total sum of displayed invoices
+            const totalSum = invoices.reduce((sum, invoice) => sum + parseFloat(invoice.total), 0);
+
             document.getElementById('results-count').textContent = `${invoices.length} Rechnung${invoices.length !== 1 ? 'en' : ''}`;
+            document.getElementById('results-total').textContent = totalSum.toFixed(2);
         }
 
         function toggleInvoice(element) {
