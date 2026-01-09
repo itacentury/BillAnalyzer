@@ -1,0 +1,1540 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rechnungsverwaltung</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #141414;
+            --bg-tertiary: #1a1a1a;
+            --bg-card: #111111;
+            --border-color: #2a2a2a;
+            --border-subtle: #1f1f1f;
+            --text-primary: #fafafa;
+            --text-secondary: #a0a0a0;
+            --text-muted: #666666;
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+            --accent-subtle: rgba(59, 130, 246, 0.1);
+            --success: #22c55e;
+            --success-subtle: rgba(34, 197, 94, 0.1);
+            --danger: #ef4444;
+            --danger-subtle: rgba(239, 68, 68, 0.1);
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 14px;
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.4);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.5);
+            --shadow-lg: 0 8px 24px rgba(0,0,0,0.6);
+            --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'DM Sans', -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        /* Header */
+        .header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1.25rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(12px);
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 600;
+            letter-spacing: -0.03em;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--accent) 0%, #8b5cf6 100%);
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        /* Buttons */
+        .btn {
+            font-family: inherit;
+            font-size: 0.875rem;
+            font-weight: 500;
+            padding: 0.625rem 1.25rem;
+            border-radius: var(--radius-sm);
+            border: none;
+            cursor: pointer;
+            transition: all var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background: var(--border-color);
+        }
+
+        .btn-danger {
+            background: var(--danger-subtle);
+            color: var(--danger);
+            border: 1px solid transparent;
+        }
+
+        .btn-danger:hover {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-sm {
+            padding: 0.375rem 0.75rem;
+            font-size: 0.8125rem;
+        }
+
+        /* Main Container */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Stats Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.25rem;
+            transition: all var(--transition);
+        }
+
+        .stat-card:hover {
+            border-color: var(--border-subtle);
+            transform: translateY(-2px);
+        }
+
+        .stat-label {
+            font-size: 0.8125rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-value {
+            font-size: 1.75rem;
+            font-weight: 600;
+            font-family: 'JetBrains Mono', monospace;
+            letter-spacing: -0.02em;
+        }
+
+        .stat-value.currency::before {
+            content: '€';
+            font-size: 1.25rem;
+            color: var(--text-secondary);
+            margin-right: 0.25rem;
+        }
+
+        /* Filter Section */
+        .filters {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.25rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .month-navigator {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1.25rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .month-nav-btn {
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all var(--transition);
+        }
+
+        .month-nav-btn:hover {
+            background: var(--border-color);
+            border-color: var(--accent);
+        }
+
+        .month-display {
+            flex: 1;
+            text-align: center;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .month-reset-btn {
+            padding: 0.5rem 1rem;
+            font-size: 0.8125rem;
+            font-weight: 500;
+            background: var(--accent-subtle);
+            border: 1px solid var(--accent);
+            border-radius: var(--radius-sm);
+            color: var(--accent);
+            cursor: pointer;
+            transition: all var(--transition);
+        }
+
+        .month-reset-btn:hover {
+            background: var(--accent);
+            color: white;
+        }
+
+        .filters-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr auto auto;
+            gap: 1rem;
+            align-items: end;
+        }
+
+        @media (max-width: 1024px) {
+            .filters-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .filters-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.375rem;
+        }
+
+        .form-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .form-input, .form-select {
+            font-family: inherit;
+            font-size: 0.875rem;
+            padding: 0.625rem 0.875rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            transition: all var(--transition);
+        }
+
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-subtle);
+        }
+
+        .form-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        /* Invoices List */
+        .invoices-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+        }
+
+        .section-header {
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .section-title {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .invoice-list {
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .invoice-item {
+            border-bottom: 1px solid var(--border-subtle);
+            transition: all var(--transition);
+        }
+
+        .invoice-item:last-child {
+            border-bottom: none;
+        }
+
+        .invoice-item:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .invoice-header {
+            padding: 1rem 1.25rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .invoice-main {
+            display: flex;
+            align-items: center;
+            gap: 1.25rem;
+        }
+
+        .invoice-date {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8125rem;
+            color: var(--text-muted);
+            min-width: 90px;
+        }
+
+        .invoice-store {
+            font-weight: 500;
+            font-size: 0.9375rem;
+        }
+
+        .invoice-meta {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .invoice-total {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1rem;
+            font-weight: 500;
+            color: var(--success);
+        }
+
+        .invoice-total::before {
+            content: '€';
+            font-size: 0.875rem;
+            margin-right: 0.125rem;
+        }
+
+        .invoice-expand {
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: var(--radius-sm);
+            background: transparent;
+            transition: all var(--transition);
+        }
+
+        .invoice-item:hover .invoice-expand {
+            background: var(--bg-secondary);
+        }
+
+        .invoice-expand svg {
+            transition: transform var(--transition);
+        }
+
+        .invoice-item.expanded .invoice-expand svg {
+            transform: rotate(180deg);
+        }
+
+        .invoice-details {
+            display: none;
+            padding: 0 1.25rem 1rem 1.25rem;
+            animation: slideDown 0.2s ease;
+        }
+
+        .invoice-item.expanded .invoice-details {
+            display: block;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-8px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .items-table {
+            width: 100%;
+            margin-left: 90px;
+            margin-left: calc(90px + 1.25rem);
+            width: calc(100% - 90px - 1.25rem);
+        }
+
+        .item-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            border-bottom: 1px dashed var(--border-subtle);
+            font-size: 0.875rem;
+        }
+
+        .item-row:last-child {
+            border-bottom: none;
+        }
+
+        .item-name {
+            color: var(--text-secondary);
+        }
+
+        .item-price {
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-muted);
+        }
+
+        .invoice-actions {
+            padding: 0.75rem 0;
+            margin-left: calc(90px + 1.25rem);
+        }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            max-width: 600px;
+            width: 100%;
+            max-height: 85vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow-lg);
+            animation: modalIn 0.2s ease;
+        }
+
+        @keyframes modalIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95) translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        .modal-header {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+        }
+
+        .modal-close {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: var(--radius-sm);
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all var(--transition);
+        }
+
+        .modal-close:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        .modal-footer {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.75rem;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 0.25rem;
+            margin-bottom: 1.5rem;
+            background: var(--bg-tertiary);
+            padding: 0.25rem;
+            border-radius: var(--radius-sm);
+        }
+
+        .tab {
+            flex: 1;
+            padding: 0.625rem 1rem;
+            font-family: inherit;
+            font-size: 0.875rem;
+            font-weight: 500;
+            background: transparent;
+            border: none;
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all var(--transition);
+        }
+
+        .tab.active {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Form Styles */
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .form-group.full {
+            grid-column: 1 / -1;
+        }
+
+        .items-input-section {
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .items-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .items-header h4 {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .item-input-row {
+            display: grid;
+            grid-template-columns: 1fr auto auto;
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+            align-items: end;
+        }
+
+        .item-input-row .form-group:first-child {
+            flex: 1;
+        }
+
+        .item-input-row .form-input[type="number"] {
+            width: 100px;
+        }
+
+        .calculated-total {
+            margin-top: 1rem;
+            padding: 0.75rem 1rem;
+            background: var(--success-subtle);
+            border-radius: var(--radius-sm);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .calculated-total-label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .calculated-total-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--success);
+        }
+
+        /* JSON Import */
+        .json-textarea {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8125rem;
+            min-height: 300px;
+            resize: vertical;
+            line-height: 1.5;
+        }
+
+        .dropzone {
+            border: 2px dashed var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all var(--transition);
+            margin-bottom: 1rem;
+        }
+
+        .dropzone:hover, .dropzone.dragover {
+            border-color: var(--accent);
+            background: var(--accent-subtle);
+        }
+
+        .dropzone-icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .dropzone-text {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        /* Empty State */
+        .empty-state {
+            padding: 4rem 2rem;
+            text-align: center;
+        }
+
+        .empty-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        .empty-title {
+            font-size: 1.125rem;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+
+        .empty-text {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        /* Toast */
+        .toast-container {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            z-index: 2000;
+        }
+
+        .toast {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1rem 1.25rem;
+            box-shadow: var(--shadow-lg);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            animation: toastIn 0.3s ease;
+            margin-top: 0.5rem;
+        }
+
+        .toast.success {
+            border-color: var(--success);
+        }
+
+        .toast.error {
+            border-color: var(--danger);
+        }
+
+        @keyframes toastIn {
+            from {
+                opacity: 0;
+                transform: translateX(100%);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-primary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <div class="logo-icon">📄</div>
+                <span>Rechnungen</span>
+            </div>
+            <div class="header-actions">
+                <button class="btn btn-secondary" onclick="openImportModal()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="17 8 12 3 7 8"/>
+                        <line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                    JSON Import
+                </button>
+                <button class="btn btn-primary" onclick="openAddModal()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19"/>
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                    Neue Rechnung
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- Stats -->
+        <div class="stats-grid" id="stats">
+            <div class="stat-card">
+                <div class="stat-label">Rechnungen</div>
+                <div class="stat-value" id="stat-count">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Gesamtsumme</div>
+                <div class="stat-value currency" id="stat-total">0.00</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Geschäfte</div>
+                <div class="stat-value" id="stat-stores">0</div>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="filters">
+            <!-- Month Navigator -->
+            <div class="month-navigator">
+                <button class="month-nav-btn" onclick="navigateToPreviousMonth()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="15 18 9 12 15 6"/>
+                    </svg>
+                </button>
+                <div class="month-display" id="month-display">Januar 2026</div>
+                <button class="month-nav-btn" onclick="navigateToNextMonth()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="9 18 15 12 9 6"/>
+                    </svg>
+                </button>
+                <button class="month-reset-btn" onclick="resetToCurrentMonth()">Aktueller Monat</button>
+            </div>
+
+            <div class="filters-grid">
+                <div class="form-group">
+                    <label class="form-label">Suche</label>
+                    <input type="text" class="form-input" id="search" placeholder="Geschäft oder Artikel suchen...">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Geschäft</label>
+                    <select class="form-select" id="store-filter">
+                        <option value="">Alle Geschäfte</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Von</label>
+                    <input type="date" class="form-input" id="date-from">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Bis</label>
+                    <input type="date" class="form-input" id="date-to">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Sortieren</label>
+                    <select class="form-select" id="sort-by">
+                        <option value="date">Datum</option>
+                        <option value="store">Geschäft</option>
+                        <option value="total">Betrag</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Reihenfolge</label>
+                    <select class="form-select" id="sort-order">
+                        <option value="desc">Absteigend</option>
+                        <option value="asc">Aufsteigend</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Invoices List -->
+        <div class="invoices-section">
+            <div class="section-header">
+                <span class="section-title" id="results-count">0 Rechnungen</span>
+            </div>
+            <div class="invoice-list" id="invoice-list">
+                <div class="empty-state">
+                    <div class="empty-icon">📋</div>
+                    <div class="empty-title">Keine Rechnungen vorhanden</div>
+                    <div class="empty-text">Füge eine neue Rechnung hinzu oder importiere vorhandene Daten.</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Add Invoice Modal -->
+    <div class="modal-overlay" id="add-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">Neue Rechnung</h3>
+                <button class="modal-close" onclick="closeAddModal()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="add-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Datum</label>
+                            <input type="date" class="form-input" id="invoice-date" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Geschäft</label>
+                            <input type="text" class="form-input" id="invoice-store" placeholder="z.B. Amazon" required>
+                        </div>
+                    </div>
+
+                    <div class="items-input-section">
+                        <div class="items-header">
+                            <h4>Artikel</h4>
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="addItemRow()">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="12" y1="5" x2="12" y2="19"/>
+                                    <line x1="5" y1="12" x2="19" y2="12"/>
+                                </svg>
+                                Artikel hinzufügen
+                            </button>
+                        </div>
+                        <div id="items-container">
+                            <div class="item-input-row">
+                                <div class="form-group">
+                                    <label class="form-label">Artikelname</label>
+                                    <input type="text" class="form-input item-name" placeholder="Produktname">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Preis (€)</label>
+                                    <input type="number" step="0.01" class="form-input item-price" placeholder="0.00">
+                                </div>
+                                <button type="button" class="btn btn-danger btn-sm" onclick="removeItemRow(this)" style="margin-bottom: 0.375rem;">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <line x1="18" y1="6" x2="6" y2="18"/>
+                                        <line x1="6" y1="6" x2="18" y2="18"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="calculated-total">
+                            <span class="calculated-total-label">Berechnete Summe</span>
+                            <span class="calculated-total-value" id="calculated-total">€0.00</span>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeAddModal()">Abbrechen</button>
+                <button class="btn btn-primary" onclick="saveInvoice()">Speichern</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import Modal -->
+    <div class="modal-overlay" id="import-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">JSON Import</h3>
+                <button class="modal-close" onclick="closeImportModal()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="dropzone" id="dropzone">
+                    <div class="dropzone-icon">📁</div>
+                    <div class="dropzone-text">JSON-Dateien hierher ziehen oder klicken zum Auswählen<br><small style="color: var(--text-muted);">Mehrere Dateien möglich</small></div>
+                    <input type="file" id="file-input" accept=".json" multiple style="display: none;">
+                </div>
+                <div id="selected-files" style="display: none; margin-bottom: 1rem;"></div>
+                <div class="form-group">
+                    <label class="form-label">Oder JSON direkt einfügen</label>
+                    <textarea class="form-input json-textarea" id="json-input" placeholder='[{"date": "2024-01-01", "store": "...", "total": "...", "items": [...]}]'></textarea>
+                </div>
+                <div style="margin-top: 0.75rem; padding: 0.75rem; background: var(--bg-tertiary); border-radius: var(--radius-sm); font-size: 0.8125rem; color: var(--text-secondary);">
+                    💡 Duplikate werden automatisch erkannt und übersprungen (gleiche Kombination aus Datum, Geschäft und Betrag).
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeImportModal()">Abbrechen</button>
+                <button class="btn btn-primary" onclick="importJson()">Importieren</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <script>
+        // State
+        let invoices = [];
+        let currentMonth = new Date(); // Current month being viewed
+
+        // DOM Elements
+        const invoiceList = document.getElementById('invoice-list');
+        const searchInput = document.getElementById('search');
+        const storeFilter = document.getElementById('store-filter');
+        const dateFrom = document.getElementById('date-from');
+        const dateTo = document.getElementById('date-to');
+        const sortBy = document.getElementById('sort-by');
+        const sortOrder = document.getElementById('sort-order');
+        const monthDisplay = document.getElementById('month-display');
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            setCurrentMonth();
+            loadInvoices();
+            loadStores();
+            loadStats();
+            setupEventListeners();
+        });
+
+        function setupEventListeners() {
+            searchInput.addEventListener('input', debounce(loadInvoices, 300));
+            storeFilter.addEventListener('change', loadInvoices);
+            dateFrom.addEventListener('change', loadInvoices);
+            dateTo.addEventListener('change', loadInvoices);
+            sortBy.addEventListener('change', loadInvoices);
+            sortOrder.addEventListener('change', loadInvoices);
+
+            // Dropzone
+            const dropzone = document.getElementById('dropzone');
+            const fileInput = document.getElementById('file-input');
+
+            dropzone.addEventListener('click', () => fileInput.click());
+            dropzone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropzone.classList.add('dragover');
+            });
+            dropzone.addEventListener('dragleave', () => {
+                dropzone.classList.remove('dragover');
+            });
+            dropzone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropzone.classList.remove('dragover');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) handleMultipleFiles(files);
+            });
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) handleMultipleFiles(e.target.files);
+            });
+
+            // Calculate total on item input
+            document.getElementById('items-container').addEventListener('input', calculateTotal);
+        }
+
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        // API Functions
+        async function loadInvoices() {
+            const params = new URLSearchParams({
+                search: searchInput.value,
+                store: storeFilter.value,
+                date_from: dateFrom.value,
+                date_to: dateTo.value,
+                sort_by: sortBy.value,
+                sort_order: sortOrder.value
+            });
+
+            try {
+                const response = await fetch(`/api/invoices?${params}`);
+                invoices = await response.json();
+                renderInvoices();
+            } catch (error) {
+                showToast('Fehler beim Laden der Rechnungen', 'error');
+            }
+        }
+
+        async function loadStores() {
+            try {
+                const response = await fetch('/api/stores');
+                const stores = await response.json();
+                storeFilter.innerHTML = '<option value="">Alle Geschäfte</option>';
+                stores.forEach(store => {
+                    storeFilter.innerHTML += `<option value="${store}">${store}</option>`;
+                });
+            } catch (error) {
+                console.error('Error loading stores:', error);
+            }
+        }
+
+        async function loadStats() {
+            try {
+                const response = await fetch('/api/stats');
+                const stats = await response.json();
+                document.getElementById('stat-count').textContent = stats.total_invoices;
+                document.getElementById('stat-total').textContent = stats.total_amount.toFixed(2);
+                document.getElementById('stat-stores').textContent = stats.unique_stores;
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+
+        // Render Functions
+        function renderInvoices() {
+            if (invoices.length === 0) {
+                invoiceList.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">📋</div>
+                        <div class="empty-title">Keine Rechnungen gefunden</div>
+                        <div class="empty-text">Passe deine Filterkriterien an oder füge neue Rechnungen hinzu.</div>
+                    </div>
+                `;
+            } else {
+                invoiceList.innerHTML = invoices.map(invoice => `
+                    <div class="invoice-item" data-id="${invoice.id}">
+                        <div class="invoice-header" onclick="toggleInvoice(this)">
+                            <div class="invoice-main">
+                                <span class="invoice-date">${formatDate(invoice.date)}</span>
+                                <span class="invoice-store">${escapeHtml(invoice.store)}</span>
+                            </div>
+                            <div class="invoice-meta">
+                                <span class="invoice-total">${parseFloat(invoice.total).toFixed(2)}</span>
+                                <div class="invoice-expand">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="6 9 12 15 18 9"/>
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="invoice-details">
+                            <div class="items-table">
+                                ${invoice.items.map(item => `
+                                    <div class="item-row">
+                                        <span class="item-name">${escapeHtml(item.item_name)}</span>
+                                        <span class="item-price">€${parseFloat(item.item_price).toFixed(2)}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                            <div class="invoice-actions">
+                                <button class="btn btn-danger btn-sm" onclick="deleteInvoice(${invoice.id})">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="3 6 5 6 21 6"/>
+                                        <path d="m19 6-.867 12.142A2 2 0 0 1 16.138 20H7.862a2 2 0 0 1-1.995-1.858L5 6"/>
+                                        <path d="M10 11v6"/>
+                                        <path d="M14 11v6"/>
+                                        <path d="m8 6 .544-1.632A2 2 0 0 1 10.442 3h3.116a2 2 0 0 1 1.898 1.368L16 6"/>
+                                    </svg>
+                                    Löschen
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            document.getElementById('results-count').textContent = `${invoices.length} Rechnung${invoices.length !== 1 ? 'en' : ''}`;
+        }
+
+        function toggleInvoice(element) {
+            const item = element.closest('.invoice-item');
+            item.classList.toggle('expanded');
+        }
+
+        // Modal Functions
+        function openAddModal() {
+            document.getElementById('add-modal').classList.add('active');
+            document.getElementById('invoice-date').valueAsDate = new Date();
+            resetAddForm();
+        }
+
+        function closeAddModal() {
+            document.getElementById('add-modal').classList.remove('active');
+            resetAddForm();
+        }
+
+        function resetAddForm() {
+            document.getElementById('add-form').reset();
+            document.getElementById('items-container').innerHTML = `
+                <div class="item-input-row">
+                    <div class="form-group">
+                        <label class="form-label">Artikelname</label>
+                        <input type="text" class="form-input item-name" placeholder="Produktname">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Preis (€)</label>
+                        <input type="number" step="0.01" class="form-input item-price" placeholder="0.00">
+                    </div>
+                    <button type="button" class="btn btn-danger btn-sm" onclick="removeItemRow(this)" style="margin-bottom: 0.375rem;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"/>
+                            <line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                    </button>
+                </div>
+            `;
+            calculateTotal();
+        }
+
+        function openImportModal() {
+            document.getElementById('import-modal').classList.add('active');
+        }
+
+        function closeImportModal() {
+            document.getElementById('import-modal').classList.remove('active');
+            document.getElementById('json-input').value = '';
+            document.getElementById('file-input').value = '';
+            pendingFiles = [];
+            document.getElementById('selected-files').style.display = 'none';
+        }
+
+        // Item Row Functions
+        function addItemRow() {
+            const container = document.getElementById('items-container');
+            const row = document.createElement('div');
+            row.className = 'item-input-row';
+            row.innerHTML = `
+                <div class="form-group">
+                    <label class="form-label">Artikelname</label>
+                    <input type="text" class="form-input item-name" placeholder="Produktname">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Preis (€)</label>
+                    <input type="number" step="0.01" class="form-input item-price" placeholder="0.00">
+                </div>
+                <button type="button" class="btn btn-danger btn-sm" onclick="removeItemRow(this)" style="margin-bottom: 0.375rem;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            `;
+            container.appendChild(row);
+        }
+
+        function removeItemRow(button) {
+            const rows = document.querySelectorAll('.item-input-row');
+            if (rows.length > 1) {
+                button.closest('.item-input-row').remove();
+                calculateTotal();
+            }
+        }
+
+        function calculateTotal() {
+            const prices = document.querySelectorAll('.item-price');
+            let total = 0;
+            prices.forEach(input => {
+                total += parseFloat(input.value) || 0;
+            });
+            document.getElementById('calculated-total').textContent = `€${total.toFixed(2)}`;
+        }
+
+        // Save Functions
+        async function saveInvoice() {
+            const date = document.getElementById('invoice-date').value;
+            const store = document.getElementById('invoice-store').value;
+
+            if (!date || !store) {
+                showToast('Bitte Datum und Geschäft ausfüllen', 'error');
+                return;
+            }
+
+            const items = [];
+            const rows = document.querySelectorAll('.item-input-row');
+            rows.forEach(row => {
+                const name = row.querySelector('.item-name').value;
+                const price = row.querySelector('.item-price').value;
+                if (name && price) {
+                    items.push({ item_name: name, item_price: price });
+                }
+            });
+
+            const total = items.reduce((sum, item) => sum + parseFloat(item.item_price), 0);
+
+            try {
+                const response = await fetch('/api/invoices', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ date, store, total, items })
+                });
+
+                if (response.ok) {
+                    showToast('Rechnung gespeichert', 'success');
+                    closeAddModal();
+                    loadInvoices();
+                    loadStores();
+                    loadStats();
+                } else {
+                    showToast('Fehler beim Speichern', 'error');
+                }
+            } catch (error) {
+                showToast('Fehler beim Speichern', 'error');
+            }
+        }
+
+        async function deleteInvoice(id) {
+            if (!confirm('Rechnung wirklich löschen?')) return;
+
+            try {
+                const response = await fetch(`/api/invoices/${id}`, { method: 'DELETE' });
+                if (response.ok) {
+                    showToast('Rechnung gelöscht', 'success');
+                    loadInvoices();
+                    loadStores();
+                    loadStats();
+                } else {
+                    showToast('Fehler beim Löschen', 'error');
+                }
+            } catch (error) {
+                showToast('Fehler beim Löschen', 'error');
+            }
+        }
+
+        // Import Functions
+        let pendingFiles = [];
+        
+        function handleMultipleFiles(files) {
+            pendingFiles = Array.from(files).filter(f => f.name.endsWith('.json'));
+            updateSelectedFilesDisplay();
+            
+            // Wenn Dateien ausgewählt wurden, lade sie alle in die Textarea
+            if (pendingFiles.length > 0) {
+                loadFilesIntoTextarea();
+            }
+        }
+        
+        function updateSelectedFilesDisplay() {
+            const container = document.getElementById('selected-files');
+            if (pendingFiles.length === 0) {
+                container.style.display = 'none';
+                return;
+            }
+            
+            container.style.display = 'block';
+            container.innerHTML = `
+                <div style="background: var(--bg-tertiary); border-radius: var(--radius-sm); padding: 0.75rem;">
+                    <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem;">
+                        ${pendingFiles.length} Datei(en) ausgewählt
+                    </div>
+                    ${pendingFiles.map((f, i) => `
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.375rem 0; border-bottom: 1px solid var(--border-subtle);">
+                            <span style="font-size: 0.875rem;">📄 ${escapeHtml(f.name)}</span>
+                            <button type="button" class="btn btn-danger btn-sm" onclick="removeFile(${i})" style="padding: 0.25rem 0.5rem;">✕</button>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+        
+        function removeFile(index) {
+            pendingFiles.splice(index, 1);
+            updateSelectedFilesDisplay();
+            loadFilesIntoTextarea();
+        }
+        
+        async function loadFilesIntoTextarea() {
+            if (pendingFiles.length === 0) {
+                document.getElementById('json-input').value = '';
+                return;
+            }
+            
+            const allData = [];
+            
+            for (const file of pendingFiles) {
+                try {
+                    const text = await file.text();
+                    const parsed = JSON.parse(text);
+                    if (Array.isArray(parsed)) {
+                        allData.push(...parsed);
+                    } else {
+                        allData.push(parsed);
+                    }
+                } catch (e) {
+                    showToast(`Fehler beim Lesen von ${file.name}`, 'error');
+                }
+            }
+            
+            document.getElementById('json-input').value = JSON.stringify(allData, null, 2);
+        }
+
+        async function importJson() {
+            const jsonText = document.getElementById('json-input').value.trim();
+            if (!jsonText) {
+                showToast('Bitte JSON-Daten eingeben', 'error');
+                return;
+            }
+
+            let data;
+            try {
+                data = JSON.parse(jsonText);
+                if (!Array.isArray(data)) data = [data];
+            } catch (error) {
+                showToast('Ungültiges JSON-Format', 'error');
+                return;
+            }
+
+            // Get import button and show spinner
+            const importButton = document.querySelector('#import-modal .modal-footer .btn-primary');
+            const originalContent = importButton.innerHTML;
+            importButton.innerHTML = '<div class="spinner"></div>';
+            importButton.disabled = true;
+
+            try {
+                const response = await fetch('/api/invoices/import', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    let message = `${result.imported} Rechnung(en) importiert`;
+                    if (result.skipped > 0) {
+                        message += `, ${result.skipped} Duplikat(e) übersprungen`;
+                    }
+                    showToast(message, 'success');
+                    closeImportModal();
+                    loadInvoices();
+                    loadStores();
+                    loadStats();
+                } else {
+                    showToast('Fehler beim Import', 'error');
+                }
+            } catch (error) {
+                showToast('Fehler beim Import', 'error');
+            } finally {
+                // Restore button state
+                importButton.innerHTML = originalContent;
+                importButton.disabled = false;
+            }
+        }
+
+        // Month Navigation Functions
+        function setCurrentMonth() {
+            updateMonthDisplay();
+            setDateFiltersForMonth(currentMonth);
+        }
+
+        function navigateToPreviousMonth() {
+            currentMonth.setMonth(currentMonth.getMonth() - 1);
+            updateMonthDisplay();
+            setDateFiltersForMonth(currentMonth);
+            loadInvoices();
+        }
+
+        function navigateToNextMonth() {
+            currentMonth.setMonth(currentMonth.getMonth() + 1);
+            updateMonthDisplay();
+            setDateFiltersForMonth(currentMonth);
+            loadInvoices();
+        }
+
+        function resetToCurrentMonth() {
+            currentMonth = new Date();
+            setCurrentMonth();
+            loadInvoices();
+        }
+
+        function updateMonthDisplay() {
+            const monthNames = [
+                'Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
+                'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'
+            ];
+            const monthName = monthNames[currentMonth.getMonth()];
+            const year = currentMonth.getFullYear();
+            monthDisplay.textContent = `${monthName} ${year}`;
+        }
+
+        function setDateFiltersForMonth(date) {
+            const year = date.getFullYear();
+            const month = date.getMonth();
+
+            // First day of the month
+            const firstDay = new Date(year, month, 1);
+            const firstDayStr = firstDay.toISOString().split('T')[0];
+
+            // Last day of the month
+            const lastDay = new Date(year, month + 1, 0);
+            const lastDayStr = lastDay.toISOString().split('T')[0];
+
+            dateFrom.value = firstDayStr;
+            dateTo.value = lastDayStr;
+        }
+
+        // Utility Functions
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `
+                <span>${type === 'success' ? '✓' : '✕'}</span>
+                <span>${message}</span>
+            `;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+    </script>
+</body>
+</html>
