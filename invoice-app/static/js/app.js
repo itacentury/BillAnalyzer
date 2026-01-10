@@ -3,6 +3,7 @@ let invoices = [];
 let currentDate = new Date(); // Current date for navigation reference
 let editingInvoiceId = null; // Track if we're editing an invoice
 let filterMode = "month"; // 'week', 'month', 'year', 'all', 'custom'
+let selectedInvoices = new Set(); // Track selected invoice IDs for bulk operations
 
 // DOM Elements
 const invoiceList = document.getElementById("invoice-list");
@@ -120,6 +121,14 @@ async function loadStores() {
 
 // Render Functions
 function renderInvoices() {
+  // Clear selection for invoices that are no longer in the list
+  const currentIds = new Set(invoices.map((inv) => inv.id));
+  selectedInvoices.forEach((id) => {
+    if (!currentIds.has(id)) {
+      selectedInvoices.delete(id);
+    }
+  });
+
   if (invoices.length === 0) {
     invoiceList.innerHTML = `
             <div class="empty-state">
@@ -132,8 +141,18 @@ function renderInvoices() {
     invoiceList.innerHTML = invoices
       .map(
         (invoice) => `
-            <div class="invoice-item" data-id="${invoice.id}">
+            <div class="invoice-item ${
+              selectedInvoices.has(invoice.id) ? "selected" : ""
+            }" data-id="${invoice.id}">
                 <div class="invoice-header" onclick="toggleInvoice(this)">
+                    <label class="invoice-checkbox" onclick="event.stopPropagation()">
+                        <input type="checkbox" ${
+                          selectedInvoices.has(invoice.id) ? "checked" : ""
+                        } onchange="toggleInvoiceSelection(${
+          invoice.id
+        }, this.checked)">
+                        <span class="checkbox-mark"></span>
+                    </label>
                     <div class="invoice-main">
                         <span class="invoice-date">${formatDate(
                           invoice.date
@@ -210,6 +229,8 @@ function renderInvoices() {
     invoices.length
   } Rechnung${invoices.length !== 1 ? "en" : ""}`;
   document.getElementById("results-total").textContent = totalSum.toFixed(2);
+
+  updateBulkActionToolbar();
 }
 
 function toggleInvoice(element) {
@@ -791,6 +812,135 @@ function escapeHtml(text) {
   const div = document.createElement("div");
   div.textContent = text;
   return div.innerHTML;
+}
+
+// Bulk Selection Functions
+function toggleInvoiceSelection(invoiceId, isSelected) {
+  if (isSelected) {
+    selectedInvoices.add(invoiceId);
+  } else {
+    selectedInvoices.delete(invoiceId);
+  }
+
+  // Update visual state of the invoice item
+  const invoiceItem = document.querySelector(
+    `.invoice-item[data-id="${invoiceId}"]`
+  );
+  if (invoiceItem) {
+    invoiceItem.classList.toggle("selected", isSelected);
+  }
+
+  updateBulkActionToolbar();
+}
+
+function toggleSelectAll(isSelected) {
+  if (isSelected) {
+    invoices.forEach((invoice) => selectedInvoices.add(invoice.id));
+  } else {
+    selectedInvoices.clear();
+  }
+  renderInvoices();
+}
+
+function selectAllInvoices() {
+  invoices.forEach((invoice) => selectedInvoices.add(invoice.id));
+  renderInvoices();
+}
+
+function deselectAllInvoices() {
+  selectedInvoices.clear();
+  renderInvoices();
+}
+
+function updateBulkActionToolbar() {
+  const toolbar = document.getElementById("bulk-action-toolbar");
+  const count = selectedInvoices.size;
+
+  if (count > 0) {
+    toolbar.classList.add("visible");
+    document.getElementById("selected-count").textContent = count;
+  } else {
+    toolbar.classList.remove("visible");
+  }
+
+  // Update "select all" checkbox state
+  const selectAllCheckbox = document.querySelector(
+    "#select-all-checkbox input"
+  );
+  if (selectAllCheckbox && invoices.length > 0) {
+    const allSelected = invoices.every((inv) => selectedInvoices.has(inv.id));
+    const someSelected = invoices.some((inv) => selectedInvoices.has(inv.id));
+
+    selectAllCheckbox.checked = allSelected;
+    selectAllCheckbox.indeterminate = someSelected && !allSelected;
+  } else if (selectAllCheckbox) {
+    selectAllCheckbox.checked = false;
+    selectAllCheckbox.indeterminate = false;
+  }
+}
+
+// Bulk Edit Modal Functions
+function openBulkEditModal() {
+  if (selectedInvoices.size === 0) return;
+
+  // Get the store names of selected invoices
+  const selectedStores = new Set();
+  invoices.forEach((invoice) => {
+    if (selectedInvoices.has(invoice.id)) {
+      selectedStores.add(invoice.store);
+    }
+  });
+
+  // Pre-fill with the common store name if all selected have the same store
+  const storeInput = document.getElementById("bulk-edit-store");
+  if (selectedStores.size === 1) {
+    storeInput.value = [...selectedStores][0];
+  } else {
+    storeInput.value = "";
+    storeInput.placeholder = `${selectedStores.size} verschiedene Geschäfte`;
+  }
+
+  document.getElementById("bulk-edit-count").textContent =
+    selectedInvoices.size;
+  document.getElementById("bulk-edit-modal").classList.add("active");
+  storeInput.focus();
+}
+
+function closeBulkEditModal() {
+  document.getElementById("bulk-edit-modal").classList.remove("active");
+  document.getElementById("bulk-edit-store").value = "";
+}
+
+async function saveBulkEdit() {
+  const newStore = document.getElementById("bulk-edit-store").value.trim();
+
+  if (!newStore) {
+    showToast("Bitte einen Geschäftsnamen eingeben", "error");
+    return;
+  }
+
+  const ids = [...selectedInvoices];
+
+  try {
+    const response = await fetch("/api/invoices/bulk-update", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids, store: newStore }),
+    });
+
+    const result = await response.json();
+    if (result.success) {
+      showToast(`${result.updated} Rechnung(en) aktualisiert`, "success");
+      closeBulkEditModal();
+      selectedInvoices.clear();
+      loadInvoices();
+      loadStores();
+    } else {
+      showToast("Fehler beim Aktualisieren", "error");
+    }
+  } catch (error) {
+    showToast("Fehler beim Aktualisieren", "error");
+  }
 }
 
 function showToast(message, type = "success") {

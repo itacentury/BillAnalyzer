@@ -354,6 +354,12 @@ body {
   align-items: center;
 }
 
+.section-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
 .section-title {
   font-size: 0.875rem;
   font-weight: 500;
@@ -403,6 +409,7 @@ body {
   display: flex;
   align-items: center;
   gap: 1.25rem;
+  flex: 1;
 }
 
 .invoice-date {
@@ -840,4 +847,119 @@ body {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none !important;
+}
+
+/* Invoice Checkbox */
+.invoice-checkbox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  margin-right: 1rem;
+  cursor: pointer;
+  position: relative;
+}
+
+.invoice-checkbox input {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  height: 0;
+  width: 0;
+}
+
+.checkbox-mark {
+  width: 18px;
+  height: 18px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  transition: all var(--transition);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.invoice-checkbox:hover .checkbox-mark {
+  border-color: var(--accent);
+}
+
+.invoice-checkbox input:checked + .checkbox-mark {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.invoice-checkbox input:checked + .checkbox-mark::after {
+  content: "";
+  width: 5px;
+  height: 9px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+  margin-bottom: 2px;
+}
+
+.invoice-checkbox input:indeterminate + .checkbox-mark {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.invoice-checkbox input:indeterminate + .checkbox-mark::after {
+  content: "";
+  width: 8px;
+  height: 2px;
+  background: white;
+  border-radius: 1px;
+}
+
+/* Selected Invoice Item */
+.invoice-item.selected {
+  background: var(--accent-subtle);
+}
+
+.invoice-item.selected:hover {
+  background: rgba(59, 130, 246, 0.15);
+}
+
+/* Bulk Action Toolbar */
+.bulk-action-toolbar {
+  position: fixed;
+  bottom: -80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 0.75rem 1.5rem;
+  box-shadow: var(--shadow-lg);
+  z-index: 500;
+  transition: bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.bulk-action-toolbar.visible {
+  bottom: 2rem;
+}
+
+.bulk-action-content {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.bulk-action-count {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.bulk-action-count span {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.bulk-action-buttons {
+  display: flex;
+  gap: 0.5rem;
 }

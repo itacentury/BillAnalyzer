@@ -246,6 +246,34 @@ def delete_invoice(invoice_id):
     return jsonify({"success": True})
 
 
+@app.route("/api/invoices/bulk-update", methods=["PUT"])
+def bulk_update_invoices():
+    data = request.json
+    invoice_ids = data.get("ids", [])
+    new_store = data.get("store")
+
+    if not invoice_ids or not new_store:
+        return jsonify({"success": False, "error": "Missing ids or store"}), 400
+
+    conn = get_db()
+    cursor = conn.cursor()
+
+    try:
+        placeholders = ",".join("?" * len(invoice_ids))
+        cursor.execute(
+            f"UPDATE invoices SET store = ? WHERE id IN ({placeholders})",
+            [new_store] + invoice_ids,
+        )
+        updated_count = cursor.rowcount
+        conn.commit()
+        return jsonify({"success": True, "updated": updated_count})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        conn.close()
+
+
 @app.route("/api/stats", methods=["GET"])
 def get_stats():
     conn = get_db()
