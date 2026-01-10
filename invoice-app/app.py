@@ -274,6 +274,39 @@ def bulk_update_invoices():
         conn.close()
 
 
+@app.route("/api/invoices/bulk-delete", methods=["POST"])
+def bulk_delete_invoices():
+    data = request.json
+    invoice_ids = data.get("ids", [])
+
+    if not invoice_ids:
+        return jsonify({"success": False, "error": "Missing ids"}), 400
+
+    conn = get_db()
+    cursor = conn.cursor()
+
+    try:
+        placeholders = ",".join("?" * len(invoice_ids))
+        # Delete items first (foreign key constraint)
+        cursor.execute(
+            f"DELETE FROM invoice_items WHERE invoice_id IN ({placeholders})",
+            invoice_ids,
+        )
+        # Delete invoices
+        cursor.execute(
+            f"DELETE FROM invoices WHERE id IN ({placeholders})",
+            invoice_ids,
+        )
+        deleted_count = cursor.rowcount
+        conn.commit()
+        return jsonify({"success": True, "deleted": deleted_count})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        conn.close()
+
+
 @app.route("/api/stats", methods=["GET"])
 def get_stats():
     conn = get_db()

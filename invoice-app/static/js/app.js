@@ -943,6 +943,41 @@ async function saveBulkEdit() {
   }
 }
 
+async function bulkDeleteInvoices() {
+  const count = selectedInvoices.size;
+  if (count === 0) return;
+
+  const confirmed = confirm(
+    `Möchtest du wirklich ${count} Rechnung${
+      count !== 1 ? "en" : ""
+    } unwiderruflich löschen?`
+  );
+
+  if (!confirmed) return;
+
+  const ids = [...selectedInvoices];
+
+  try {
+    const response = await fetch("/api/invoices/bulk-delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids }),
+    });
+
+    const result = await response.json();
+    if (result.success) {
+      showToast(`${result.deleted} Rechnung(en) gelöscht`, "success");
+      selectedInvoices.clear();
+      loadInvoices();
+      loadStores();
+    } else {
+      showToast("Fehler beim Löschen", "error");
+    }
+  } catch (error) {
+    showToast("Fehler beim Löschen", "error");
+  }
+}
+
 function showToast(message, type = "success") {
   const container = document.getElementById("toast-container");
   const toast = document.createElement("div");
