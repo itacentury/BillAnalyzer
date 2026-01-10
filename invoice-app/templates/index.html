@@ -1,226 +1,388 @@
 <!DOCTYPE html>
 <html lang="de">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Rechnungsverwaltung</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-</head>
-<body>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/style.css') }}"
+    />
+  </head>
+  <body>
     <header class="header">
-        <div class="header-content">
-            <div class="logo">
-                <div class="logo-icon">📄</div>
-                <span>Rechnungen</span>
-            </div>
-            <div class="header-actions">
-                <button class="btn btn-secondary" onclick="openImportModal()">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                        <polyline points="17 8 12 3 7 8"/>
-                        <line x1="12" y1="3" x2="12" y2="15"/>
-                    </svg>
-                    JSON Import
-                </button>
-                <button class="btn btn-primary" onclick="openAddModal()">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="12" y1="5" x2="12" y2="19"/>
-                        <line x1="5" y1="12" x2="19" y2="12"/>
-                    </svg>
-                    Neue Rechnung
-                </button>
-            </div>
+      <div class="header-content">
+        <div class="logo">
+          <div class="logo-icon">📄</div>
+          <span>Rechnungen</span>
         </div>
+        <div class="header-actions">
+          <button class="btn btn-secondary" onclick="openImportModal()">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="17 8 12 3 7 8" />
+              <line x1="12" y1="3" x2="12" y2="15" />
+            </svg>
+            JSON Import
+          </button>
+          <button class="btn btn-primary" onclick="openAddModal()">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            Neue Rechnung
+          </button>
+        </div>
+      </div>
     </header>
 
     <main class="container">
-        <!-- Filters -->
-        <div class="filters">
-            <!-- Quick Filters -->
-            <div class="quick-filters">
-                <button class="quick-filter-btn" data-filter="week" onclick="applyFilter('week'); loadInvoices();">Woche</button>
-                <button class="quick-filter-btn active" data-filter="month" onclick="applyFilter('month'); loadInvoices();">Monat</button>
-                <button class="quick-filter-btn" data-filter="year" onclick="applyFilter('year'); loadInvoices();">Jahr</button>
-                <button class="quick-filter-btn" data-filter="all" onclick="applyFilter('all'); loadInvoices();">Alle</button>
-            </div>
-
-            <!-- Period Navigator -->
-            <div class="month-navigator">
-                <button class="month-nav-btn" onclick="navigateToPrevious()">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="15 18 9 12 15 6"/>
-                    </svg>
-                </button>
-                <div class="month-display" id="month-display">Januar 2026</div>
-                <button class="month-nav-btn" onclick="navigateToNext()">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="9 18 15 12 9 6"/>
-                    </svg>
-                </button>
-                <button class="month-reset-btn" onclick="resetToCurrent()">Aktueller Monat</button>
-            </div>
-
-            <div class="filters-grid">
-                <div class="form-group">
-                    <label class="form-label">Suche</label>
-                    <input type="text" class="form-input" id="search" placeholder="Geschäft oder Artikel suchen...">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Geschäft</label>
-                    <select class="form-select" id="store-filter">
-                        <option value="">Alle Geschäfte</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Von</label>
-                    <input type="date" class="form-input" id="date-from">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Bis</label>
-                    <input type="date" class="form-input" id="date-to">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Sortieren</label>
-                    <select class="form-select" id="sort-by">
-                        <option value="date">Datum</option>
-                        <option value="store">Geschäft</option>
-                        <option value="total">Betrag</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Reihenfolge</label>
-                    <select class="form-select" id="sort-order">
-                        <option value="desc">Absteigend</option>
-                        <option value="asc">Aufsteigend</option>
-                    </select>
-                </div>
-            </div>
+      <!-- Filters -->
+      <div class="filters">
+        <!-- Quick Filters -->
+        <div class="quick-filters">
+          <button
+            class="quick-filter-btn"
+            data-filter="week"
+            onclick="applyFilter('week'); loadInvoices();"
+          >
+            Woche
+          </button>
+          <button
+            class="quick-filter-btn active"
+            data-filter="month"
+            onclick="applyFilter('month'); loadInvoices();"
+          >
+            Monat
+          </button>
+          <button
+            class="quick-filter-btn"
+            data-filter="year"
+            onclick="applyFilter('year'); loadInvoices();"
+          >
+            Jahr
+          </button>
+          <button
+            class="quick-filter-btn"
+            data-filter="all"
+            onclick="applyFilter('all'); loadInvoices();"
+          >
+            Alle
+          </button>
         </div>
 
-        <!-- Invoices List -->
-        <div class="invoices-section">
-            <div class="section-header">
-                <span class="section-title" id="results-count">0 Rechnungen</span>
-                <span class="section-total" id="results-total">0.00</span>
-            </div>
-            <div class="invoice-list" id="invoice-list">
-                <div class="empty-state">
-                    <div class="empty-icon">📋</div>
-                    <div class="empty-title">Keine Rechnungen vorhanden</div>
-                    <div class="empty-text">Füge eine neue Rechnung hinzu oder importiere vorhandene Daten.</div>
-                </div>
-            </div>
+        <!-- Period Navigator -->
+        <div class="month-navigator">
+          <button class="month-nav-btn" onclick="navigateToPrevious()">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+          </button>
+          <div class="month-display" id="month-display">Januar 2026</div>
+          <button class="month-nav-btn" onclick="navigateToNext()">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </button>
+          <button class="month-reset-btn" onclick="resetToCurrent()">
+            Aktueller Monat
+          </button>
         </div>
+
+        <div class="filters-grid">
+          <div class="form-group">
+            <label class="form-label">Suche</label>
+            <input
+              type="text"
+              class="form-input"
+              id="search"
+              placeholder="Geschäft oder Artikel suchen..."
+            />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Geschäft</label>
+            <select class="form-select" id="store-filter">
+              <option value="">Alle Geschäfte</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Von</label>
+            <input type="date" class="form-input" id="date-from" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Bis</label>
+            <input type="date" class="form-input" id="date-to" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Sortieren</label>
+            <select class="form-select" id="sort-by">
+              <option value="date">Datum</option>
+              <option value="store">Geschäft</option>
+              <option value="total">Betrag</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Reihenfolge</label>
+            <select class="form-select" id="sort-order">
+              <option value="desc">Absteigend</option>
+              <option value="asc">Aufsteigend</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Invoices List -->
+      <div class="invoices-section">
+        <div class="section-header">
+          <span class="section-title" id="results-count">0 Rechnungen</span>
+          <span class="section-total" id="results-total">0.00</span>
+        </div>
+        <div class="invoice-list" id="invoice-list">
+          <div class="empty-state">
+            <div class="empty-icon">📋</div>
+            <div class="empty-title">Keine Rechnungen vorhanden</div>
+            <div class="empty-text">
+              Füge eine neue Rechnung hinzu oder importiere vorhandene Daten.
+            </div>
+          </div>
+        </div>
+      </div>
     </main>
 
     <!-- Add Invoice Modal -->
     <div class="modal-overlay" id="add-modal">
-        <div class="modal">
-            <div class="modal-header">
-                <h3 class="modal-title">Neue Rechnung</h3>
-                <button class="modal-close" onclick="closeAddModal()">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="18" y1="6" x2="6" y2="18"/>
-                        <line x1="6" y1="6" x2="18" y2="18"/>
-                    </svg>
-                </button>
-            </div>
-            <div class="modal-body">
-                <form id="add-form">
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">Datum</label>
-                            <input type="date" class="form-input" id="invoice-date" required>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Geschäft</label>
-                            <input type="text" class="form-input" id="invoice-store" placeholder="z.B. Amazon" required>
-                        </div>
-                    </div>
-
-                    <div class="items-input-section">
-                        <div class="items-header">
-                            <h4>Artikel</h4>
-                            <button type="button" class="btn btn-secondary btn-sm" onclick="addItemRow()">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <line x1="12" y1="5" x2="12" y2="19"/>
-                                    <line x1="5" y1="12" x2="19" y2="12"/>
-                                </svg>
-                                Artikel hinzufügen
-                            </button>
-                        </div>
-                        <div id="items-container">
-                            <div class="item-input-row">
-                                <div class="form-group">
-                                    <label class="form-label">Artikelname</label>
-                                    <input type="text" class="form-input item-name" placeholder="Produktname">
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">Preis (€)</label>
-                                    <input type="number" step="0.01" class="form-input item-price" placeholder="0.00">
-                                </div>
-                                <button type="button" class="btn btn-danger btn-sm" onclick="removeItemRow(this)" style="margin-bottom: 0.375rem;">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <line x1="18" y1="6" x2="6" y2="18"/>
-                                        <line x1="6" y1="6" x2="18" y2="18"/>
-                                    </svg>
-                                </button>
-                            </div>
-                        </div>
-                        <div class="calculated-total">
-                            <span class="calculated-total-label">Berechnete Summe</span>
-                            <span class="calculated-total-value" id="calculated-total">€0.00</span>
-                        </div>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeAddModal()">Abbrechen</button>
-                <button class="btn btn-primary" onclick="saveInvoice()">Speichern</button>
-            </div>
+      <div class="modal">
+        <div class="modal-header">
+          <h3 class="modal-title">Neue Rechnung</h3>
+          <button class="modal-close" onclick="closeAddModal()">
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
         </div>
+        <div class="modal-body">
+          <form id="add-form">
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Datum</label>
+                <input
+                  type="date"
+                  class="form-input"
+                  id="invoice-date"
+                  required
+                />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Geschäft</label>
+                <input
+                  type="text"
+                  class="form-input"
+                  id="invoice-store"
+                  placeholder="z.B. Amazon"
+                  required
+                />
+              </div>
+            </div>
+
+            <div class="items-input-section">
+              <div class="items-header">
+                <h4>Artikel</h4>
+                <button
+                  type="button"
+                  class="btn btn-secondary btn-sm"
+                  onclick="addItemRow()"
+                >
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                  Artikel hinzufügen
+                </button>
+              </div>
+              <div id="items-container">
+                <div class="item-input-row">
+                  <div class="form-group">
+                    <label class="form-label">Artikelname</label>
+                    <input
+                      type="text"
+                      class="form-input item-name"
+                      placeholder="Produktname"
+                    />
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Preis (€)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      class="form-input item-price"
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    class="btn btn-danger btn-sm"
+                    onclick="removeItemRow(this)"
+                    style="margin-bottom: 0.375rem"
+                  >
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                    >
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <div class="calculated-total">
+                <span class="calculated-total-label">Berechnete Summe</span>
+                <span class="calculated-total-value" id="calculated-total"
+                  >€0.00</span
+                >
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" onclick="closeAddModal()">
+            Abbrechen
+          </button>
+          <button class="btn btn-primary" onclick="saveInvoice()">
+            Speichern
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- Import Modal -->
     <div class="modal-overlay" id="import-modal">
-        <div class="modal">
-            <div class="modal-header">
-                <h3 class="modal-title">JSON Import</h3>
-                <button class="modal-close" onclick="closeImportModal()">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="18" y1="6" x2="6" y2="18"/>
-                        <line x1="6" y1="6" x2="18" y2="18"/>
-                    </svg>
-                </button>
-            </div>
-            <div class="modal-body">
-                <div class="dropzone" id="dropzone">
-                    <div class="dropzone-icon">📁</div>
-                    <div class="dropzone-text">JSON-Dateien hierher ziehen oder klicken zum Auswählen<br><small style="color: var(--text-muted);">Mehrere Dateien möglich</small></div>
-                    <input type="file" id="file-input" accept=".json" multiple style="display: none;">
-                </div>
-                <div id="selected-files" style="display: none; margin-bottom: 1rem;"></div>
-                <div class="form-group">
-                    <label class="form-label">Oder JSON direkt einfügen</label>
-                    <textarea class="form-input json-textarea" id="json-input" placeholder='[{"date": "2024-01-01", "store": "...", "total": "...", "items": [...]}]'></textarea>
-                </div>
-                <div style="margin-top: 0.75rem; padding: 0.75rem; background: var(--bg-tertiary); border-radius: var(--radius-sm); font-size: 0.8125rem; color: var(--text-secondary);">
-                    💡 Duplikate werden automatisch erkannt und übersprungen (gleiche Kombination aus Datum, Geschäft und Betrag).
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeImportModal()">Abbrechen</button>
-                <button class="btn btn-primary" onclick="importJson()">Importieren</button>
-            </div>
+      <div class="modal">
+        <div class="modal-header">
+          <h3 class="modal-title">JSON Import</h3>
+          <button class="modal-close" onclick="closeImportModal()">
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
         </div>
+        <div class="modal-body">
+          <div class="dropzone" id="dropzone">
+            <div class="dropzone-icon">📁</div>
+            <div class="dropzone-text">
+              JSON-Dateien hierher ziehen oder klicken zum Auswählen<br /><small
+                style="color: var(--text-muted)"
+                >Mehrere Dateien möglich</small
+              >
+            </div>
+            <input
+              type="file"
+              id="file-input"
+              accept=".json"
+              multiple
+              style="display: none"
+            />
+          </div>
+          <div
+            id="selected-files"
+            style="display: none; margin-bottom: 1rem"
+          ></div>
+          <div class="form-group">
+            <label class="form-label">Oder JSON direkt einfügen</label>
+            <textarea
+              class="form-input json-textarea"
+              id="json-input"
+              placeholder='[{"date": "2024-01-01", "store": "...", "total": "...", "items": [...]}]'
+            ></textarea>
+          </div>
+          <div
+            style="
+              margin-top: 0.75rem;
+              padding: 0.75rem;
+              background: var(--bg-tertiary);
+              border-radius: var(--radius-sm);
+              font-size: 0.8125rem;
+              color: var(--text-secondary);
+            "
+          >
+            💡 Duplikate werden automatisch erkannt und übersprungen (gleiche
+            Kombination aus Datum, Geschäft und Betrag).
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" onclick="closeImportModal()">
+            Abbrechen
+          </button>
+          <button class="btn btn-primary" onclick="importJson()">
+            Importieren
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- Toast Container -->
     <div class="toast-container" id="toast-container"></div>
 
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
-</body>
+  </body>
 </html>
