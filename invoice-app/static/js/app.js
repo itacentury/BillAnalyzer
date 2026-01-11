@@ -89,7 +89,7 @@ function debounce(func, wait) {
 // API Functions
 async function loadInvoices() {
   const params = new URLSearchParams({
-    search: searchInput.value,
+    search: getSearchValue(),
     store: storeFilter.value,
     date_from: dateFrom.value,
     date_to: dateTo.value,
@@ -989,3 +989,57 @@ function showToast(message, type = "success") {
   container.appendChild(toast);
   setTimeout(() => toast.remove(), 3000);
 }
+
+// Mobile responsive functions
+
+/**
+ * Toggle the visibility of advanced filters on mobile.
+ */
+function toggleAdvancedFilters() {
+  const filtersGrid = document.getElementById("filters-grid");
+  const toggleBtn = document.getElementById("filters-toggle");
+
+  filtersGrid.classList.toggle("visible");
+  toggleBtn.classList.toggle("active");
+}
+
+/**
+ * Sync search input values between mobile and desktop search fields.
+ */
+function syncSearchInputs() {
+  const mobileSearch = document.getElementById("search");
+  const desktopSearch = document.getElementById("search-desktop");
+
+  if (!mobileSearch || !desktopSearch) return;
+
+  mobileSearch.addEventListener("input", () => {
+    desktopSearch.value = mobileSearch.value;
+  });
+
+  desktopSearch.addEventListener(
+    "input",
+    debounce(() => {
+      mobileSearch.value = desktopSearch.value;
+      loadInvoices();
+    }, 300)
+  );
+}
+
+/**
+ * Get the current search value from either mobile or desktop input.
+ */
+function getSearchValue() {
+  const mobileSearch = document.getElementById("search");
+  const desktopSearch = document.getElementById("search-desktop");
+
+  // Return whichever has a value, prioritizing the visible one based on screen size
+  if (window.innerWidth <= 640) {
+    return mobileSearch?.value || "";
+  }
+  return desktopSearch?.value || mobileSearch?.value || "";
+}
+
+// Initialize search sync on DOM ready
+document.addEventListener("DOMContentLoaded", () => {
+  syncSearchInputs();
+});

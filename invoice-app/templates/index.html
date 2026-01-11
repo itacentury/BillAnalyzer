@@ -23,7 +23,11 @@
           <span>Rechnungen</span>
         </div>
         <div class="header-actions">
-          <button class="btn btn-secondary" onclick="openImportModal()">
+          <button
+            class="btn btn-secondary"
+            onclick="openImportModal()"
+            title="JSON Import"
+          >
             <svg
               width="16"
               height="16"
@@ -36,9 +40,13 @@
               <polyline points="17 8 12 3 7 8" />
               <line x1="12" y1="3" x2="12" y2="15" />
             </svg>
-            JSON Import
+            <span class="btn-text">Import</span>
           </button>
-          <button class="btn btn-primary" onclick="openAddModal()">
+          <button
+            class="btn btn-primary"
+            onclick="openAddModal()"
+            title="Neue Rechnung"
+          >
             <svg
               width="16"
               height="16"
@@ -50,7 +58,7 @@
               <line x1="12" y1="5" x2="12" y2="19" />
               <line x1="5" y1="12" x2="19" y2="12" />
             </svg>
-            Neue Rechnung
+            <span class="btn-text">Neu</span>
           </button>
         </div>
       </div>
@@ -123,13 +131,56 @@
           </button>
         </div>
 
-        <div class="filters-grid">
+        <!-- Search (always visible) -->
+        <div class="filter-search-mobile">
           <div class="form-group">
             <label class="form-label">Suche</label>
             <input
               type="text"
               class="form-input"
               id="search"
+              placeholder="Geschäft oder Artikel suchen..."
+            />
+          </div>
+        </div>
+
+        <!-- Advanced Filters Toggle (mobile only) -->
+        <button
+          class="filters-advanced-toggle"
+          id="filters-toggle"
+          onclick="toggleAdvancedFilters()"
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+          </svg>
+          <span>Erweiterte Filter</span>
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </button>
+
+        <!-- Advanced Filters Grid -->
+        <div class="filters-grid" id="filters-grid">
+          <div class="form-group filter-desktop-search">
+            <label class="form-label">Suche</label>
+            <input
+              type="text"
+              class="form-input"
+              id="search-desktop"
               placeholder="Geschäft oder Artikel suchen..."
             />
           </div>
