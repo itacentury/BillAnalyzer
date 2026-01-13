@@ -76,10 +76,10 @@ def validate_bill_total(
     # Calculate sum of all item prices
     calculated_sum: float = 0.0
     for item in items:
-        price: float | int | str | None = item.get("price")
+        price: float | int | str | None = item.get("item_price")
         if price is None:
             raise KeyError(
-                f"Item '{item.get('name', 'Unknown')}' is missing 'price' key"
+                f"Item '{item.get('item_name', 'Unknown')}' is missing 'item_price' key"
             )
 
         calculated_sum += evaluate_price_value(price)

@@ -7,11 +7,11 @@ inserts them into an ODS spreadsheet with proper formatting preservation.
 
 import json
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 import requests
 
-from bill_analyzer.bill_inserter import check_duplicate_bill, process_multiple_bills
 from bill_analyzer.claude_api import analyze_bill_pdf
 from bill_analyzer.config import PAPERLESS_TOKEN, PAPERLESS_URL
 from bill_analyzer.paperless_api import upload_to_paperless
@@ -131,60 +131,43 @@ def validate_and_print_bill(bill_data: dict[str, Any]) -> bool:
         return False
 
 
+def save_bills_to_json(data: list[dict[str, Any]]) -> None:
+    """Saves extracted items to a json file."""
+    filename: str = f"bills-{datetime.now().date()}.json"
+    filepath: Path = Path().home() / "Downloads" / filename
+    with open(filepath, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2, sort_keys=False)
+
+
 def main() -> None:
     """Main application entry point."""
     print("=== AI BILL ANALYZER ===\n")
 
-    # Select PDF files
     pdfs: tuple[str, ...] = select_pdf_files()
     if not pdfs:
         print("No files selected.")
         return
 
-    # Analyze all PDFs and collect bill data
     bills_data: list[dict[str, Any]] = []
     for pdf in pdfs:
         print(f"\nAnalyzing: {pdf}")
 
-        # Analyze PDF with Claude
         response: str = analyze_bill_pdf(pdf)
 
-        # Parse JSON from response
         bill_data: dict[str, Any] = parse_json_from_markdown(response)
         print(json.dumps(bill_data, indent=2, ensure_ascii=False))
 
-        # Validate that sum of item prices equals total
         is_valid = validate_and_print_bill(bill_data)
 
-        # Only process bill further if validation passed
         if is_valid:
-            # Check for duplicates in ODS before uploading to Paperless
-            print("\n🔍 Checking for duplicates...")
-            is_duplicate = check_duplicate_bill(bill_data)
-
-            if is_duplicate:
-                print(
-                    f"⚠ Skipping duplicate bill: {bill_data['store']} on {bill_data['date']} "
-                    f"with total {bill_data['total']}€"
-                )
-                print("  ⚠ Not uploading to Paperless or inserting into ODS")
-            else:
-                print("✓ No duplicate found")
-                # Upload to Paperless-ngx if enabled and not a duplicate
-                upload_bill_to_paperless(pdf, bill_data)
-                # Add to list for ODS insertion
-                bills_data.append(bill_data)
+            upload_bill_to_paperless(pdf, bill_data)
+            bills_data.append(bill_data)
         else:
             print(
                 "  ⚠ Skipping Paperless upload and ODS insertion due to validation failure"
             )
 
-    # Insert all bills into ODS in a single batch operation
-    if bills_data:
-        print("\n" + "=" * 60)
-        print(f"Inserting {len(bills_data)} bill(s) into ODS file...")
-        print("=" * 60)
-        process_multiple_bills(bills_data)
+    save_bills_to_json(bills_data)
 
 
 if __name__ == "__main__":
