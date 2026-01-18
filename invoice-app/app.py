@@ -63,12 +63,18 @@ def init_db() -> None:
     cursor.execute("PRAGMA table_info(invoices)")
     columns: list[str] = [column[1] for column in cursor.fetchall()]
     if "deleted_at" not in columns:
-        cursor.execute(
-            "ALTER TABLE invoices ADD COLUMN deleted_at TIMESTAMP DEFAULT NULL"
-        )
+        try:
+            cursor.execute(
+                "ALTER TABLE invoices ADD COLUMN deleted_at TIMESTAMP DEFAULT NULL"
+            )
+        except sqlite3.OperationalError:
+            pass  # Column already added by another worker
 
     if "category" not in columns:
-        cursor.execute("ALTER TABLE invoices ADD COLUMN category TEXT DEFAULT NULL")
+        try:
+            cursor.execute("ALTER TABLE invoices ADD COLUMN category TEXT DEFAULT NULL")
+        except sqlite3.OperationalError:
+            pass  # Column already added by another worker
 
     conn.commit()
     conn.close()
