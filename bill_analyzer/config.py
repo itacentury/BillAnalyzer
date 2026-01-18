@@ -3,22 +3,12 @@ Configuration constants for the AI Bill Analyzer
 """
 
 import os
-from pathlib import Path
 from typing import Final
 
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
 load_dotenv(".env.bill_analyzer")
-
-# ==============================================================================
-# FILE PATHS
-# ==============================================================================
-
-ODS_FILE: Final[str] = str(
-    Path.home() / "SeaDrive" / "My Libraries" / "Dokumente" / "personal_expenses.ods"
-)
-# ODS_FILE: Final[str] = str(Path.home() / "Downloads" / "personal_expenses.ods")
 
 # ==============================================================================
 # CLAUDE API CONFIGURATION
@@ -38,17 +28,6 @@ PAPERLESS_URL: Final[str | None] = os.environ.get("PAPERLESS_URL")
 
 # Paperless-ngx API token (from environment)
 PAPERLESS_TOKEN: Final[str | None] = os.environ.get("PAPERLESS_API_TOKEN")
-
-
-# ==============================================================================
-# ODS COLUMN INDICES
-# ==============================================================================
-
-COL_DATE: Final[int] = 1
-COL_STORE: Final[int] = 2
-COL_ITEM: Final[int] = 3
-COL_PRICE: Final[int] = 4
-COL_TOTAL: Final[int] = 5
 
 
 # ==============================================================================
@@ -73,31 +52,3 @@ Gebe mir die Daten im JSON-Format zurück, mit folgenden Namen und Datentypen:
 'store' (str), 'date' (str), 'items' (list[dict[str, str | float]]), 'total' (float).
 Die Keys für das 'items' dictionary sollen 'item_name' und 'item_price' heißen.
 Die Values von 'item_name' sind strings und die values von 'item_price' sind floats."""
-
-
-# ==============================================================================
-# ODS NAMESPACES
-# ==============================================================================
-
-CALCEXT_NS: Final[str] = (
-    "urn:org:documentfoundation:names:experimental:calc:xmlns:calcext:1.0"
-)
-
-
-# ==============================================================================
-# ODS ATTRIBUTE LISTS FOR CELL CLEARING
-# ==============================================================================
-
-OFFICE_ATTRS_TO_CLEAR: Final[list[str]] = [
-    "value",
-    "date-value",
-    "time-value",
-    "boolean-value",
-    "string-value",
-    "value-type",
-    "currency",
-]
-
-TABLE_ATTRS_TO_CLEAR: Final[list[str]] = ["formula"]
-
-CALCEXT_ATTRS_TO_CLEAR: Final[list[str]] = ["value-type"]

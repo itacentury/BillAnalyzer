@@ -1,4 +1,10 @@
-"""Module to extract bill items from ODS document."""
+"""
+Module to extract bill items from ODS document.
+
+This module was used once to migrate all previous bill data from
+ods/excel sheets into json format. This was then imported into
+the invoice-app sqlite database.
+"""
 
 import json
 from pathlib import Path
