@@ -289,8 +289,8 @@ function openAddModal() {
   document.querySelector("#add-modal .modal-title").textContent =
     "Neue Rechnung";
   document.getElementById("add-modal").classList.add("active");
-  document.getElementById("invoice-date").valueAsDate = new Date();
   resetAddForm();
+  document.getElementById("invoice-date").valueAsDate = new Date();
 }
 
 function closeAddModal() {
