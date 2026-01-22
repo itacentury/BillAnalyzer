@@ -6,6 +6,7 @@ bulk operations, statistics, and a web interface for visualization.
 
 import os
 import sqlite3
+from datetime import datetime, timedelta
 from typing import Any, Final
 
 from flask import Flask, Response, jsonify, render_template, request
@@ -460,8 +461,6 @@ def get_stats() -> Response:
     # Calculate previous period comparison
     comparison: dict[str, Any] = {"previous_total": 0, "change_percent": 0}
     if date_from and date_to:
-        from datetime import datetime, timedelta
-
         try:
             start = datetime.strptime(date_from, "%Y-%m-%d")
             end = datetime.strptime(date_to, "%Y-%m-%d")
