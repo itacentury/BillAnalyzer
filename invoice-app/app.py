@@ -399,28 +399,102 @@ def bulk_delete_invoices() -> ApiResponse:
 
 @app.route("/api/stats", methods=["GET"])
 def get_stats() -> Response:
-    """Return aggregate statistics about all active invoices."""
+    """Return aggregate statistics about invoices with optional date filtering."""
     conn: sqlite3.Connection = get_db()
     cursor: sqlite3.Cursor = conn.cursor()
 
-    # Only count non-deleted invoices
-    cursor.execute("SELECT COUNT(*) as count FROM invoices WHERE deleted_at IS NULL")
-    total_invoices: int = cursor.fetchone()["count"]
+    date_from: str = request.args.get("date_from", "")
+    date_to: str = request.args.get("date_to", "")
 
-    cursor.execute("SELECT SUM(total) as sum FROM invoices WHERE deleted_at IS NULL")
-    total_amount: int = cursor.fetchone()["sum"] or 0
+    # Build base query conditions
+    base_conditions: str = "deleted_at IS NULL"
+    params: list[str] = []
 
+    if date_from:
+        base_conditions += " AND date >= ?"
+        params.append(date_from)
+    if date_to:
+        base_conditions += " AND date <= ?"
+        params.append(date_to)
+
+    # Summary statistics
     cursor.execute(
-        "SELECT COUNT(DISTINCT store) as count FROM invoices WHERE deleted_at IS NULL"
+        f"SELECT COUNT(*) as count, SUM(total) as sum FROM invoices WHERE {base_conditions}",
+        params,
     )
-    unique_stores: int = cursor.fetchone()["count"]
+    row = cursor.fetchone()
+    total_invoices: int = row["count"]
+    total_amount: float = row["sum"] or 0
+
+    average_invoice: float = total_amount / total_invoices if total_invoices > 0 else 0
+
+    # Category breakdown
+    cursor.execute(
+        f"""SELECT COALESCE(category, 'Keine Kategorie') as category,
+                   SUM(total) as amount, COUNT(*) as count
+            FROM invoices WHERE {base_conditions}
+            GROUP BY category ORDER BY amount DESC""",
+        params,
+    )
+    by_category: list[dict[str, Any]] = [
+        {
+            "category": r["category"],
+            "amount": round(r["amount"], 2),
+            "count": r["count"],
+        }
+        for r in cursor.fetchall()
+    ]
+
+    # Store breakdown (top 10)
+    cursor.execute(
+        f"""SELECT store, SUM(total) as amount, COUNT(*) as count
+            FROM invoices WHERE {base_conditions}
+            GROUP BY store ORDER BY amount DESC LIMIT 10""",
+        params,
+    )
+    by_store: list[dict[str, Any]] = [
+        {"store": r["store"], "amount": round(r["amount"], 2), "count": r["count"]}
+        for r in cursor.fetchall()
+    ]
+
+    # Calculate previous period comparison
+    comparison: dict[str, Any] = {"previous_total": 0, "change_percent": 0}
+    if date_from and date_to:
+        from datetime import datetime, timedelta
+
+        try:
+            start = datetime.strptime(date_from, "%Y-%m-%d")
+            end = datetime.strptime(date_to, "%Y-%m-%d")
+            period_days = (end - start).days + 1
+
+            prev_end = start - timedelta(days=1)
+            prev_start = prev_end - timedelta(days=period_days - 1)
+
+            cursor.execute(
+                "SELECT SUM(total) as sum FROM invoices WHERE deleted_at IS NULL AND date >= ? AND date <= ?",
+                (prev_start.strftime("%Y-%m-%d"), prev_end.strftime("%Y-%m-%d")),
+            )
+            prev_total: float = cursor.fetchone()["sum"] or 0
+            comparison["previous_total"] = round(prev_total, 2)
+
+            if prev_total > 0:
+                comparison["change_percent"] = round(
+                    ((total_amount - prev_total) / prev_total) * 100, 1
+                )
+        except ValueError:
+            pass  # Invalid date format, skip comparison
 
     conn.close()
     return jsonify(
         {
-            "total_invoices": total_invoices,
-            "total_amount": round(total_amount, 2),
-            "unique_stores": unique_stores,
+            "summary": {
+                "total_amount": round(total_amount, 2),
+                "total_invoices": total_invoices,
+                "average_invoice": round(average_invoice, 2),
+            },
+            "by_category": by_category,
+            "by_store": by_store,
+            "comparison": comparison,
         }
     )
 

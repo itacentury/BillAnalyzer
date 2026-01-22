@@ -50,6 +50,49 @@
           <div class="logo-icon">Σ</div>
           <span>Summa</span>
         </div>
+        <div class="view-toggle">
+          <button
+            class="view-toggle-btn active"
+            data-view="invoices"
+            onclick="showInvoicesView()"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path
+                d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
+              />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="16" y1="13" x2="8" y2="13" />
+              <line x1="16" y1="17" x2="8" y2="17" />
+            </svg>
+            <span>Rechnungen</span>
+          </button>
+          <button
+            class="view-toggle-btn"
+            data-view="stats"
+            onclick="showStatsView()"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <line x1="18" y1="20" x2="18" y2="10" />
+              <line x1="12" y1="20" x2="12" y2="4" />
+              <line x1="6" y1="20" x2="6" y2="14" />
+            </svg>
+            <span>Statistiken</span>
+          </button>
+        </div>
         <div class="header-actions">
           <button
             class="btn btn-secondary"
@@ -263,7 +306,7 @@
       </div>
 
       <!-- Invoices List -->
-      <div class="invoices-section">
+      <div class="invoices-section" id="invoices-view">
         <div class="section-header">
           <div class="section-header-left">
             <label class="invoice-checkbox" id="select-all-checkbox">
@@ -280,6 +323,58 @@
             <div class="empty-title">Keine Rechnungen vorhanden</div>
             <div class="empty-text">
               Füge eine neue Rechnung hinzu oder importiere vorhandene Daten.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Statistics View -->
+      <div class="stats-view" id="stats-view" style="display: none">
+        <!-- Summary Cards -->
+        <div class="stats-cards">
+          <div class="stat-card">
+            <div class="stat-label">Gesamt</div>
+            <div class="stat-value currency" id="stats-total">0.00</div>
+            <div class="stat-change" id="stats-change"></div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Rechnungen</div>
+            <div class="stat-value" id="stats-count">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Durchschnitt</div>
+            <div class="stat-value currency" id="stats-average">0.00</div>
+          </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="stats-charts">
+          <div class="chart-card">
+            <div class="chart-header">
+              <h3 class="chart-title">Nach Kategorie</h3>
+            </div>
+            <div class="chart-container">
+              <canvas id="category-chart"></canvas>
+            </div>
+            <div class="chart-legend" id="category-legend"></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-header">
+              <h3 class="chart-title">Top Geschäfte</h3>
+            </div>
+            <div class="chart-container chart-container-bar">
+              <canvas id="store-chart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Empty State for Stats -->
+        <div class="stats-empty" id="stats-empty" style="display: none">
+          <div class="empty-state">
+            <div class="empty-icon">📊</div>
+            <div class="empty-title">Keine Daten vorhanden</div>
+            <div class="empty-text">
+              Für diesen Zeitraum sind keine Rechnungen vorhanden.
             </div>
           </div>
         </div>
@@ -666,6 +761,10 @@
     <!-- Toast Container -->
     <div class="toast-container" id="toast-container"></div>
 
+    <script
+      src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"
+      defer
+    ></script>
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
   </body>
 </html>

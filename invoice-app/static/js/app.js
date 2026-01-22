@@ -18,6 +18,23 @@ let currentDate = new Date(); // Current date for navigation reference
 let editingInvoiceId = null; // Track if we're editing an invoice
 let filterMode = "month"; // 'week', 'month', 'year', 'all', 'custom'
 let selectedInvoices = new Set(); // Track selected invoice IDs for bulk operations
+let currentView = "invoices"; // 'invoices' or 'stats'
+let categoryChart = null; // Chart.js instance for category doughnut
+let storeChart = null; // Chart.js instance for store bar chart
+
+// Chart.js color palette matching app theme
+const chartColors = [
+  "#3b82f6", // blue (accent)
+  "#22c55e", // green (success)
+  "#f59e0b", // amber
+  "#ef4444", // red (danger)
+  "#8b5cf6", // violet
+  "#ec4899", // pink
+  "#06b6d4", // cyan
+  "#f97316", // orange
+  "#84cc16", // lime
+  "#6366f1", // indigo
+];
 
 // DOM Elements
 const invoiceList = document.getElementById("invoice-list");
@@ -119,6 +136,11 @@ async function loadInvoices() {
     const response = await fetch(`/api/invoices?${params}`);
     invoices = await response.json();
     renderInvoices();
+
+    // Also refresh stats if in stats view
+    if (currentView === "stats") {
+      loadStats();
+    }
   } catch (error) {
     showToast("Fehler beim Laden der Rechnungen", "error");
   }
@@ -1169,3 +1191,248 @@ function getSearchValue() {
 document.addEventListener("DOMContentLoaded", () => {
   syncSearchInputs();
 });
+
+// View Switching Functions
+
+/**
+ * Switch to the invoices list view.
+ */
+function showInvoicesView() {
+  currentView = "invoices";
+  document.getElementById("invoices-view").style.display = "";
+  document.getElementById("stats-view").style.display = "none";
+
+  // Update toggle buttons
+  document.querySelectorAll(".view-toggle-btn").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.view === "invoices");
+  });
+}
+
+/**
+ * Switch to the statistics view and load stats data.
+ */
+function showStatsView() {
+  currentView = "stats";
+  document.getElementById("invoices-view").style.display = "none";
+  document.getElementById("stats-view").style.display = "";
+
+  // Update toggle buttons
+  document.querySelectorAll(".view-toggle-btn").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.view === "stats");
+  });
+
+  loadStats();
+}
+
+/**
+ * Load statistics data from the API using current date filters.
+ */
+async function loadStats() {
+  const params = new URLSearchParams({
+    date_from: dateFrom.value,
+    date_to: dateTo.value,
+  });
+
+  try {
+    const response = await fetch(`/api/stats?${params}`);
+    const data = await response.json();
+    renderStats(data);
+  } catch (error) {
+    showToast("Fehler beim Laden der Statistiken", "error");
+  }
+}
+
+/**
+ * Render statistics data including summary cards and charts.
+ */
+function renderStats(data) {
+  const { summary, by_category, by_store, comparison } = data;
+  const statsEmpty = document.getElementById("stats-empty");
+  const statsCards = document.querySelector(".stats-cards");
+  const statsCharts = document.querySelector(".stats-charts");
+
+  // Handle empty state
+  if (summary.total_invoices === 0) {
+    statsEmpty.style.display = "";
+    statsCards.style.display = "none";
+    statsCharts.style.display = "none";
+    return;
+  }
+
+  statsEmpty.style.display = "none";
+  statsCards.style.display = "";
+  statsCharts.style.display = "";
+
+  // Update summary cards
+  document.getElementById("stats-total").textContent =
+    summary.total_amount.toFixed(2);
+  document.getElementById("stats-count").textContent = summary.total_invoices;
+  document.getElementById("stats-average").textContent =
+    summary.average_invoice.toFixed(2);
+
+  // Update change indicator
+  const changeEl = document.getElementById("stats-change");
+  if (comparison.previous_total > 0) {
+    const changePercent = comparison.change_percent;
+    const isPositive = changePercent >= 0;
+    changeEl.innerHTML = `
+      <span class="change-indicator ${isPositive ? "negative" : "positive"}">
+        ${isPositive ? "↑" : "↓"} ${Math.abs(changePercent).toFixed(1)}%
+      </span>
+      <span class="change-label">vs. Vorperiode</span>
+    `;
+    changeEl.style.display = "";
+  } else {
+    changeEl.style.display = "none";
+  }
+
+  // Render charts
+  renderCategoryChart(by_category);
+  renderStoreChart(by_store);
+}
+
+/**
+ * Render the category doughnut chart.
+ */
+function renderCategoryChart(data) {
+  const ctx = document.getElementById("category-chart");
+  if (!ctx) return;
+
+  // Destroy existing chart
+  if (categoryChart) {
+    categoryChart.destroy();
+  }
+
+  // Generate legend
+  const legendEl = document.getElementById("category-legend");
+  const total = data.reduce((sum, item) => sum + item.amount, 0);
+  legendEl.innerHTML = data
+    .map((item, i) => {
+      const percent = total > 0 ? ((item.amount / total) * 100).toFixed(1) : 0;
+      return `
+        <div class="legend-item">
+          <span class="legend-color" style="background: ${chartColors[i % chartColors.length]}"></span>
+          <span class="legend-label">${escapeHtml(item.category)}</span>
+          <span class="legend-value">€${item.amount.toFixed(2)}</span>
+          <span class="legend-percent">${percent}%</span>
+        </div>
+      `;
+    })
+    .join("");
+
+  // Create new chart
+  categoryChart = new Chart(ctx, {
+    type: "doughnut",
+    data: {
+      labels: data.map((item) => item.category),
+      datasets: [
+        {
+          data: data.map((item) => item.amount),
+          backgroundColor: data.map(
+            (_, i) => chartColors[i % chartColors.length],
+          ),
+          borderWidth: 0,
+          hoverOffset: 4,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: "65%",
+      plugins: {
+        legend: {
+          display: false,
+        },
+        tooltip: {
+          backgroundColor: "#1a1a1a",
+          titleColor: "#fafafa",
+          bodyColor: "#a0a0a0",
+          borderColor: "#2a2a2a",
+          borderWidth: 1,
+          padding: 12,
+          callbacks: {
+            label: (context) => {
+              const value = context.raw;
+              const percent =
+                total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+              return `€${value.toFixed(2)} (${percent}%)`;
+            },
+          },
+        },
+      },
+    },
+  });
+}
+
+/**
+ * Render the store horizontal bar chart.
+ */
+function renderStoreChart(data) {
+  const ctx = document.getElementById("store-chart");
+  if (!ctx) return;
+
+  // Destroy existing chart
+  if (storeChart) {
+    storeChart.destroy();
+  }
+
+  // Create new chart
+  storeChart = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: data.map((item) => item.store),
+      datasets: [
+        {
+          data: data.map((item) => item.amount),
+          backgroundColor: data.map(
+            (_, i) => chartColors[i % chartColors.length],
+          ),
+          borderRadius: 4,
+          barThickness: 24,
+        },
+      ],
+    },
+    options: {
+      indexAxis: "y",
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: false,
+        },
+        tooltip: {
+          backgroundColor: "#1a1a1a",
+          titleColor: "#fafafa",
+          bodyColor: "#a0a0a0",
+          borderColor: "#2a2a2a",
+          borderWidth: 1,
+          padding: 12,
+          callbacks: {
+            label: (context) => `€${context.raw.toFixed(2)}`,
+          },
+        },
+      },
+      scales: {
+        x: {
+          grid: {
+            color: "#2a2a2a",
+            drawBorder: false,
+          },
+          ticks: {
+            color: "#666666",
+            callback: (value) => `€${value}`,
+          },
+        },
+        y: {
+          grid: {
+            display: false,
+          },
+          ticks: {
+            color: "#a0a0a0",
+          },
+        },
+      },
+    },
+  });
+}
