@@ -148,12 +148,27 @@ async function loadInvoices() {
 
 async function loadStores() {
   try {
+    const previousValue = storeFilter.value;
     const response = await fetch("/api/stores");
     const stores = await response.json();
+
     storeFilter.innerHTML = '<option value="">Alle Geschäfte</option>';
     stores.forEach((store) => {
       storeFilter.innerHTML += `<option value="${store}">${store}</option>`;
     });
+
+    // Restore filter or jump to next store if previous one no longer exists
+    if (previousValue) {
+      if (stores.includes(previousValue)) {
+        storeFilter.value = previousValue;
+      } else if (stores.length > 0) {
+        // Find next store alphabetically, or last one if none found
+        const nextStore =
+          stores.find((s) => s > previousValue) || stores[stores.length - 1];
+        storeFilter.value = nextStore;
+        loadInvoices();
+      }
+    }
   } catch (error) {
     console.error("Error loading stores:", error);
   }
