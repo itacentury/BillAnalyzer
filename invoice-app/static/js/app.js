@@ -894,8 +894,8 @@ function setDateFiltersForWeek(date) {
   const sunday = new Date(monday);
   sunday.setDate(monday.getDate() + 6);
 
-  dateFrom.value = monday.toISOString().split("T")[0];
-  dateTo.value = sunday.toISOString().split("T")[0];
+  dateFrom.value = monday.toLocaleString("sv").split(" ")[0];
+  dateTo.value = sunday.toLocaleString("sv").split(" ")[0];
 }
 
 // Set date filters for a month
@@ -905,11 +905,11 @@ function setDateFiltersForMonth(date) {
 
   // First day of the month
   const firstDay = new Date(year, month, 1);
-  const firstDayStr = firstDay.toISOString().split("T")[0];
+  const firstDayStr = firstDay.toLocaleString("sv").split(" ")[0];
 
   // Last day of the month
   const lastDay = new Date(year, month + 1, 0);
-  const lastDayStr = lastDay.toISOString().split("T")[0];
+  const lastDayStr = lastDay.toLocaleString("sv").split(" ")[0];
 
   dateFrom.value = firstDayStr;
   dateTo.value = lastDayStr;
@@ -922,8 +922,8 @@ function setDateFiltersForYear(date) {
   const firstDay = new Date(year, 0, 1);
   const lastDay = new Date(year, 11, 31);
 
-  dateFrom.value = firstDay.toISOString().split("T")[0];
-  dateTo.value = lastDay.toISOString().split("T")[0];
+  dateFrom.value = firstDay.toLocaleString("sv").split(" ")[0];
+  dateTo.value = lastDay.toLocaleString("sv").split(" ")[0];
 }
 
 // Utility Functions
