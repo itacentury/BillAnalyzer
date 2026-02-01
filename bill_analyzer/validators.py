@@ -1,10 +1,8 @@
-"""
-Validation functions for bill data
-"""
+"""Validation functions for bill data."""
 
 
 def evaluate_price_value(price_value: float | int | str) -> float | None:
-    """Evaluate a price value, which can be a number, string, or formula."""
+    """Convert a price value to float. Return None on failure."""
     if isinstance(price_value, (int, float)):
         return float(price_value)
 
@@ -21,7 +19,7 @@ def evaluate_price_value(price_value: float | int | str) -> float | None:
 def validate_bill_total(
     bill_data: dict[str, float | int | str | list],
 ) -> dict[str, bool | float | str] | None:
-    """Validate that the sum of item prices equals the total price in the bill."""
+    """Validate that item prices sum to the declared total. Return None on error."""
     items: list = bill_data.get("items", [])  # type: ignore[assignment]
     declared_total_raw = bill_data.get("total")
     declared_total: float | int | str | None = (
@@ -58,12 +56,7 @@ def validate_bill_total(
         "calculated_sum": round(calculated_sum, 2),
         "declared_total": round(declared_total_value, 2),
         "difference": round(difference, 2),
-        "message": (
-            "✓ Price validation passed"
-            if is_valid
-            else f"⚠ Price mismatch: Sum of items ({calculated_sum:.2f}€) "
-            f"!= Total ({declared_total_value:.2f}€), difference: {difference:.2f}€"
-        ),
+        "message": "✓ Valid total" if is_valid else "⚠ Price mismatch",
     }
 
     return result

@@ -27,7 +27,7 @@ CLAUDE_MAX_TOKENS: Final[int] = 2048
 # PAPERLESS-NGX API CONFIGURATION
 # ==============================================================================
 
-PAPERLESS_UPLOAD_ENABLE: Final[bool] = False
+PAPERLESS_UPLOAD_ENABLE: Final[bool] = True
 PAPERLESS_URL: Final[str | None] = os.environ.get("PAPERLESS_URL")
 PAPERLESS_TOKEN: Final[str | None] = os.environ.get("PAPERLESS_API_TOKEN")
 PAPERLESS_TOTAL_ID: Final[int] = 1
