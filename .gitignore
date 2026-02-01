@@ -1,9 +1,16 @@
-*.pyc
-**/.mypy_cache/
-**/.pytest_cache/
+# Python
+__pycache__/
+.mypy_cache/
 
-.env.*
+# Virtual environments
+.venv
 
-expenses/
+# IDE
+.vscode/
+
+# Database
 *.db
-**/todo
+
+# OS files
+.DS_Store
+Thumbs.db

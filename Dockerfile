@@ -22,7 +22,7 @@ FROM python:3.12-slim
 
 LABEL org.opencontainers.image.title="Summa"
 LABEL org.opencontainers.image.description="Invoice management and expense tracking"
-LABEL org.opencontainers.image.source="https://github.com/yourusername/summa"
+LABEL org.opencontainers.image.source="https://github.com/itacentury/summa"
 
 WORKDIR /app
 

@@ -1,0 +1,45 @@
+# Git
+.git/
+.gitignore
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+.mypy_cache/
+.pytest_cache/
+
+# Virtual environments
+.env
+.venv/
+env/
+venv/
+
+# IDE
+.idea/
+.vscode/
+*.code-workspace
+
+# Database (use volume mount instead)
+*.db
+*.sqlite
+*.sqlite3
+
+# Documentation
+*.md
+LICENSE
+
+# CI/CD
+.github/
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Development files
+.coverage
+htmlcov/
