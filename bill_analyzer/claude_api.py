@@ -10,7 +10,6 @@ from anthropic.types import TextBlock
 
 from .config import CLAUDE_MAX_TOKENS, CLAUDE_MODEL, EXTRACTION_PROMPT
 
-# Initialize Anthropic API client
 client: anthropic.Anthropic = anthropic.Anthropic(
     api_key=os.environ.get("ANTHROPIC_API_KEY")
 )

@@ -13,7 +13,13 @@ from typing import Any
 import requests
 
 from .claude_api import analyze_bill_pdf
-from .config import EXPORT_JSON_PATH, PAPERLESS_TOKEN, PAPERLESS_TOTAL_ID, PAPERLESS_URL
+from .config import (
+    EXPORT_JSON_PATH,
+    PAPERLESS_TOKEN,
+    PAPERLESS_TOTAL_ID,
+    PAPERLESS_UPLOAD_ENABLE,
+    PAPERLESS_URL,
+)
 from .paperless_api import upload_to_paperless
 from .ui import select_pdf_files
 from .utils import parse_json_from_markdown
@@ -51,7 +57,7 @@ def upload_bills_to_paperless(
     valid_pdfs: list[str], valid_bills: list[dict[str, Any]]
 ) -> tuple[int, int] | None:
     """Upload PDF bills to Paperless-ngx. Return (success, failed) counts or None if skipped."""
-    if not (PAPERLESS_TOKEN and PAPERLESS_URL):
+    if not PAPERLESS_UPLOAD_ENABLE or not (PAPERLESS_TOKEN and PAPERLESS_URL):
         print("\n⚠ Paperless not configured. Skipping upload.")
         return None
 

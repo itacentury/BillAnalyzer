@@ -8,7 +8,6 @@ from typing import Final
 
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
 load_dotenv(".env.bill_analyzer")
 
 # ==============================================================================
@@ -28,6 +27,7 @@ CLAUDE_MAX_TOKENS: Final[int] = 2048
 # PAPERLESS-NGX API CONFIGURATION
 # ==============================================================================
 
+PAPERLESS_UPLOAD_ENABLE: Final[bool] = False
 PAPERLESS_URL: Final[str | None] = os.environ.get("PAPERLESS_URL")
 PAPERLESS_TOKEN: Final[str | None] = os.environ.get("PAPERLESS_API_TOKEN")
 PAPERLESS_TOTAL_ID: Final[int] = 1
