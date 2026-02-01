@@ -3,6 +3,7 @@ Configuration constants for the AI Bill Analyzer
 """
 
 import os
+from pathlib import Path
 from typing import Final
 
 from dotenv import load_dotenv
@@ -11,24 +12,25 @@ from dotenv import load_dotenv
 load_dotenv(".env.bill_analyzer")
 
 # ==============================================================================
+# MISC CONFIGURATION
+# ==============================================================================
+
+EXPORT_JSON_PATH: Final[Path] = Path().home() / "Downloads"
+
+# ==============================================================================
 # CLAUDE API CONFIGURATION
 # ==============================================================================
 
-# CLAUDE_MODEL: Final[str] = "claude-sonnet-4-5-20250929"
 CLAUDE_MODEL: Final[str] = "claude-opus-4-5-20251101"
 CLAUDE_MAX_TOKENS: Final[int] = 2048
-
 
 # ==============================================================================
 # PAPERLESS-NGX API CONFIGURATION
 # ==============================================================================
 
-# Paperless-ngx instance URL (from environment or default)
 PAPERLESS_URL: Final[str | None] = os.environ.get("PAPERLESS_URL")
-
-# Paperless-ngx API token (from environment)
 PAPERLESS_TOKEN: Final[str | None] = os.environ.get("PAPERLESS_API_TOKEN")
-
+PAPERLESS_TOTAL_ID: Final[int] = 1
 
 # ==============================================================================
 # EXTRACTION PROMPT
@@ -52,4 +54,7 @@ Schreibe das Gewicht bei zum Beispiel Gemüse oder Obst, hinten an den Namen des
 Gebe mir die Daten im JSON-Format zurück, mit folgenden Namen und Datentypen:
 'store' (str), 'category' (str), 'date' (str), 'items' (list[dict[str, str | float]]), 'total' (float).
 Die Keys für das 'items' dictionary sollen 'item_name' und 'item_price' heißen.
-Die Values von 'item_name' sind strings und die values von 'item_price' sind floats."""
+Die Values von 'item_name' sind strings und die values von 'item_price' sind floats.
+
+Wenn es sich bei der PDF um keine Rechnung handelt, gebe 'error' zurück.
+"""

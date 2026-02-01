@@ -16,16 +16,9 @@ client: anthropic.Anthropic = anthropic.Anthropic(
 )
 
 
-def analyze_bill_pdf(pdf_path: str) -> str:
+def analyze_bill_pdf(pdf_path: str) -> str | None:
     """Analyze a bill PDF using Claude AI to extract structured data.
-
-    :param pdf_path: Path to the PDF file
-    :type pdf_path: str
-    :return: Raw response text from Claude (contains JSON in markdown format)
-    :rtype: str
-    :raises FileNotFoundError: If PDF file doesn't exist
-    :raises anthropic.APIError: If Claude API call fails
-    :raises TypeError: If Claude returns unexpected content type
+    Returns the raw response text from Claude or None.
     """
     with open(pdf_path, "rb") as pdf_file:
         pdf_data: str = base64.standard_b64encode(pdf_file.read()).decode("utf-8")
@@ -51,10 +44,12 @@ def analyze_bill_pdf(pdf_path: str) -> str:
         ],
     )
 
-    # Extract text from response, ensuring it's a TextBlock
     content_block = message.content[0]
-    if isinstance(content_block, TextBlock):
-        return content_block.text
 
-    # Fallback for unexpected content types
-    raise TypeError(f"Expected TextBlock, got {type(content_block).__name__}")
+    if not isinstance(content_block, TextBlock):
+        return None
+
+    if content_block.text == "error":
+        return None
+
+    return content_block.text
