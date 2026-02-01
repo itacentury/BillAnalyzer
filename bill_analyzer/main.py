@@ -21,10 +21,7 @@ from .validators import validate_bill_total
 
 
 def convert_date_to_iso8601(date_str: str | None) -> str | None:
-    """Convert various date formats to ISO 8601 datetime format.
-
-    Supports: YYYY-MM-DD, DD.MM.YYYY, DD.MM.YY, YYYYMMDD
-    """
+    """Convert various date formats to ISO 8601 datetime format."""
     if not date_str:
         return None
 
@@ -46,7 +43,7 @@ def convert_date_to_iso8601(date_str: str | None) -> str | None:
         # Format as ISO 8601 with midnight time
         return dt.strftime("%Y-%m-%dT00:00:00Z")
     except ValueError:
-        print(f"  ⚠ Warning: Could not parse date '{date_str}'")
+        print(f"  ⚠ Could not parse date '{date_str}'.")
         return None
 
 
@@ -55,11 +52,11 @@ def upload_bills_to_paperless(
 ) -> None:
     """Upload PDF bills to Paperless-ngx with metadata."""
     if not (PAPERLESS_TOKEN and PAPERLESS_URL):
-        print("\n⚠ Paperless is not configured! Upload will be skipped.")
+        print("\n⚠ Paperless not configured. Skipping upload.")
         return
 
     if len(valid_pdfs) != len(valid_bills):
-        print("\n⚠ PDFs and Bills lists do not have the same length!")
+        print("\n⚠ PDFs and bills lists have different lengths. Skipping upload.")
         return
 
     print("\n📤 Uploading to Paperless-ngx...")
@@ -85,29 +82,28 @@ def upload_bills_to_paperless(
                 custom_fields={PAPERLESS_TOTAL_ID: total_price},
             )
 
-            print(f"✓ Uploaded successfully (Task UUID: {task_uuid})")
+            print(f"  ✓ Uploaded successfully. (Task: {task_uuid})")
 
         except requests.HTTPError as e:
-            print(f"⚠ Paperless upload failed: {e}")
-            # Print detailed error response from Paperless
+            print(f"  ⚠ Upload failed: {e}")
             if hasattr(e, "response") and e.response is not None:
                 try:
                     error_details = e.response.json()
-                    print(f"  Error details: {error_details}")
+                    print(f"    Details: {error_details}")
                 except (ValueError, KeyError):
-                    print(f"  Response text: {e.response.text}")
+                    print(f"    Response: {e.response.text}")
         except requests.RequestException as e:
-            print(f"⚠ Paperless upload failed: {e}")
+            print(f"  ⚠ Upload failed: {e}")
         except FileNotFoundError as e:
-            print(f"⚠ PDF file not found: {e}")
+            print(f"  ⚠ File not found: {e}")
 
 
 def validate_bill(bill_data: dict[str, Any]) -> dict[str, bool | float | str] | None:
-    """Validate bill total. Returns None on validation error otherwise the result object."""
+    """Validate bill total. Return None on error, otherwise the result object."""
     result: dict[str, bool | float | str] | None = validate_bill_total(bill_data)
 
     if result is None:
-        print("⚠ Error validating bill.")
+        print("  ⚠ Validation failed.")
         return None
 
     return result
@@ -115,21 +111,21 @@ def validate_bill(bill_data: dict[str, Any]) -> dict[str, bool | float | str] | 
 
 def print_bill(validation_result: dict[str, bool | float | str]) -> None:
     """Print bill validation result."""
-    print(f"\n{validation_result['message']}")
+    print(f"  {validation_result['message']}")
 
     if validation_result["valid"]:
         return
 
-    print(f"  Calculated sum: {validation_result['calculated_sum']}€")
-    print(f"  Declared total: {validation_result['declared_total']}€")
-    print(f"  Difference: {validation_result['difference']}€")
-    print("  ⚠ Warning: Price validation failed - data may be incorrect!")
+    print(f"    Calculated: {validation_result['calculated_sum']}€")
+    print(f"    Declared:   {validation_result['declared_total']}€")
+    print(f"    Difference: {validation_result['difference']}€")
+    print("  ⚠ Price mismatch - data may be incorrect.")
 
 
 def save_bills_to_json(data: list[dict[str, Any]]) -> None:
-    """Saves extracted items to a json file."""
+    """Save extracted items to a JSON file."""
     if not data:
-        print("⚠ Empty bills data list. Skipping saving to json.")
+        print("\n⚠ No valid bills. Skipping JSON export.")
         return
 
     filename: str = f"bills-{datetime.now().date()}.json"
@@ -140,27 +136,25 @@ def save_bills_to_json(data: list[dict[str, Any]]) -> None:
 
 def print_statistics(valid_bills_length: int, all_bills_length: int) -> None:
     """Print summary statistics for processed bills."""
-
     print("\n" + "=" * 50)
     print("📊 STATISTICS")
     print("=" * 50)
-
-    print(f"\n📄 Bills processed:     {valid_bills_length} of {all_bills_length}")
+    print(f"  📄 Bills processed: {valid_bills_length} of {all_bills_length}")
 
 
 def main() -> None:
-    """Main entry point."""
+    """Run the bill analyzer."""
     print("=== AI BILL ANALYZER ===\n")
 
     pdfs: tuple[str, ...] = select_pdf_files()
     if not pdfs:
-        print("No files selected.")
+        print("⚠ No files selected.")
         return
 
     valid_bills: list[dict[str, Any]] = []
     valid_pdfs: list[str] = []
     for pdf in pdfs:
-        print(f"\nAnalyzing: {pdf}")
+        print(f"\n📄 Analyzing: {pdf}")
 
         response: str | None = analyze_bill_pdf(pdf)
 
