@@ -22,17 +22,23 @@
 		},
 		"[python]": {
 			"editor.defaultFormatter": "ms-python.black-formatter",
-			"editor.tabSize": 4
+			"editor.tabSize": 4,
 		},
 		"[html]": {
-			"editor.defaultFormatter": "vscode.html-language-features"
+			"editor.defaultFormatter": "vscode.html-language-features",
 		},
 		"[javascript]": {
-			"editor.defaultFormatter": "esbenp.prettier-vscode"
+			"editor.defaultFormatter": "esbenp.prettier-vscode",
 		},
 		"[css]": {
-			"editor.defaultFormatter": "esbenp.prettier-vscode"
-		}
+			"editor.defaultFormatter": "esbenp.prettier-vscode",
+		},
+		"[markdown]": {
+			"editor.unicodeHighlight.ambiguousCharacters": true,
+			"editor.unicodeHighlight.invisibleCharacters": true,
+			"editor.wordWrap": "on",
+			"editor.defaultFormatter": "esbenp.prettier-vscode",
+		},
 	},
 	"extensions": {
 		"recommendations": [
@@ -43,8 +49,8 @@
 			"samuelcolvin.jinjahtml",
 			"esbenp.prettier-vscode",
 			"ms-azuretools.vscode-docker",
-			"GitHub.vscode-github-actions"
-		]
+			"GitHub.vscode-github-actions",
+		],
 	},
 	"launch": {
 		"version": "0.2.0",
@@ -57,18 +63,18 @@
 				"args": ["run", "--debug", "--port", "5000"],
 				"env": {
 					"FLASK_APP": "app.py",
-					"FLASK_DEBUG": "1"
+					"FLASK_DEBUG": "1",
 				},
-				"jinja": true
+				"jinja": true,
 			},
 			{
 				"name": "Python: Current File",
 				"type": "debugpy",
 				"request": "launch",
 				"program": "${file}",
-				"console": "integratedTerminal"
-			}
-		]
+				"console": "integratedTerminal",
+			},
+		],
 	},
 	"tasks": {
 		"version": "2.0.0",
@@ -77,24 +83,24 @@
 				"label": "Docker: Build",
 				"type": "shell",
 				"command": "docker compose build",
-				"group": "build"
+				"group": "build",
 			},
 			{
 				"label": "Docker: Up",
 				"type": "shell",
 				"command": "docker compose up -d",
-				"group": "build"
+				"group": "build",
 			},
 			{
 				"label": "Docker: Down",
 				"type": "shell",
-				"command": "docker compose down"
+				"command": "docker compose down",
 			},
 			{
 				"label": "Generate Icons",
 				"type": "shell",
-				"command": "python generate_icons.py"
-			}
-		]
-	}
+				"command": "python generate_icons.py",
+			},
+		],
+	},
 }
