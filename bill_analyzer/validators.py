@@ -49,7 +49,7 @@ def evaluate_price_value(price_value: float | int | str) -> float:
 
 def validate_bill_total(
     bill_data: dict[str, float | int | str | list],
-) -> dict[str, bool | float | str]:
+) -> dict[str, bool | float | str] | None:
     """Validate that the sum of item prices equals the total price in the bill.
 
     :param bill_data: Bill dictionary with 'items' and 'total' keys
@@ -68,19 +68,17 @@ def validate_bill_total(
     )
 
     if declared_total is None:
-        raise KeyError("Bill data is missing 'total' key")
+        return None
 
     if not items:
-        raise KeyError("Bill data is missing 'items' or items list is empty")
+        return None
 
     # Calculate sum of all item prices
     calculated_sum: float = 0.0
     for item in items:
         price: float | int | str | None = item.get("item_price")
         if price is None:
-            raise KeyError(
-                f"Item '{item.get('item_name', 'Unknown')}' is missing 'item_price' key"
-            )
+            return None
 
         calculated_sum += evaluate_price_value(price)
 

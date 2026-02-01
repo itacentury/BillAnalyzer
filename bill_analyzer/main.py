@@ -58,6 +58,10 @@ def upload_bills_to_paperless(
         print("\n⚠ Paperless is not configured! Upload will be skipped.")
         return
 
+    if len(valid_pdfs) != len(valid_bills):
+        print("\n⚠ PDFs and Bills lists do not have the same length!")
+        return
+
     print("\n📤 Uploading to Paperless-ngx...")
 
     for pdf, bill in zip(valid_pdfs, valid_bills):
@@ -98,30 +102,36 @@ def upload_bills_to_paperless(
             print(f"⚠ PDF file not found: {e}")
 
 
-def validate_and_print_bill(bill_data: dict[str, Any]) -> bool:
-    """Validate bill total and print validation results.
-    Returns true if bill data is valid otherwise false.
-    """
-    try:
-        validation_result: dict[str, bool | float | str] = validate_bill_total(
-            bill_data
-        )
-        print(f"\n{validation_result['message']}")
+def validate_bill(bill_data: dict[str, Any]) -> dict[str, bool | float | str] | None:
+    """Validate bill total. Returns None on validation error otherwise the result object."""
+    result: dict[str, bool | float | str] | None = validate_bill_total(bill_data)
 
-        if not validation_result["valid"]:
-            print(f"  Calculated sum: {validation_result['calculated_sum']}€")
-            print(f"  Declared total: {validation_result['declared_total']}€")
-            print(f"  Difference: {validation_result['difference']}€")
-            print("  ⚠ Warning: Price validation failed - data may be incorrect!")
+    if result is None:
+        print("⚠ Error validating bill.")
+        return None
 
-        return bool(validation_result["valid"])
-    except (KeyError, ValueError) as e:
-        print(f"⚠ Validation error: {e}")
-        return False
+    return result
+
+
+def print_bill(validation_result: dict[str, bool | float | str]) -> None:
+    """Print bill validation result."""
+    print(f"\n{validation_result['message']}")
+
+    if validation_result["valid"]:
+        return
+
+    print(f"  Calculated sum: {validation_result['calculated_sum']}€")
+    print(f"  Declared total: {validation_result['declared_total']}€")
+    print(f"  Difference: {validation_result['difference']}€")
+    print("  ⚠ Warning: Price validation failed - data may be incorrect!")
 
 
 def save_bills_to_json(data: list[dict[str, Any]]) -> None:
     """Saves extracted items to a json file."""
+    if not data:
+        print("⚠ Empty bills data list. Skipping saving to json.")
+        return
+
     filename: str = f"bills-{datetime.now().date()}.json"
     filepath: Path = EXPORT_JSON_PATH / filename
     with open(filepath, "w", encoding="utf-8") as f:
@@ -160,9 +170,14 @@ def main() -> None:
         bill_data: dict[str, Any] = parse_json_from_markdown(response)
         print(json.dumps(bill_data, indent=2, ensure_ascii=False))
 
-        is_valid = validate_and_print_bill(bill_data)
+        result: dict[str, bool | float | str] | None = validate_bill(bill_data)
 
-        if not is_valid:
+        if result is None:
+            continue
+
+        print_bill(result)
+
+        if not result["valid"]:
             continue
 
         valid_bills.append(bill_data)
