@@ -142,7 +142,7 @@ async function loadInvoices() {
       loadStats();
     }
   } catch (error) {
-    showToast("Fehler beim Laden der Rechnungen", "error");
+    showToast("Failed to load invoices", "error");
   }
 }
 
@@ -152,7 +152,7 @@ async function loadStores() {
     const response = await fetch("/api/stores");
     const stores = await response.json();
 
-    storeFilter.innerHTML = '<option value="">Alle Geschäfte</option>';
+    storeFilter.innerHTML = '<option value="">All Stores</option>';
     stores.forEach((store) => {
       storeFilter.innerHTML += `<option value="${store}">${store}</option>`;
     });
@@ -184,12 +184,12 @@ async function loadCategories() {
 
     // Populate type filter dropdown
     if (typeFilter) {
-      typeFilter.innerHTML = '<option value="">Alle Kategorien</option>';
+      typeFilter.innerHTML = '<option value="">All Categories</option>';
       categories.forEach((type) => {
         typeFilter.innerHTML += `<option value="${type}">${type}</option>`;
       });
 
-      // Restore filter or reset to "Alle Kategorien" if category no longer exists
+      // Restore filter or reset to "All Categories" if category no longer exists
       if (previousValue) {
         if (categories.includes(previousValue)) {
           typeFilter.value = previousValue;
@@ -226,8 +226,8 @@ function renderInvoices() {
     invoiceList.innerHTML = `
             <div class="empty-state">
                 <div class="empty-icon">📋</div>
-                <div class="empty-title">Keine Rechnungen gefunden</div>
-                <div class="empty-text">Passe deine Filterkriterien an oder füge neue Rechnungen hinzu.</div>
+                <div class="empty-title">No invoices found</div>
+                <div class="empty-text">Adjust your filter criteria or add new invoices.</div>
             </div>
         `;
   } else {
@@ -291,7 +291,7 @@ function renderInvoices() {
                                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                                 <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                             </svg>
-                            Bearbeiten
+                            Edit
                         </button>
                         <button class="btn btn-danger btn-sm" onclick="deleteInvoice(${
                           invoice.id
@@ -303,7 +303,7 @@ function renderInvoices() {
                                 <path d="M14 11v6"/>
                                 <path d="m8 6 .544-1.632A2 2 0 0 1 10.442 3h3.116a2 2 0 0 1 1.898 1.368L16 6"/>
                             </svg>
-                            Löschen
+                            Delete
                         </button>
                     </div>
                 </div>
@@ -321,7 +321,7 @@ function renderInvoices() {
 
   document.getElementById("results-count").textContent = `${
     invoices.length
-  } Rechnung${invoices.length !== 1 ? "en" : ""}`;
+  } invoice${invoices.length !== 1 ? "s" : ""}`;
   document.getElementById("results-total").textContent = totalSum.toFixed(2);
 
   updateBulkActionToolbar();
@@ -335,8 +335,7 @@ function toggleInvoice(element) {
 // Modal Functions
 function openAddModal() {
   editingInvoiceId = null;
-  document.querySelector("#add-modal .modal-title").textContent =
-    "Neue Rechnung";
+  document.querySelector("#add-modal .modal-title").textContent = "New Invoice";
   document.getElementById("add-modal").classList.add("active");
   resetAddForm();
   document.getElementById("invoice-date").valueAsDate = new Date();
@@ -353,13 +352,13 @@ async function editInvoice(id) {
   const invoice = invoices.find((inv) => inv.id === id);
 
   if (!invoice) {
-    showToast("Rechnung nicht gefunden", "error");
+    showToast("Invoice not found", "error");
     return;
   }
 
   // Update modal title
   document.querySelector("#add-modal .modal-title").textContent =
-    "Rechnung bearbeiten";
+    "Edit Invoice";
 
   // Fill in the form
   document.getElementById("invoice-date").value = invoice.date;
@@ -375,13 +374,13 @@ async function editInvoice(id) {
     row.className = "item-input-row";
     row.innerHTML = `
             <div class="form-group">
-                <label class="form-label">Artikelname</label>
-                <input type="text" class="form-input item-name" placeholder="Produktname" value="${escapeHtml(
+                <label class="form-label">Item Name</label>
+                <input type="text" class="form-input item-name" placeholder="Product name" value="${escapeHtml(
                   item.item_name,
                 )}">
             </div>
             <div class="form-group">
-                <label class="form-label">Preis (€)</label>
+                <label class="form-label">Price</label>
                 <input type="number" step="0.01" class="form-input item-price" placeholder="0.00" value="${
                   item.item_price
                 }">
@@ -406,11 +405,11 @@ function resetAddForm() {
   document.getElementById("items-container").innerHTML = `
         <div class="item-input-row">
             <div class="form-group">
-                <label class="form-label">Artikelname</label>
-                <input type="text" class="form-input item-name" placeholder="Produktname">
+                <label class="form-label">Item Name</label>
+                <input type="text" class="form-input item-name" placeholder="Product name">
             </div>
             <div class="form-group">
-                <label class="form-label">Preis (€)</label>
+                <label class="form-label">Price</label>
                 <input type="number" step="0.01" class="form-input item-price" placeholder="0.00">
             </div>
             <button type="button" class="btn btn-danger btn-sm" onclick="removeItemRow(this)" style="margin-bottom: 0.375rem;">
@@ -434,7 +433,7 @@ let confirmModalResolve = null;
 /**
  * Show a custom confirmation modal that matches the app design.
  */
-function showConfirmModal(message, title = "Löschen bestätigen") {
+function showConfirmModal(message, title = "Confirm Deletion") {
   document.getElementById("confirm-modal-title").textContent = title;
   document.getElementById("confirm-modal-message").textContent = message;
   document.getElementById("confirm-modal").classList.add("active");
@@ -470,11 +469,11 @@ function addItemRow() {
   row.className = "item-input-row";
   row.innerHTML = `
         <div class="form-group">
-            <label class="form-label">Artikelname</label>
-            <input type="text" class="form-input item-name" placeholder="Produktname">
+            <label class="form-label">Item Name</label>
+            <input type="text" class="form-input item-name" placeholder="Product name">
         </div>
         <div class="form-group">
-            <label class="form-label">Preis (€)</label>
+            <label class="form-label">Price</label>
             <input type="number" step="0.01" class="form-input item-price" placeholder="0.00">
         </div>
         <button type="button" class="btn btn-danger btn-sm" onclick="removeItemRow(this)" style="margin-bottom: 0.375rem;">
@@ -513,7 +512,7 @@ async function saveInvoice() {
   const type = document.getElementById("invoice-type").value.trim() || null;
 
   if (!date || !store) {
-    showToast("Bitte Datum und Geschäft ausfüllen", "error");
+    showToast("Please fill in date and store", "error");
     return;
   }
 
@@ -535,12 +534,12 @@ async function saveInvoice() {
   try {
     let url = "/api/invoices";
     let method = "POST";
-    let successMessage = "Rechnung gespeichert";
+    let successMessage = "Invoice saved";
 
     if (editingInvoiceId) {
       url = `/api/invoices/${editingInvoiceId}`;
       method = "PUT";
-      successMessage = "Rechnung aktualisiert";
+      successMessage = "Invoice updated";
     }
 
     const response = await fetch(url, {
@@ -556,30 +555,30 @@ async function saveInvoice() {
       loadStores();
       loadCategories();
     } else {
-      showToast("Fehler beim Speichern", "error");
+      showToast("Failed to save", "error");
     }
   } catch (error) {
-    showToast("Fehler beim Speichern", "error");
+    showToast("Failed to save", "error");
   }
 }
 
 async function deleteInvoice(id) {
   const confirmed = await showConfirmModal(
-    "Möchtest du diese Rechnung wirklich löschen?",
+    "Are you sure you want to delete this invoice?",
   );
   if (!confirmed) return;
 
   try {
     const response = await fetch(`/api/invoices/${id}`, { method: "DELETE" });
     if (response.ok) {
-      showToast("Rechnung gelöscht", "success");
+      showToast("Invoice deleted", "success");
       loadInvoices();
       loadStores();
     } else {
-      showToast("Fehler beim Löschen", "error");
+      showToast("Failed to delete", "error");
     }
   } catch (error) {
-    showToast("Fehler beim Löschen", "error");
+    showToast("Failed to delete", "error");
   }
 }
 
@@ -590,7 +589,7 @@ function handleMultipleFiles(files) {
   pendingFiles = Array.from(files).filter((f) => f.name.endsWith(".json"));
   updateSelectedFilesDisplay();
 
-  // Wenn Dateien ausgewählt wurden, lade sie alle in die Textarea
+  // If files were selected, load them all into the textarea
   if (pendingFiles.length > 0) {
     loadFilesIntoTextarea();
   }
@@ -607,7 +606,7 @@ function updateSelectedFilesDisplay() {
   container.innerHTML = `
         <div style="background: var(--bg-tertiary); border-radius: var(--radius-sm); padding: 0.75rem;">
             <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem;">
-                ${pendingFiles.length} Datei(en) ausgewählt
+                ${pendingFiles.length} file(s) selected
             </div>
             ${pendingFiles
               .map(
@@ -649,7 +648,7 @@ async function loadFilesIntoTextarea() {
         allData.push(parsed);
       }
     } catch (e) {
-      showToast(`Fehler beim Lesen von ${file.name}`, "error");
+      showToast(`Failed to read ${file.name}`, "error");
     }
   }
 
@@ -663,7 +662,7 @@ async function loadFilesIntoTextarea() {
 async function importJson() {
   const jsonText = document.getElementById("json-input").value.trim();
   if (!jsonText) {
-    showToast("Bitte JSON-Daten eingeben", "error");
+    showToast("Please enter JSON data", "error");
     return;
   }
 
@@ -672,7 +671,7 @@ async function importJson() {
     data = JSON.parse(jsonText);
     if (!Array.isArray(data)) data = [data];
   } catch (error) {
-    showToast("Ungültiges JSON-Format", "error");
+    showToast("Invalid JSON format", "error");
     return;
   }
 
@@ -693,19 +692,19 @@ async function importJson() {
 
     const result = await response.json();
     if (result.success) {
-      let message = `${result.imported} Rechnung(en) importiert`;
+      let message = `${result.imported} invoice(s) imported`;
       if (result.skipped > 0) {
-        message += `, ${result.skipped} Duplikat(e) übersprungen`;
+        message += `, ${result.skipped} duplicate(s) skipped`;
       }
       showToast(message, "success");
       closeImportModal();
       loadInvoices();
       loadStores();
     } else {
-      showToast("Fehler beim Import", "error");
+      showToast("Import failed", "error");
     }
   } catch (error) {
-    showToast("Fehler beim Import", "error");
+    showToast("Import failed", "error");
   } finally {
     // Restore button state
     importButton.innerHTML = originalContent;
@@ -775,18 +774,18 @@ function resetToCurrent() {
 // Update the navigation display based on filter mode
 function updateFilterDisplay() {
   const monthNames = [
-    "Januar",
-    "Februar",
-    "März",
+    "January",
+    "February",
+    "March",
     "April",
-    "Mai",
-    "Juni",
-    "Juli",
+    "May",
+    "June",
+    "July",
     "August",
     "September",
-    "Oktober",
+    "October",
     "November",
-    "Dezember",
+    "December",
   ];
 
   const navButtons = document.querySelectorAll(".month-nav-btn");
@@ -796,9 +795,9 @@ function updateFilterDisplay() {
     case "week":
       const weekNum = getISOWeek(currentDate);
       const weekYear = getISOWeekYear(currentDate);
-      monthDisplay.textContent = `KW ${weekNum} / ${weekYear}`;
+      monthDisplay.textContent = `W${weekNum} / ${weekYear}`;
       navButtons.forEach((btn) => (btn.style.visibility = "visible"));
-      resetBtn.textContent = "Aktuelle Woche";
+      resetBtn.textContent = "Current Week";
       resetBtn.style.display = "";
       break;
     case "month":
@@ -806,22 +805,22 @@ function updateFilterDisplay() {
       const year = currentDate.getFullYear();
       monthDisplay.textContent = `${monthName} ${year}`;
       navButtons.forEach((btn) => (btn.style.visibility = "visible"));
-      resetBtn.textContent = "Aktueller Monat";
+      resetBtn.textContent = "Current Month";
       resetBtn.style.display = "";
       break;
     case "year":
       monthDisplay.textContent = `${currentDate.getFullYear()}`;
       navButtons.forEach((btn) => (btn.style.visibility = "visible"));
-      resetBtn.textContent = "Aktuelles Jahr";
+      resetBtn.textContent = "Current Year";
       resetBtn.style.display = "";
       break;
     case "all":
-      monthDisplay.textContent = "Alle Rechnungen";
+      monthDisplay.textContent = "All Invoices";
       navButtons.forEach((btn) => (btn.style.visibility = "hidden"));
       resetBtn.style.display = "none";
       break;
     case "custom":
-      monthDisplay.textContent = "Benutzerdefiniert";
+      monthDisplay.textContent = "Custom";
       navButtons.forEach((btn) => (btn.style.visibility = "hidden"));
       resetBtn.style.display = "none";
       break;
@@ -929,7 +928,7 @@ function setDateFiltersForYear(date) {
 // Utility Functions
 function formatDate(dateStr) {
   const date = new Date(dateStr);
-  return date.toLocaleDateString("de-DE", {
+  return date.toLocaleDateString("en-US", {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
@@ -1029,7 +1028,7 @@ function openBulkEditModal() {
     storeInput.value = [...selectedStores][0];
   } else {
     storeInput.value = "";
-    storeInput.placeholder = `${selectedStores.size} verschiedene Geschäfte`;
+    storeInput.placeholder = `${selectedStores.size} different stores`;
   }
 
   // Pre-fill with the common category if all selected have the same category
@@ -1038,11 +1037,11 @@ function openBulkEditModal() {
     categoryInput.value = [...selectedCategories][0];
   } else if (selectedCategories.size > 1) {
     categoryInput.value = "";
-    categoryInput.placeholder = `${selectedCategories.size} verschiedene Kategorien`;
+    categoryInput.placeholder = `${selectedCategories.size} different categories`;
   } else {
     categoryInput.value = "";
     categoryInput.placeholder =
-      "z.B. Lebensmittel (leer lassen um nicht zu ändern)";
+      "e.g. Groceries (leave empty to keep unchanged)";
   }
 
   // Populate category suggestions
@@ -1080,7 +1079,7 @@ async function saveBulkEdit() {
     .value.trim();
 
   if (!newStore && !newCategory) {
-    showToast("Bitte mindestens ein Feld ausfüllen", "error");
+    showToast("Please fill in at least one field", "error");
     return;
   }
 
@@ -1104,17 +1103,17 @@ async function saveBulkEdit() {
 
     const result = await response.json();
     if (result.success) {
-      showToast(`${result.updated} Rechnung(en) aktualisiert`, "success");
+      showToast(`${result.updated} invoice(s) updated`, "success");
       closeBulkEditModal();
       selectedInvoices.clear();
       loadInvoices();
       loadStores();
       loadCategories();
     } else {
-      showToast("Fehler beim Aktualisieren", "error");
+      showToast("Failed to update", "error");
     }
   } catch (error) {
-    showToast("Fehler beim Aktualisieren", "error");
+    showToast("Failed to update", "error");
   }
 }
 
@@ -1123,9 +1122,9 @@ async function bulkDeleteInvoices() {
   if (count === 0) return;
 
   const confirmed = await showConfirmModal(
-    `Möchtest du wirklich ${count} Rechnung${
-      count !== 1 ? "en" : ""
-    } unwiderruflich löschen?`,
+    `Are you sure you want to permanently delete ${count} invoice${
+      count !== 1 ? "s" : ""
+    }?`,
   );
 
   if (!confirmed) return;
@@ -1141,15 +1140,15 @@ async function bulkDeleteInvoices() {
 
     const result = await response.json();
     if (result.success) {
-      showToast(`${result.deleted} Rechnung(en) gelöscht`, "success");
+      showToast(`${result.deleted} invoice(s) deleted`, "success");
       selectedInvoices.clear();
       loadInvoices();
       loadStores();
     } else {
-      showToast("Fehler beim Löschen", "error");
+      showToast("Failed to delete", "error");
     }
   } catch (error) {
-    showToast("Fehler beim Löschen", "error");
+    showToast("Failed to delete", "error");
   }
 }
 
@@ -1265,7 +1264,7 @@ async function loadStats() {
     const data = await response.json();
     renderStats(data);
   } catch (error) {
-    showToast("Fehler beim Laden der Statistiken", "error");
+    showToast("Failed to load statistics", "error");
   }
 }
 
@@ -1306,7 +1305,7 @@ function renderStats(data) {
       <span class="change-indicator ${isPositive ? "negative" : "positive"}">
         ${isPositive ? "↑" : "↓"} ${Math.abs(changePercent).toFixed(1)}%
       </span>
-      <span class="change-label">vs. Vorperiode</span>
+      <span class="change-label">vs. previous period</span>
     `;
     changeEl.style.display = "";
   } else {

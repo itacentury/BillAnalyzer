@@ -242,7 +242,7 @@ def import_invoices() -> ApiResponse:
             category = strip_text(invoice_data.get("category"))
             total = float(invoice_data["total"])
 
-            # Duplikatsprüfung: Gleiche Kombination aus Datum, Geschäft und Gesamtbetrag
+            # Duplicate check: same combination of date, store and total amount
             cursor.execute(
                 "SELECT id FROM invoices WHERE date = ? AND store = ? AND total = ?",
                 (date, store, total),
@@ -411,6 +411,43 @@ def bulk_delete_invoices() -> ApiResponse:
         conn.close()
 
 
+def _calculate_comparison(
+    cursor: sqlite3.Cursor,
+    date_from: str,
+    date_to: str,
+    total_amount: float,
+) -> dict[str, Any]:
+    """Calculate spending comparison with the previous period of equal length."""
+    comparison: dict[str, Any] = {"previous_total": 0, "change_percent": 0}
+    if not (date_from and date_to):
+        return comparison
+
+    try:
+        start = datetime.strptime(date_from, "%Y-%m-%d")
+        end = datetime.strptime(date_to, "%Y-%m-%d")
+        period_days = (end - start).days + 1
+
+        prev_end = start - timedelta(days=1)
+        prev_start = prev_end - timedelta(days=period_days - 1)
+
+        cursor.execute(
+            "SELECT SUM(total) as sum FROM invoices "
+            "WHERE deleted_at IS NULL AND date >= ? AND date <= ?",
+            (prev_start.strftime("%Y-%m-%d"), prev_end.strftime("%Y-%m-%d")),
+        )
+        prev_total: float = cursor.fetchone()["sum"] or 0
+        comparison["previous_total"] = round(prev_total, 2)
+
+        if prev_total > 0:
+            comparison["change_percent"] = round(
+                ((total_amount - prev_total) / prev_total) * 100, 1
+            )
+    except ValueError:
+        pass  # Invalid date format, skip comparison
+
+    return comparison
+
+
 @app.route("/api/stats", methods=["GET"])
 def get_stats() -> Response:
     """Return aggregate statistics about invoices with optional date filtering."""
@@ -444,7 +481,7 @@ def get_stats() -> Response:
 
     # Category breakdown
     cursor.execute(
-        f"""SELECT COALESCE(category, 'Keine Kategorie') as category,
+        f"""SELECT COALESCE(category, 'Uncategorized') as category,
                    SUM(total) as amount, COUNT(*) as count
             FROM invoices WHERE {base_conditions}
             GROUP BY category ORDER BY amount DESC""",
@@ -471,30 +508,7 @@ def get_stats() -> Response:
         for r in cursor.fetchall()
     ]
 
-    # Calculate previous period comparison
-    comparison: dict[str, Any] = {"previous_total": 0, "change_percent": 0}
-    if date_from and date_to:
-        try:
-            start = datetime.strptime(date_from, "%Y-%m-%d")
-            end = datetime.strptime(date_to, "%Y-%m-%d")
-            period_days = (end - start).days + 1
-
-            prev_end = start - timedelta(days=1)
-            prev_start = prev_end - timedelta(days=period_days - 1)
-
-            cursor.execute(
-                "SELECT SUM(total) as sum FROM invoices WHERE deleted_at IS NULL AND date >= ? AND date <= ?",
-                (prev_start.strftime("%Y-%m-%d"), prev_end.strftime("%Y-%m-%d")),
-            )
-            prev_total: float = cursor.fetchone()["sum"] or 0
-            comparison["previous_total"] = round(prev_total, 2)
-
-            if prev_total > 0:
-                comparison["change_percent"] = round(
-                    ((total_amount - prev_total) / prev_total) * 100, 1
-                )
-        except ValueError:
-            pass  # Invalid date format, skip comparison
+    comparison = _calculate_comparison(cursor, date_from, date_to, total_amount)
 
     conn.close()
     return jsonify(

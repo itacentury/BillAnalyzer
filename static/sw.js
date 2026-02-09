@@ -22,7 +22,7 @@ self.addEventListener("install", (event) => {
     caches.open(CACHE_NAME).then((cache) => {
       console.log("[SW] Caching static assets");
       return cache.addAll(STATIC_ASSETS);
-    })
+    }),
   );
   // Activate immediately
   self.skipWaiting();
@@ -40,9 +40,9 @@ self.addEventListener("activate", (event) => {
           .map((name) => {
             console.log("[SW] Deleting old cache:", name);
             return caches.delete(name);
-          })
+          }),
       );
-    })
+    }),
   );
   // Take control of all pages immediately
   self.clients.claim();
@@ -114,12 +114,9 @@ async function networkFirst(request) {
       return cachedResponse;
     }
     // Return error response for failed API calls
-    return new Response(
-      JSON.stringify({ error: "Offline - keine Verbindung" }),
-      {
-        status: 503,
-        headers: { "Content-Type": "application/json" },
-      }
-    );
+    return new Response(JSON.stringify({ error: "Offline - no connection" }), {
+      status: 503,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 }

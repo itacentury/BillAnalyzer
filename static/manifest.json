@@ -1,7 +1,7 @@
 {
-  "name": "Summa - Rechnungsverwaltung",
+  "name": "Summa - Invoice Manager",
   "short_name": "Summa",
-  "description": "Verwalte und analysiere deine Rechnungen und Ausgaben",
+  "description": "Manage and analyze your invoices and expenses",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0a0a0a",
@@ -71,5 +71,5 @@
     }
   ],
   "categories": ["finance", "utilities"],
-  "lang": "de-DE"
+  "lang": "en"
 }
