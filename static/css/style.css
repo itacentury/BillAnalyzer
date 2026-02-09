@@ -994,6 +994,29 @@ body {
    MOBILE RESPONSIVE STYLES
    ======================================== */
 
+/* Icon-only header buttons on smaller screens */
+@media (max-width: 640px) {
+  .header-actions {
+    gap: 0.5rem;
+  }
+
+  .header-actions .btn {
+    padding: 0.5rem;
+    min-width: 40px;
+    min-height: 40px;
+    justify-content: center;
+  }
+
+  .header-actions .btn svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .header-actions .btn-text {
+    display: none;
+  }
+}
+
 /* Mobile Header */
 @media (max-width: 480px) {
   .header {
@@ -1013,27 +1036,6 @@ body {
     width: 32px;
     height: 32px;
     font-size: 1rem;
-  }
-
-  /* Icon-only buttons on mobile */
-  .header-actions {
-    gap: 0.5rem;
-  }
-
-  .header-actions .btn {
-    padding: 0.5rem;
-    min-width: 40px;
-    min-height: 40px;
-    justify-content: center;
-  }
-
-  .header-actions .btn svg {
-    width: 20px;
-    height: 20px;
-  }
-
-  .header-actions .btn-text {
-    display: none;
   }
 }
 
