@@ -1189,10 +1189,10 @@ function showToast(message, type = "success") {
  * Toggle the visibility of advanced filters on mobile.
  */
 function toggleAdvancedFilters() {
-  const filtersGrid = document.getElementById("filters-grid");
+  const collapsible = document.getElementById("filters-collapsible");
   const toggleBtn = document.getElementById("filters-toggle");
 
-  filtersGrid.classList.toggle("visible");
+  collapsible.classList.toggle("visible");
   toggleBtn.classList.toggle("active");
 }
 

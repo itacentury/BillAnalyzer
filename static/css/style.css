@@ -1140,14 +1140,26 @@ body {
     transform: rotate(180deg);
   }
 
-  .filters-grid {
-    display: none !important;
-    gap: 0.75rem;
+  .filters-collapsible {
+    display: grid;
+    grid-template-rows: 0fr;
+    opacity: 0;
+    transition:
+      grid-template-rows 0.3s ease,
+      opacity 0.25s ease;
   }
 
-  .filters-grid.visible {
-    display: grid !important;
-    animation: slideDown 0.2s ease;
+  .filters-collapsible.visible {
+    grid-template-rows: 1fr;
+    opacity: 1;
+  }
+
+  .filters-collapsible-inner {
+    overflow: hidden;
+  }
+
+  .filters-grid {
+    gap: 0.75rem;
   }
 
   /* Search always visible on mobile */

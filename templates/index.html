@@ -256,71 +256,77 @@
           </svg>
         </button>
 
-        <!-- Advanced Filters Grid -->
-        <div class="filters-grid" id="filters-grid">
-          <div class="form-group filter-desktop-search">
-            <label class="form-label">Search</label>
-            <input
-              type="text"
-              class="form-input"
-              id="search-desktop"
-              placeholder="Search store or item..."
-            />
+        <!-- Advanced Filters (collapsible on mobile) -->
+        <div class="filters-collapsible" id="filters-collapsible">
+          <div class="filters-collapsible-inner">
+            <div class="filters-grid" id="filters-grid">
+              <div class="form-group filter-desktop-search">
+                <label class="form-label">Search</label>
+                <input
+                  type="text"
+                  class="form-input"
+                  id="search-desktop"
+                  placeholder="Search store or item..."
+                />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Store</label>
+                <select class="form-select" id="store-filter">
+                  <option value="">All Stores</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Category</label>
+                <select class="form-select" id="type-filter">
+                  <option value="">All Categories</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">From</label>
+                <input type="date" class="form-input" id="date-from" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">To</label>
+                <input type="date" class="form-input" id="date-to" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Sort By</label>
+                <select class="form-select" id="sort-by">
+                  <option value="date">Date</option>
+                  <option value="store">Store</option>
+                  <option value="total">Amount</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Order</label>
+                <select class="form-select" id="sort-order">
+                  <option value="desc">Descending</option>
+                  <option value="asc">Ascending</option>
+                </select>
+              </div>
+            </div>
+            <div class="filter-reset-row">
+              <button
+                class="btn btn-secondary btn-sm filter-reset-btn"
+                onclick="resetAllFilters()"
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path
+                    d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"
+                  />
+                  <path d="M3 3v5h5" />
+                </svg>
+                Reset Filters
+              </button>
+            </div>
           </div>
-          <div class="form-group">
-            <label class="form-label">Store</label>
-            <select class="form-select" id="store-filter">
-              <option value="">All Stores</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Category</label>
-            <select class="form-select" id="type-filter">
-              <option value="">All Categories</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">From</label>
-            <input type="date" class="form-input" id="date-from" />
-          </div>
-          <div class="form-group">
-            <label class="form-label">To</label>
-            <input type="date" class="form-input" id="date-to" />
-          </div>
-          <div class="form-group">
-            <label class="form-label">Sort By</label>
-            <select class="form-select" id="sort-by">
-              <option value="date">Date</option>
-              <option value="store">Store</option>
-              <option value="total">Amount</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Order</label>
-            <select class="form-select" id="sort-order">
-              <option value="desc">Descending</option>
-              <option value="asc">Ascending</option>
-            </select>
-          </div>
-        </div>
-        <div class="filter-reset-row">
-          <button
-            class="btn btn-secondary btn-sm filter-reset-btn"
-            onclick="resetAllFilters()"
-          >
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-              <path d="M3 3v5h5" />
-            </svg>
-            Reset Filters
-          </button>
         </div>
       </div>
 
