@@ -333,16 +333,36 @@ function toggleInvoice(element) {
 }
 
 // Modal Functions
+
+/**
+ * Lock body scroll to prevent background scrolling while a modal is open.
+ */
+function lockScroll() {
+  document.body.style.overflow = "hidden";
+}
+
+/**
+ * Restore body scroll when no modals are open.
+ */
+function unlockScroll() {
+  const anyOpen = document.querySelector(".modal-overlay.active");
+  if (!anyOpen) {
+    document.body.style.overflow = "";
+  }
+}
+
 function openAddModal() {
   editingInvoiceId = null;
   document.querySelector("#add-modal .modal-title").textContent = "New Invoice";
   document.getElementById("add-modal").classList.add("active");
+  lockScroll();
   resetAddForm();
   document.getElementById("invoice-date").valueAsDate = new Date();
 }
 
 function closeAddModal() {
   document.getElementById("add-modal").classList.remove("active");
+  unlockScroll();
   editingInvoiceId = null;
   resetAddForm();
 }
@@ -397,6 +417,7 @@ async function editInvoice(id) {
 
   calculateTotal();
   document.getElementById("add-modal").classList.add("active");
+  lockScroll();
 }
 
 function resetAddForm() {
@@ -425,6 +446,7 @@ function resetAddForm() {
 
 function openImportModal() {
   document.getElementById("import-modal").classList.add("active");
+  lockScroll();
 }
 
 // Confirm Modal Functions
@@ -437,6 +459,7 @@ function showConfirmModal(message, title = "Confirm Deletion") {
   document.getElementById("confirm-modal-title").textContent = title;
   document.getElementById("confirm-modal-message").textContent = message;
   document.getElementById("confirm-modal").classList.add("active");
+  lockScroll();
 
   return new Promise((resolve) => {
     confirmModalResolve = resolve;
@@ -448,6 +471,7 @@ function showConfirmModal(message, title = "Confirm Deletion") {
  */
 function closeConfirmModal(confirmed) {
   document.getElementById("confirm-modal").classList.remove("active");
+  unlockScroll();
   if (confirmModalResolve) {
     confirmModalResolve(confirmed);
     confirmModalResolve = null;
@@ -456,6 +480,7 @@ function closeConfirmModal(confirmed) {
 
 function closeImportModal() {
   document.getElementById("import-modal").classList.remove("active");
+  unlockScroll();
   document.getElementById("json-input").value = "";
   document.getElementById("file-input").value = "";
   pendingFiles = [];
@@ -1069,6 +1094,7 @@ function openBulkEditModal() {
   document.getElementById("bulk-edit-count").textContent =
     selectedInvoices.size;
   document.getElementById("bulk-edit-modal").classList.add("active");
+  lockScroll();
   storeInput.focus();
 }
 
@@ -1087,6 +1113,7 @@ async function populateBulkCategorySuggestions() {
 
 function closeBulkEditModal() {
   document.getElementById("bulk-edit-modal").classList.remove("active");
+  unlockScroll();
   document.getElementById("bulk-edit-store").value = "";
   document.getElementById("bulk-edit-category").value = "";
 }

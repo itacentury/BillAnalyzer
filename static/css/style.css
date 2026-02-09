@@ -235,17 +235,18 @@ body {
   padding: 0.5rem 1rem;
   font-size: 0.8125rem;
   font-weight: 500;
-  background: var(--accent-subtle);
-  border: 1px solid var(--accent);
+  background: transparent;
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
-  color: var(--accent);
+  color: var(--text-secondary);
   cursor: pointer;
   transition: all var(--transition);
 }
 
 .month-reset-btn:hover {
-  background: var(--accent);
-  color: white;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border-color: var(--text-muted);
 }
 
 /* Quick Filter Buttons */
