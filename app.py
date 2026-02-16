@@ -4,6 +4,7 @@ Provides REST API endpoints for CRUD operations on invoices,
 bulk operations, statistics, and a web interface for visualization.
 """
 
+import logging
 import os
 import sqlite3
 from datetime import datetime, timedelta
@@ -11,6 +12,12 @@ from typing import Any, Final
 
 from flask import Flask, Response, jsonify, render_template, request
 from flask_cors import CORS
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+)
+logger: logging.Logger = logging.getLogger(__name__)
 
 app: Flask = Flask(__name__)
 CORS(app)  # Enable CORS for all routes (required for native mobile apps)
@@ -76,17 +83,20 @@ def init_db() -> None:
             cursor.execute(
                 "ALTER TABLE invoices ADD COLUMN deleted_at TIMESTAMP DEFAULT NULL"
             )
+            logger.info("Migration applied: added 'deleted_at' column")
         except sqlite3.OperationalError:
-            pass  # Column already added by another worker
+            logger.debug("Column 'deleted_at' already exists, skipping migration")
 
     if "category" not in columns:
         try:
             cursor.execute("ALTER TABLE invoices ADD COLUMN category TEXT DEFAULT NULL")
+            logger.info("Migration applied: added 'category' column")
         except sqlite3.OperationalError:
-            pass  # Column already added by another worker
+            logger.debug("Column 'category' already exists, skipping migration")
 
     conn.commit()
     conn.close()
+    logger.info("Database initialized successfully")
 
 
 @app.route("/")
@@ -222,6 +232,14 @@ def add_invoice() -> Response:
 
     conn.commit()
     conn.close()
+    item_count = len(data.get("items", []))
+    logger.info(
+        "Invoice created: id=%s, store='%s', total=%.2f, items=%d",
+        invoice_id,
+        data.get("store"),
+        float(data["total"]),
+        item_count,
+    )
     return jsonify({"success": True, "id": invoice_id})
 
 
@@ -272,11 +290,18 @@ def import_invoices() -> ApiResponse:
             imported_count += 1
 
         conn.commit()
+        logger.info(
+            "Import completed: imported=%d, skipped=%d (of %d total)",
+            imported_count,
+            skipped_count,
+            len(data),
+        )
         return jsonify(
             {"success": True, "imported": imported_count, "skipped": skipped_count}
         )
     except sqlite3.Error as e:
         conn.rollback()
+        logger.error("Import failed: %s", e)
         return jsonify({"success": False, "error": str(e)}), 500
     finally:
         conn.close()
@@ -313,9 +338,18 @@ def update_invoice(invoice_id: int) -> ApiResponse:
             )
 
         conn.commit()
+        item_count = len(data.get("items", []))
+        logger.info(
+            "Invoice updated: id=%d, store='%s', total=%.2f, items=%d",
+            invoice_id,
+            data.get("store"),
+            float(data["total"]),
+            item_count,
+        )
         return jsonify({"success": True})
     except sqlite3.Error as e:
         conn.rollback()
+        logger.error("Failed to update invoice id=%d: %s", invoice_id, e)
         return jsonify({"success": False, "error": str(e)}), 500
     finally:
         conn.close()
@@ -333,6 +367,7 @@ def delete_invoice(invoice_id: int) -> Response:
     )
     conn.commit()
     conn.close()
+    logger.info("Invoice soft-deleted: id=%d", invoice_id)
     return jsonify({"success": True})
 
 
@@ -374,9 +409,15 @@ def bulk_update_invoices() -> ApiResponse:
         )
         updated_count: int = cursor.rowcount
         conn.commit()
+        logger.info(
+            "Bulk update completed: %d invoices updated (ids=%s)",
+            updated_count,
+            invoice_ids,
+        )
         return jsonify({"success": True, "updated": updated_count})
     except sqlite3.Error as e:
         conn.rollback()
+        logger.error("Bulk update failed for ids=%s: %s", invoice_ids, e)
         return jsonify({"success": False, "error": str(e)}), 500
     finally:
         conn.close()
@@ -403,9 +444,15 @@ def bulk_delete_invoices() -> ApiResponse:
         )
         deleted_count: int = cursor.rowcount
         conn.commit()
+        logger.info(
+            "Bulk soft-delete completed: %d invoices deleted (ids=%s)",
+            deleted_count,
+            invoice_ids,
+        )
         return jsonify({"success": True, "deleted": deleted_count})
     except sqlite3.Error as e:
         conn.rollback()
+        logger.error("Bulk delete failed for ids=%s: %s", invoice_ids, e)
         return jsonify({"success": False, "error": str(e)}), 500
     finally:
         conn.close()
@@ -443,7 +490,11 @@ def _calculate_comparison(
                 ((total_amount - prev_total) / prev_total) * 100, 1
             )
     except ValueError:
-        pass  # Invalid date format, skip comparison
+        logger.warning(
+            "Invalid date format for comparison: date_from='%s', date_to='%s'",
+            date_from,
+            date_to,
+        )
 
     return comparison
 
