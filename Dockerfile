@@ -2,7 +2,7 @@
 FROM python:3.12-slim AS builder
 
 # Provide uv
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/
 
 WORKDIR /build
 
@@ -14,7 +14,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY generate_icons.py .
 
 # Pillow is only needed to generate icons, not part of the project deps
-RUN uv pip install --system --no-cache pillow
+RUN uv pip install --system --no-cache pillow==11.3.0
 
 # Generate icons
 RUN mkdir -p static/icons && python generate_icons.py
