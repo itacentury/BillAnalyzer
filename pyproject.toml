@@ -4,17 +4,17 @@ version = "0.1.0"
 description = "Invoice management and expense tracking web application."
 requires-python = ">=3.12"
 dependencies = [
-    "flask>=3.1.2",
-    "flask-cors>=6.0.2",
-    "gunicorn>=25.0.0",
+    "flask>=3.1.2,<4",
+    "flask-cors>=6.0.2,<7",
+    "gunicorn>=25.0.0,<27",
 ]
 
 [dependency-groups]
 dev = [
-    "ruff>=0.14.0",
-    "mypy>=1.13.0",
-    "types-flask-cors>=6.0.0.20250809",
-    "pillow>=11.0.0",
+    "ruff>=0.14.0,<1",
+    "mypy>=1.13.0,<2",
+    "types-flask-cors>=6.0.0.20250809,<7",
+    "pillow>=11.0.0,<12",
 ]
 
 [tool.ruff]
