@@ -11,10 +11,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     fonts-liberation \
     && rm -rf /var/lib/apt/lists/*
 
-COPY generate_icons.py .
+# Pillow is needed only to generate icons; pull it from the locked `icons`
+# group so the version stays in sync with pyproject.toml / uv.lock
+COPY pyproject.toml uv.lock generate_icons.py ./
+RUN uv sync --frozen --no-install-project --only-group icons
 
-# Pillow is only needed to generate icons, not part of the project deps
-RUN uv pip install --system --no-cache pillow==11.3.0
+# Use the project virtualenv for subsequent commands
+ENV PATH="/build/.venv/bin:$PATH"
 
 # Generate icons
 RUN mkdir -p static/icons && python generate_icons.py

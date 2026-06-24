@@ -400,6 +400,9 @@ dev = [
     { name = "ruff" },
     { name = "types-flask-cors" },
 ]
+icons = [
+    { name = "pillow" },
+]
 
 [package.metadata]
 requires-dist = [
@@ -415,6 +418,7 @@ dev = [
     { name = "ruff", specifier = ">=0.14.0,<1" },
     { name = "types-flask-cors", specifier = ">=6.0.0.20250809,<7" },
 ]
+icons = [{ name = "pillow", specifier = ">=11.0.0,<12" }]
 
 [[package]]
 name = "types-flask-cors"
