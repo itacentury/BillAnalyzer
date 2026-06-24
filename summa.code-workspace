@@ -11,6 +11,7 @@
 		"files.exclude": {
 			"**/__pycache__": true,
 			"**/.mypy_cache":true,
+			"**/.ruff_cache":true,
 			".git": true,
 			"*.db": false,
 		},
@@ -21,8 +22,11 @@
 			"jinja-html": "html",
 		},
 		"[python]": {
-			"editor.defaultFormatter": "ms-python.black-formatter",
+			"editor.defaultFormatter": "charliermarsh.ruff",
 			"editor.tabSize": 4,
+			"editor.codeActionsOnSave": {
+				"source.organizeImports": "explicit",
+			},
 		},
 		"[html]": {
 			"editor.defaultFormatter": "vscode.html-language-features",
@@ -44,7 +48,7 @@
 		"recommendations": [
 			"ms-python.python",
 			"ms-python.vscode-pylance",
-			"ms-python.black-formatter",
+			"charliermarsh.ruff",
 			"ms-python.mypy-type-checker",
 			"samuelcolvin.jinjahtml",
 			"esbenp.prettier-vscode",

@@ -5,6 +5,7 @@ Invoice management and expense tracking web application.
 ## Requirements
 
 - Python 3.12+
+- [uv](https://docs.astral.sh/uv/) (for local development)
 - Docker (optional)
 
 ## Quick Start
@@ -22,18 +23,23 @@ See [`docker-compose.yml`](docker-compose.yml) for the full configuration includ
 ### Local Development
 
 ```bash
-# Create virtual environment
-python -m venv .venv
-source .venv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
+# Install dependencies (creates .venv automatically)
+uv sync
 
 # Run the application
-flask run
+uv run flask run
 ```
 
 The application runs at `http://localhost:8000` with the database stored in `invoices.db`.
+
+### Linting & Formatting
+
+[ruff](https://docs.astral.sh/ruff/) is used for formatting and linting:
+
+```bash
+uv run ruff format .   # format
+uv run ruff check .    # lint
+```
 
 ## Configuration
 

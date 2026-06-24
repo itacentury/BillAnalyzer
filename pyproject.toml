@@ -1,0 +1,27 @@
+[project]
+name = "summa"
+version = "0.1.0"
+description = "Invoice management and expense tracking web application."
+requires-python = ">=3.12"
+dependencies = [
+    "flask>=3.1.2",
+    "flask-cors>=6.0.2",
+    "gunicorn>=25.0.0",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.14.0",
+    "mypy>=1.13.0",
+    "types-flask-cors>=6.0.0.20250809",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+# Line length is handled by the formatter; it intentionally leaves long string
+# literals (e.g. SQL statements) untouched, so E501 would only produce noise.
+ignore = ["E501"]
