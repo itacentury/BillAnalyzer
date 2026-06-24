@@ -27,7 +27,7 @@ See [`docker-compose.yml`](docker-compose.yml) for the full configuration includ
 uv sync
 
 # Run the application
-uv run flask run
+uv run flask run --port 8000
 ```
 
 The application runs at `http://localhost:8000` with the database stored in `invoices.db`.
