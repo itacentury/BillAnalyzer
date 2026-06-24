@@ -1,0 +1,34 @@
+[project]
+name = "summa"
+version = "0.1.0"
+description = "Invoice management and expense tracking web application."
+requires-python = ">=3.12"
+dependencies = [
+    "flask>=3.1.2,<4",
+    "flask-cors>=6.0.2,<7",
+    "gunicorn>=25.0.0,<27",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.14.0,<1",
+    "mypy>=1.13.0,<2",
+    "types-flask-cors>=6.0.0.20250809,<7",
+    {include-group = "icons"},
+]
+icons = ["pillow>=11.0.0,<12"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+# Line length is handled by the formatter; it intentionally leaves long string
+# literals (e.g. SQL statements) untouched, so E501 would only produce noise.
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.12"
+files = ["app.py", "generate_icons.py"]
+strict = true

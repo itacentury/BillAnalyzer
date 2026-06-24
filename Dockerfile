@@ -1,6 +1,9 @@
 # Build stage for generating icons (optional, only if icons need regeneration)
 FROM python:3.12-slim AS builder
 
+# Provide uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/
+
 WORKDIR /build
 
 # Install Pillow dependencies for icon generation
@@ -8,10 +11,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     fonts-liberation \
     && rm -rf /var/lib/apt/lists/*
 
-COPY generate_icons.py .
-COPY requirements.txt .
+# Pillow is needed only to generate icons; pull it from the locked `icons`
+# group so the version stays in sync with pyproject.toml / uv.lock
+COPY pyproject.toml uv.lock generate_icons.py ./
+RUN uv sync --frozen --no-install-project --only-group icons
 
-RUN pip install --no-cache-dir pillow
+# Use the project virtualenv for subsequent commands
+ENV PATH="/build/.venv/bin:$PATH"
 
 # Generate icons
 RUN mkdir -p static/icons && python generate_icons.py
@@ -19,6 +25,9 @@ RUN mkdir -p static/icons && python generate_icons.py
 
 # Production stage
 FROM python:3.12-slim
+
+# Provide uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 LABEL org.opencontainers.image.title="Summa"
 LABEL org.opencontainers.image.description="Invoice management and expense tracking"
@@ -32,9 +41,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --create-home --shell /bin/bash appuser
 
-# Install dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Install runtime dependencies only (no dev group, no editable install of the app)
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-dev --no-install-project
+
+# Use the project virtualenv for all subsequent commands
+ENV PATH="/app/.venv/bin:$PATH"
 
 # Copy application files
 COPY app.py .

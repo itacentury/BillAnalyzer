@@ -5,52 +5,120 @@
 		}
 	],
 	"settings": {
+		"task.autoDetect": "off",
+		"python.terminal.activateEnvironment": true,
 		"python.analysis.typeCheckingMode": "standard",
-		"editor.formatOnSave": true,
-		"editor.formatOnPaste": true,
-		"files.exclude": {
-			"**/__pycache__": true,
-			"**/.mypy_cache":true,
-			".git": true,
-			"*.db": false,
-		},
-		"files.associations": {
-			"*.html": "jinja-html",
-		},
-		"emmet.includeLanguages": {
-			"jinja-html": "html",
-		},
 		"[python]": {
-			"editor.defaultFormatter": "ms-python.black-formatter",
+			"editor.defaultFormatter": "charliermarsh.ruff",
+			"editor.formatOnSave": true,
+			"editor.formatOnPaste": true,
 			"editor.tabSize": 4,
+			"editor.codeActionsOnSave": {
+				"source.organizeImports": "explicit"
+			}
 		},
 		"[html]": {
-			"editor.defaultFormatter": "vscode.html-language-features",
+			"editor.defaultFormatter": "vscode.html-language-features"
 		},
-		"[javascript]": {
+		"[javascript][css]": {
 			"editor.defaultFormatter": "esbenp.prettier-vscode",
-		},
-		"[css]": {
-			"editor.defaultFormatter": "esbenp.prettier-vscode",
+			"editor.formatOnSave": true,
+			"editor.formatOnPaste": true,
+			"editor.tabSize": 2,
+			"editor.insertSpaces": true
 		},
 		"[markdown]": {
-			"editor.unicodeHighlight.ambiguousCharacters": true,
-			"editor.unicodeHighlight.invisibleCharacters": true,
-			"editor.wordWrap": "on",
 			"editor.defaultFormatter": "esbenp.prettier-vscode",
+			"editor.formatOnSave": true,
+			"editor.formatOnPaste": true,
+			"editor.wordWrap": "on",
+			"editor.unicodeHighlight.ambiguousCharacters": true,
+			"editor.unicodeHighlight.invisibleCharacters": true
 		},
+		"editor.tabSize": 4,
+		"editor.insertSpaces": true,
+		"editor.trimAutoWhitespace": true,
+		"files.trimTrailingWhitespace": true,
+		"files.insertFinalNewline": true,
+		"files.trimFinalNewlines": true,
+		"files.associations": {
+			"*.html": "jinja-html"
+		},
+		"emmet.includeLanguages": {
+			"jinja-html": "html"
+		},
+		"files.exclude": {
+			"**/__pycache__": true,
+			"**/.mypy_cache": true,
+			"**/.ruff_cache": true,
+			"**/*.pyc": true,
+			"**/.venv": true,
+			".git": true,
+			"*.db": false
+		},
+		"search.exclude": {
+			"**/__pycache__": true,
+			"**/.mypy_cache": true,
+			"**/.ruff_cache": true,
+			"**/*.pyc": true,
+			"**/.venv": true
+		}
 	},
-	"extensions": {
-		"recommendations": [
-			"ms-python.python",
-			"ms-python.vscode-pylance",
-			"ms-python.black-formatter",
-			"ms-python.mypy-type-checker",
-			"samuelcolvin.jinjahtml",
-			"esbenp.prettier-vscode",
-			"ms-azuretools.vscode-docker",
-			"GitHub.vscode-github-actions",
-		],
+	"tasks": {
+		"version": "2.0.0",
+		"tasks": [
+			{
+				"label": "Format: All",
+				"type": "shell",
+				"command": "uv run ruff check --fix . && uv run ruff format .",
+				"group": "build",
+				"presentation": {
+					"panel": "shared"
+				}
+			},
+			{
+				"label": "Lint: All",
+				"type": "shell",
+				"command": "uv run ruff check . && uv run mypy .",
+				"group": "build",
+				"presentation": {
+					"panel": "shared",
+					"clear": true
+				}
+			},
+			{
+				"label": "Run: Start Server",
+				"type": "shell",
+				"command": "uv run flask --app app.py run --debug --port 8000",
+				"group": "build",
+				"isBackground": true,
+				"presentation": {
+					"panel": "dedicated"
+				}
+			},
+			{
+				"label": "Docker: Build",
+				"type": "shell",
+				"command": "docker compose build",
+				"group": "build"
+			},
+			{
+				"label": "Docker: Up",
+				"type": "shell",
+				"command": "docker compose up -d",
+				"group": "build"
+			},
+			{
+				"label": "Docker: Down",
+				"type": "shell",
+				"command": "docker compose down"
+			},
+			{
+				"label": "Generate Icons",
+				"type": "shell",
+				"command": "python generate_icons.py"
+			}
+		]
 	},
 	"launch": {
 		"version": "0.2.0",
@@ -63,44 +131,29 @@
 				"args": ["run", "--debug", "--port", "8000"],
 				"env": {
 					"FLASK_APP": "app.py",
-					"FLASK_DEBUG": "1",
+					"FLASK_DEBUG": "1"
 				},
-				"jinja": true,
+				"jinja": true
 			},
 			{
 				"name": "Python: Current File",
 				"type": "debugpy",
 				"request": "launch",
 				"program": "${file}",
-				"console": "integratedTerminal",
-			},
-		],
+				"console": "integratedTerminal"
+			}
+		]
 	},
-	"tasks": {
-		"version": "2.0.0",
-		"tasks": [
-			{
-				"label": "Docker: Build",
-				"type": "shell",
-				"command": "docker compose build",
-				"group": "build",
-			},
-			{
-				"label": "Docker: Up",
-				"type": "shell",
-				"command": "docker compose up -d",
-				"group": "build",
-			},
-			{
-				"label": "Docker: Down",
-				"type": "shell",
-				"command": "docker compose down",
-			},
-			{
-				"label": "Generate Icons",
-				"type": "shell",
-				"command": "python generate_icons.py",
-			},
-		],
-	},
+	"extensions": {
+		"recommendations": [
+			"ms-python.python",
+			"ms-python.vscode-pylance",
+			"charliermarsh.ruff",
+			"ms-python.mypy-type-checker",
+			"samuelcolvin.jinjahtml",
+			"esbenp.prettier-vscode",
+			"ms-azuretools.vscode-docker",
+			"GitHub.vscode-github-actions"
+		]
+	}
 }
