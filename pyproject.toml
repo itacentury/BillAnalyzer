@@ -26,3 +26,8 @@ select = ["E", "F", "I"]
 # Line length is handled by the formatter; it intentionally leaves long string
 # literals (e.g. SQL statements) untouched, so E501 would only produce noise.
 ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.12"
+files = ["app.py", "generate_icons.py"]
+strict = true

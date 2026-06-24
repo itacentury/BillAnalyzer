@@ -32,13 +32,15 @@ uv run flask run
 
 The application runs at `http://localhost:8000` with the database stored in `invoices.db`.
 
-### Linting & Formatting
+### Linting, Formatting & Type Checking
 
-[ruff](https://docs.astral.sh/ruff/) is used for formatting and linting:
+[ruff](https://docs.astral.sh/ruff/) is used for formatting and linting, and
+[mypy](https://mypy-lang.org/) for static type checking:
 
 ```bash
 uv run ruff format .   # format
 uv run ruff check .    # lint
+uv run mypy            # type check (files are configured in pyproject.toml)
 ```
 
 ## Configuration
