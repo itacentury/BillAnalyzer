@@ -482,7 +482,9 @@ def _calculate_comparison(
             "WHERE deleted_at IS NULL AND date >= ? AND date <= ?",
             (prev_start.strftime("%Y-%m-%d"), prev_end.strftime("%Y-%m-%d")),
         )
-        prev_total: float = cursor.fetchone()["sum"] or 0
+        prev_row: sqlite3.Row | None = cursor.fetchone()
+        assert prev_row is not None  # SUM aggregate always returns exactly one row
+        prev_total: float = prev_row["sum"] or 0
         comparison["previous_total"] = round(prev_total, 2)
 
         if prev_total > 0:
@@ -524,7 +526,8 @@ def get_stats() -> Response:
         f"SELECT COUNT(*) as count, SUM(total) as sum FROM invoices WHERE {base_conditions}",
         params,
     )
-    row: sqlite3.Row = cursor.fetchone()
+    row: sqlite3.Row | None = cursor.fetchone()
+    assert row is not None  # COUNT(*)/SUM aggregate always returns exactly one row
     total_invoices: int = row["count"]
     total_amount: float = row["sum"] or 0
 
