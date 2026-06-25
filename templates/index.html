@@ -457,6 +457,7 @@
                 placeholder="e.g. Groceries, Restaurant, Electronics"
                 list="type-suggestions"
               />
+              <!-- id required: <input list="…"> associates with a datalist by id, not data-el -->
               <datalist id="type-suggestions"></datalist>
             </div>
 
@@ -638,6 +639,7 @@
               list="bulk-category-suggestions"
               placeholder="e.g. Groceries (leave empty to keep unchanged)"
             />
+            <!-- id required: <input list="…"> associates with a datalist by id, not data-el -->
             <datalist id="bulk-category-suggestions"></datalist>
           </div>
         </div>
