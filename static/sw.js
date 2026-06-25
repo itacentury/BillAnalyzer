@@ -3,7 +3,7 @@
  * Provides offline support and caching strategies.
  */
 
-const CACHE_NAME = "summa-cache-v2";
+const CACHE_NAME = "summa-cache-v3";
 const STATIC_ASSETS = [
   "/",
   "/static/css/style.css",

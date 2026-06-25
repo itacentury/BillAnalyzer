@@ -46,15 +46,15 @@ const chartColors = [
 ];
 
 // DOM Elements
-const invoiceList = document.getElementById("invoice-list");
-const searchInput = document.getElementById("search");
-const storeFilter = document.getElementById("store-filter");
-const typeFilter = document.getElementById("type-filter");
-const dateFrom = document.getElementById("date-from");
-const dateTo = document.getElementById("date-to");
-const sortBy = document.getElementById("sort-by");
-const sortOrder = document.getElementById("sort-order");
-const monthDisplay = document.getElementById("month-display");
+const invoiceList = document.querySelector('[data-el="invoice-list"]');
+const searchInput = document.querySelector('[data-el="search"]');
+const storeFilter = document.querySelector('[data-el="store-filter"]');
+const typeFilter = document.querySelector('[data-el="type-filter"]');
+const dateFrom = document.querySelector('[data-el="date-from"]');
+const dateTo = document.querySelector('[data-el="date-to"]');
+const sortBy = document.querySelector('[data-el="sort-by"]');
+const sortOrder = document.querySelector('[data-el="sort-order"]');
+const monthDisplay = document.querySelector('[data-el="month-display"]');
 
 // Initialize
 document.addEventListener("DOMContentLoaded", () => {
@@ -90,8 +90,8 @@ function setupEventListeners() {
   sortOrder.addEventListener("change", loadInvoices);
 
   // Dropzone
-  const dropzone = document.getElementById("dropzone");
-  const fileInput = document.getElementById("file-input");
+  const dropzone = document.querySelector('[data-el="dropzone"]');
+  const fileInput = document.querySelector('[data-el="file-input"]');
 
   dropzone.addEventListener("click", () => fileInput.click());
   dropzone.addEventListener("dragover", (e) => {
@@ -113,7 +113,7 @@ function setupEventListeners() {
 
   // Calculate total on item input
   document
-    .getElementById("items-container")
+    .querySelector('[data-el="items-container"]')
     .addEventListener("input", calculateTotal);
 }
 
@@ -185,7 +185,7 @@ async function loadStores() {
 
 async function loadCategories() {
   try {
-    const typeFilter = document.getElementById("type-filter");
+    const typeFilter = document.querySelector('[data-el="type-filter"]');
     const previousValue = typeFilter ? typeFilter.value : "";
 
     const response = await fetch("/api/categories");
@@ -328,10 +328,11 @@ function renderInvoices() {
     0,
   );
 
-  document.getElementById("results-count").textContent = `${
+  document.querySelector('[data-el="results-count"]').textContent = `${
     invoices.length
   } invoice${invoices.length !== 1 ? "s" : ""}`;
-  document.getElementById("results-total").textContent = totalSum.toFixed(2);
+  document.querySelector('[data-el="results-total"]').textContent =
+    totalSum.toFixed(2);
 
   updateBulkActionToolbar();
 }
@@ -362,15 +363,16 @@ function unlockScroll() {
 
 function openAddModal() {
   editingInvoiceId = null;
-  document.querySelector("#add-modal .modal-title").textContent = "New Invoice";
-  document.getElementById("add-modal").classList.add("active");
+  document.querySelector('[data-el="add-modal"] .modal-title').textContent =
+    "New Invoice";
+  document.querySelector('[data-el="add-modal"]').classList.add("active");
   lockScroll();
   resetAddForm();
-  document.getElementById("invoice-date").valueAsDate = new Date();
+  document.querySelector('[data-el="invoice-date"]').valueAsDate = new Date();
 }
 
 function closeAddModal() {
-  document.getElementById("add-modal").classList.remove("active");
+  document.querySelector('[data-el="add-modal"]').classList.remove("active");
   unlockScroll();
   editingInvoiceId = null;
   resetAddForm();
@@ -385,17 +387,16 @@ async function editInvoice(id) {
     return;
   }
 
-  // Update modal title
-  document.querySelector("#add-modal .modal-title").textContent =
+  document.querySelector('[data-el="add-modal"] .modal-title').textContent =
     "Edit Invoice";
 
   // Fill in the form
-  document.getElementById("invoice-date").value = invoice.date;
-  document.getElementById("invoice-store").value = invoice.store;
-  document.getElementById("invoice-type").value = invoice.category || "";
+  document.querySelector('[data-el="invoice-date"]').value = invoice.date;
+  document.querySelector('[data-el="invoice-store"]').value = invoice.store;
+  document.querySelector('[data-el="invoice-type"]').value =
+    invoice.category || "";
 
-  // Clear and populate items
-  const itemsContainer = document.getElementById("items-container");
+  const itemsContainer = document.querySelector('[data-el="items-container"]');
   itemsContainer.innerHTML = "";
 
   invoice.items.forEach((item) => {
@@ -425,14 +426,14 @@ async function editInvoice(id) {
   });
 
   calculateTotal();
-  document.getElementById("add-modal").classList.add("active");
+  document.querySelector('[data-el="add-modal"]').classList.add("active");
   lockScroll();
 }
 
 function resetAddForm() {
-  document.getElementById("add-form").reset();
-  document.getElementById("invoice-type").value = "";
-  document.getElementById("items-container").innerHTML = `
+  document.querySelector('[data-el="add-form"]').reset();
+  document.querySelector('[data-el="invoice-type"]').value = "";
+  document.querySelector('[data-el="items-container"]').innerHTML = `
         <div class="item-input-row">
             <div class="form-group">
                 <label class="form-label">Item Name</label>
@@ -454,7 +455,7 @@ function resetAddForm() {
 }
 
 function openImportModal() {
-  document.getElementById("import-modal").classList.add("active");
+  document.querySelector('[data-el="import-modal"]').classList.add("active");
   lockScroll();
 }
 
@@ -465,9 +466,10 @@ let confirmModalResolve = null;
  * Show a custom confirmation modal that matches the app design.
  */
 function showConfirmModal(message, title = "Confirm Deletion") {
-  document.getElementById("confirm-modal-title").textContent = title;
-  document.getElementById("confirm-modal-message").textContent = message;
-  document.getElementById("confirm-modal").classList.add("active");
+  document.querySelector('[data-el="confirm-modal-title"]').textContent = title;
+  document.querySelector('[data-el="confirm-modal-message"]').textContent =
+    message;
+  document.querySelector('[data-el="confirm-modal"]').classList.add("active");
   lockScroll();
 
   return new Promise((resolve) => {
@@ -479,7 +481,9 @@ function showConfirmModal(message, title = "Confirm Deletion") {
  * Close the confirmation modal and resolve with the user's choice.
  */
 function closeConfirmModal(confirmed) {
-  document.getElementById("confirm-modal").classList.remove("active");
+  document
+    .querySelector('[data-el="confirm-modal"]')
+    .classList.remove("active");
   unlockScroll();
   if (confirmModalResolve) {
     confirmModalResolve(confirmed);
@@ -488,17 +492,17 @@ function closeConfirmModal(confirmed) {
 }
 
 function closeImportModal() {
-  document.getElementById("import-modal").classList.remove("active");
+  document.querySelector('[data-el="import-modal"]').classList.remove("active");
   unlockScroll();
-  document.getElementById("json-input").value = "";
-  document.getElementById("file-input").value = "";
+  document.querySelector('[data-el="json-input"]').value = "";
+  document.querySelector('[data-el="file-input"]').value = "";
   pendingFiles = [];
-  document.getElementById("selected-files").style.display = "none";
+  document.querySelector('[data-el="selected-files"]').style.display = "none";
 }
 
 // Item Row Functions
 function addItemRow() {
-  const container = document.getElementById("items-container");
+  const container = document.querySelector('[data-el="items-container"]');
   const row = document.createElement("div");
   row.className = "item-input-row";
   row.innerHTML = `
@@ -534,16 +538,16 @@ function calculateTotal() {
   prices.forEach((input) => {
     total += parseFloat(input.value) || 0;
   });
-  document.getElementById("calculated-total").textContent = `€${total.toFixed(
-    2,
-  )}`;
+  document.querySelector('[data-el="calculated-total"]').textContent =
+    `€${total.toFixed(2)}`;
 }
 
 // Save Functions
 async function saveInvoice() {
-  const date = document.getElementById("invoice-date").value;
-  const store = document.getElementById("invoice-store").value;
-  const type = document.getElementById("invoice-type").value.trim() || null;
+  const date = document.querySelector('[data-el="invoice-date"]').value;
+  const store = document.querySelector('[data-el="invoice-store"]').value;
+  const type =
+    document.querySelector('[data-el="invoice-type"]').value.trim() || null;
 
   if (!date || !store) {
     showToast("Please fill in date and store", "error");
@@ -630,7 +634,7 @@ function handleMultipleFiles(files) {
 }
 
 function updateSelectedFilesDisplay() {
-  const container = document.getElementById("selected-files");
+  const container = document.querySelector('[data-el="selected-files"]');
   if (pendingFiles.length === 0) {
     container.style.display = "none";
     return;
@@ -666,7 +670,7 @@ function removeFile(index) {
 
 async function loadFilesIntoTextarea() {
   if (pendingFiles.length === 0) {
-    document.getElementById("json-input").value = "";
+    document.querySelector('[data-el="json-input"]').value = "";
     return;
   }
 
@@ -686,7 +690,7 @@ async function loadFilesIntoTextarea() {
     }
   }
 
-  document.getElementById("json-input").value = JSON.stringify(
+  document.querySelector('[data-el="json-input"]').value = JSON.stringify(
     allData,
     null,
     2,
@@ -694,7 +698,9 @@ async function loadFilesIntoTextarea() {
 }
 
 async function importJson() {
-  const jsonText = document.getElementById("json-input").value.trim();
+  const jsonText = document
+    .querySelector('[data-el="json-input"]')
+    .value.trim();
   if (!jsonText) {
     showToast("Please enter JSON data", "error");
     return;
@@ -709,9 +715,8 @@ async function importJson() {
     return;
   }
 
-  // Get import button and show spinner
   const importButton = document.querySelector(
-    "#import-modal .modal-footer .btn-primary",
+    '[data-el="import-modal"] .modal-footer .btn-primary',
   );
   const originalContent = importButton.innerHTML;
   importButton.innerHTML = '<div class="spinner"></div>';
@@ -740,7 +745,6 @@ async function importJson() {
   } catch {
     showToast("Import failed", "error");
   } finally {
-    // Restore button state
     importButton.innerHTML = originalContent;
     importButton.disabled = false;
   }
@@ -808,8 +812,8 @@ function resetToCurrent() {
 // Reset all filters back to defaults (current month, no search/store/category)
 function resetAllFilters() {
   // Clear search fields
-  const mobileSearch = document.getElementById("search");
-  const desktopSearch = document.getElementById("search-desktop");
+  const mobileSearch = document.querySelector('[data-el="search"]');
+  const desktopSearch = document.querySelector('[data-el="search-desktop"]');
   if (mobileSearch) mobileSearch.value = "";
   if (desktopSearch) desktopSearch.value = "";
 
@@ -1035,19 +1039,19 @@ function deselectAllInvoices() {
 }
 
 function updateBulkActionToolbar() {
-  const toolbar = document.getElementById("bulk-action-toolbar");
+  const toolbar = document.querySelector('[data-el="bulk-action-toolbar"]');
   const count = selectedInvoices.size;
 
   if (count > 0) {
     toolbar.classList.add("visible");
-    document.getElementById("selected-count").textContent = count;
+    document.querySelector('[data-el="selected-count"]').textContent = count;
   } else {
     toolbar.classList.remove("visible");
   }
 
   // Update "select all" checkbox state
   const selectAllCheckbox = document.querySelector(
-    "#select-all-checkbox input",
+    '[data-el="select-all-checkbox"] input',
   );
   if (selectAllCheckbox && invoices.length > 0) {
     const allSelected = invoices.every((inv) => selectedInvoices.has(inv.id));
@@ -1078,7 +1082,7 @@ function openBulkEditModal() {
   });
 
   // Pre-fill with the common store name if all selected have the same store
-  const storeInput = document.getElementById("bulk-edit-store");
+  const storeInput = document.querySelector('[data-el="bulk-edit-store"]');
   if (selectedStores.size === 1) {
     storeInput.value = [...selectedStores][0];
   } else {
@@ -1087,7 +1091,9 @@ function openBulkEditModal() {
   }
 
   // Pre-fill with the common category if all selected have the same category
-  const categoryInput = document.getElementById("bulk-edit-category");
+  const categoryInput = document.querySelector(
+    '[data-el="bulk-edit-category"]',
+  );
   if (selectedCategories.size === 1) {
     categoryInput.value = [...selectedCategories][0];
   } else if (selectedCategories.size > 1) {
@@ -1099,12 +1105,11 @@ function openBulkEditModal() {
       "e.g. Groceries (leave empty to keep unchanged)";
   }
 
-  // Populate category suggestions
   populateBulkCategorySuggestions();
 
-  document.getElementById("bulk-edit-count").textContent =
+  document.querySelector('[data-el="bulk-edit-count"]').textContent =
     selectedInvoices.size;
-  document.getElementById("bulk-edit-modal").classList.add("active");
+  document.querySelector('[data-el="bulk-edit-modal"]').classList.add("active");
   lockScroll();
   storeInput.focus();
 }
@@ -1123,16 +1128,20 @@ async function populateBulkCategorySuggestions() {
 }
 
 function closeBulkEditModal() {
-  document.getElementById("bulk-edit-modal").classList.remove("active");
+  document
+    .querySelector('[data-el="bulk-edit-modal"]')
+    .classList.remove("active");
   unlockScroll();
-  document.getElementById("bulk-edit-store").value = "";
-  document.getElementById("bulk-edit-category").value = "";
+  document.querySelector('[data-el="bulk-edit-store"]').value = "";
+  document.querySelector('[data-el="bulk-edit-category"]').value = "";
 }
 
 async function saveBulkEdit() {
-  const newStore = document.getElementById("bulk-edit-store").value.trim();
+  const newStore = document
+    .querySelector('[data-el="bulk-edit-store"]')
+    .value.trim();
   const newCategory = document
-    .getElementById("bulk-edit-category")
+    .querySelector('[data-el="bulk-edit-category"]')
     .value.trim();
 
   if (!newStore && !newCategory) {
@@ -1210,7 +1219,7 @@ async function bulkDeleteInvoices() {
 }
 
 function showToast(message, type = "success") {
-  const container = document.getElementById("toast-container");
+  const container = document.querySelector('[data-el="toast-container"]');
   const toast = document.createElement("div");
   toast.className = `toast ${type}`;
   toast.innerHTML = `
@@ -1227,8 +1236,8 @@ function showToast(message, type = "success") {
  * Toggle the visibility of advanced filters on mobile.
  */
 function toggleAdvancedFilters() {
-  const collapsible = document.getElementById("filters-collapsible");
-  const toggleBtn = document.getElementById("filters-toggle");
+  const collapsible = document.querySelector('[data-el="filters-collapsible"]');
+  const toggleBtn = document.querySelector('[data-el="filters-toggle"]');
 
   collapsible.classList.toggle("visible");
   toggleBtn.classList.toggle("active");
@@ -1238,8 +1247,8 @@ function toggleAdvancedFilters() {
  * Sync search input values between mobile and desktop search fields.
  */
 function syncSearchInputs() {
-  const mobileSearch = document.getElementById("search");
-  const desktopSearch = document.getElementById("search-desktop");
+  const mobileSearch = document.querySelector('[data-el="search"]');
+  const desktopSearch = document.querySelector('[data-el="search-desktop"]');
 
   if (!mobileSearch || !desktopSearch) return;
 
@@ -1260,8 +1269,8 @@ function syncSearchInputs() {
  * Get the current search value from either mobile or desktop input.
  */
 function getSearchValue() {
-  const mobileSearch = document.getElementById("search");
-  const desktopSearch = document.getElementById("search-desktop");
+  const mobileSearch = document.querySelector('[data-el="search"]');
+  const desktopSearch = document.querySelector('[data-el="search-desktop"]');
 
   // Return whichever has a value, prioritizing the visible one based on screen size
   if (window.innerWidth <= 640) {
@@ -1282,8 +1291,8 @@ document.addEventListener("DOMContentLoaded", () => {
  */
 function showInvoicesView() {
   currentView = "invoices";
-  document.getElementById("invoices-view").style.display = "";
-  document.getElementById("stats-view").style.display = "none";
+  document.querySelector('[data-el="invoices-view"]').style.display = "";
+  document.querySelector('[data-el="stats-view"]').style.display = "none";
 
   // Update toggle buttons
   document.querySelectorAll(".view-toggle-btn").forEach((btn) => {
@@ -1296,8 +1305,8 @@ function showInvoicesView() {
  */
 function showStatsView() {
   currentView = "stats";
-  document.getElementById("invoices-view").style.display = "none";
-  document.getElementById("stats-view").style.display = "";
+  document.querySelector('[data-el="invoices-view"]').style.display = "none";
+  document.querySelector('[data-el="stats-view"]').style.display = "";
 
   // Update toggle buttons
   document.querySelectorAll(".view-toggle-btn").forEach((btn) => {
@@ -1330,11 +1339,10 @@ async function loadStats() {
  */
 function renderStats(data) {
   const { summary, by_category, by_store, comparison } = data;
-  const statsEmpty = document.getElementById("stats-empty");
+  const statsEmpty = document.querySelector('[data-el="stats-empty"]');
   const statsCards = document.querySelector(".stats-cards");
   const statsCharts = document.querySelector(".stats-charts");
 
-  // Handle empty state
   if (summary.total_invoices === 0) {
     statsEmpty.style.display = "";
     statsCards.style.display = "none";
@@ -1346,15 +1354,14 @@ function renderStats(data) {
   statsCards.style.display = "";
   statsCharts.style.display = "";
 
-  // Update summary cards
-  document.getElementById("stats-total").textContent =
+  document.querySelector('[data-el="stats-total"]').textContent =
     summary.total_amount.toFixed(2);
-  document.getElementById("stats-count").textContent = summary.total_invoices;
-  document.getElementById("stats-average").textContent =
+  document.querySelector('[data-el="stats-count"]').textContent =
+    summary.total_invoices;
+  document.querySelector('[data-el="stats-average"]').textContent =
     summary.average_invoice.toFixed(2);
 
-  // Update change indicator
-  const changeEl = document.getElementById("stats-change");
+  const changeEl = document.querySelector('[data-el="stats-change"]');
   if (comparison.previous_total > 0) {
     const changePercent = comparison.change_percent;
     const isPositive = changePercent >= 0;
@@ -1369,7 +1376,6 @@ function renderStats(data) {
     changeEl.style.display = "none";
   }
 
-  // Render charts
   renderCategoryChart(by_category);
   renderStoreChart(by_store);
 }
@@ -1378,16 +1384,14 @@ function renderStats(data) {
  * Render the category doughnut chart.
  */
 function renderCategoryChart(data) {
-  const ctx = document.getElementById("category-chart");
+  const ctx = document.querySelector('[data-el="category-chart"]');
   if (!ctx) return;
 
-  // Destroy existing chart
   if (categoryChart) {
     categoryChart.destroy();
   }
 
-  // Generate legend
-  const legendEl = document.getElementById("category-legend");
+  const legendEl = document.querySelector('[data-el="category-legend"]');
   const total = data.reduce((sum, item) => sum + item.amount, 0);
   legendEl.innerHTML = data
     .map((item, i) => {
@@ -1403,7 +1407,6 @@ function renderCategoryChart(data) {
     })
     .join("");
 
-  // Create new chart
   categoryChart = new Chart(ctx, {
     type: "doughnut",
     data: {
@@ -1452,15 +1455,13 @@ function renderCategoryChart(data) {
  * Render the store horizontal bar chart.
  */
 function renderStoreChart(data) {
-  const ctx = document.getElementById("store-chart");
+  const ctx = document.querySelector('[data-el="store-chart"]');
   if (!ctx) return;
 
-  // Destroy existing chart
   if (storeChart) {
     storeChart.destroy();
   }
 
-  // Create new chart
   storeChart = new Chart(ctx, {
     type: "bar",
     data: {

@@ -40,7 +40,7 @@ def strip_text(value: Any) -> str | None:
     """Strip whitespace from text values, returning None for empty strings."""
     if value is None:
         return None
-    stripped = str(value).strip()
+    stripped: str = str(value).strip()
     return stripped if stripped else None
 
 
@@ -232,7 +232,7 @@ def add_invoice() -> Response:
 
     conn.commit()
     conn.close()
-    item_count = len(data.get("items", []))
+    item_count: int = len(data.get("items", []))
     logger.info(
         "Invoice created: id=%s, store='%s', total=%.2f, items=%d",
         invoice_id,
@@ -255,10 +255,10 @@ def import_invoices() -> ApiResponse:
 
     try:
         for invoice_data in data:
-            store = strip_text(invoice_data["store"])
-            date = strip_text(invoice_data["date"])
-            category = strip_text(invoice_data.get("category"))
-            total = float(invoice_data["total"])
+            store: str | None = strip_text(invoice_data["store"])
+            date: str | None = strip_text(invoice_data["date"])
+            category: str | None = strip_text(invoice_data.get("category"))
+            total: float = float(invoice_data["total"])
 
             # Duplicate check: same combination of date, store and total amount
             cursor.execute(
@@ -338,7 +338,7 @@ def update_invoice(invoice_id: int) -> ApiResponse:
             )
 
         conn.commit()
-        item_count = len(data.get("items", []))
+        item_count: int = len(data.get("items", []))
         logger.info(
             "Invoice updated: id=%d, store='%s', total=%.2f, items=%d",
             invoice_id,
@@ -470,19 +470,21 @@ def _calculate_comparison(
         return comparison
 
     try:
-        start = datetime.strptime(date_from, "%Y-%m-%d")
-        end = datetime.strptime(date_to, "%Y-%m-%d")
-        period_days = (end - start).days + 1
+        start: datetime = datetime.strptime(date_from, "%Y-%m-%d")
+        end: datetime = datetime.strptime(date_to, "%Y-%m-%d")
+        period_days: int = (end - start).days + 1
 
-        prev_end = start - timedelta(days=1)
-        prev_start = prev_end - timedelta(days=period_days - 1)
+        prev_end: datetime = start - timedelta(days=1)
+        prev_start: datetime = prev_end - timedelta(days=period_days - 1)
 
         cursor.execute(
             "SELECT SUM(total) as sum FROM invoices "
             "WHERE deleted_at IS NULL AND date >= ? AND date <= ?",
             (prev_start.strftime("%Y-%m-%d"), prev_end.strftime("%Y-%m-%d")),
         )
-        prev_total: float = cursor.fetchone()["sum"] or 0
+        prev_row: sqlite3.Row | None = cursor.fetchone()
+        assert prev_row is not None  # SUM aggregate always returns exactly one row
+        prev_total: float = prev_row["sum"] or 0
         comparison["previous_total"] = round(prev_total, 2)
 
         if prev_total > 0:
@@ -524,7 +526,8 @@ def get_stats() -> Response:
         f"SELECT COUNT(*) as count, SUM(total) as sum FROM invoices WHERE {base_conditions}",
         params,
     )
-    row = cursor.fetchone()
+    row: sqlite3.Row | None = cursor.fetchone()
+    assert row is not None  # COUNT(*)/SUM aggregate always returns exactly one row
     total_invoices: int = row["count"]
     total_amount: float = row["sum"] or 0
 
@@ -559,7 +562,9 @@ def get_stats() -> Response:
         for r in cursor.fetchall()
     ]
 
-    comparison = _calculate_comparison(cursor, date_from, date_to, total_amount)
+    comparison: dict[str, Any] = _calculate_comparison(
+        cursor, date_from, date_to, total_amount
+    )
 
     conn.close()
     return jsonify(
