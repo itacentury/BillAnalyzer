@@ -48,7 +48,7 @@
       <div class="header-content">
         <div class="logo">
           <div class="logo-icon">&Sigma;</div>
-          <span>Summa</span>
+          <h1>Summa</h1>
         </div>
         <div class="view-toggle">
           <button
@@ -196,7 +196,7 @@
               <polyline points="15 18 9 12 15 6" />
             </svg>
           </button>
-          <div class="month-display" id="month-display">January 2026</div>
+          <div class="month-display" data-el="month-display">January 2026</div>
           <button class="month-nav-btn" onclick="navigateToNext()">
             <svg
               width="16"
@@ -221,7 +221,7 @@
             <input
               type="text"
               class="form-input"
-              id="search"
+              data-el="search"
               placeholder="Search store or item..."
             />
           </div>
@@ -230,7 +230,7 @@
         <!-- Advanced Filters Toggle (mobile only) -->
         <button
           class="filters-advanced-toggle"
-          id="filters-toggle"
+          data-el="filters-toggle"
           onclick="toggleAdvancedFilters()"
         >
           <svg
@@ -257,41 +257,41 @@
         </button>
 
         <!-- Advanced Filters (collapsible on mobile) -->
-        <div class="filters-collapsible" id="filters-collapsible">
+        <div class="filters-collapsible" data-el="filters-collapsible">
           <div class="filters-collapsible-inner">
-            <div class="filters-grid" id="filters-grid">
+            <div class="filters-grid" data-el="filters-grid">
               <div class="form-group filter-desktop-search">
                 <label class="form-label">Search</label>
                 <input
                   type="text"
                   class="form-input"
-                  id="search-desktop"
+                  data-el="search-desktop"
                   placeholder="Search store or item..."
                 />
               </div>
               <div class="form-group">
                 <label class="form-label">Store</label>
-                <select class="form-select" id="store-filter">
+                <select class="form-select" data-el="store-filter">
                   <option value="">All Stores</option>
                 </select>
               </div>
               <div class="form-group">
                 <label class="form-label">Category</label>
-                <select class="form-select" id="type-filter">
+                <select class="form-select" data-el="type-filter">
                   <option value="">All Categories</option>
                 </select>
               </div>
               <div class="form-group">
                 <label class="form-label">From</label>
-                <input type="date" class="form-input" id="date-from" />
+                <input type="date" class="form-input" data-el="date-from" />
               </div>
               <div class="form-group">
                 <label class="form-label">To</label>
-                <input type="date" class="form-input" id="date-to" />
+                <input type="date" class="form-input" data-el="date-to" />
               </div>
               <div class="form-group">
                 <label class="form-label">Sort By</label>
-                <select class="form-select" id="sort-by">
+                <select class="form-select" data-el="sort-by">
                   <option value="date">Date</option>
                   <option value="store">Store</option>
                   <option value="total">Amount</option>
@@ -299,7 +299,7 @@
               </div>
               <div class="form-group">
                 <label class="form-label">Order</label>
-                <select class="form-select" id="sort-order">
+                <select class="form-select" data-el="sort-order">
                   <option value="desc">Descending</option>
                   <option value="asc">Ascending</option>
                 </select>
@@ -329,18 +329,20 @@
       </div>
 
       <!-- Invoices List -->
-      <div class="invoices-section" id="invoices-view">
+      <div class="invoices-section" data-el="invoices-view">
         <div class="section-header">
           <div class="section-header-left">
-            <label class="invoice-checkbox" id="select-all-checkbox">
+            <label class="invoice-checkbox" data-el="select-all-checkbox">
               <input type="checkbox" onchange="toggleSelectAll(this.checked)" />
               <span class="checkbox-mark"></span>
             </label>
-            <span class="section-title" id="results-count">0 Invoices</span>
+            <span class="section-title" data-el="results-count"
+              >0 Invoices</span
+            >
           </div>
-          <span class="section-total" id="results-total">0.00</span>
+          <span class="section-total" data-el="results-total">0.00</span>
         </div>
-        <div class="invoice-list" id="invoice-list">
+        <div class="invoice-list" data-el="invoice-list">
           <div class="empty-state">
             <div class="empty-icon">📋</div>
             <div class="empty-title">No invoices yet</div>
@@ -352,21 +354,21 @@
       </div>
 
       <!-- Statistics View -->
-      <div class="stats-view" id="stats-view" style="display: none">
+      <div class="stats-view" data-el="stats-view" style="display: none">
         <!-- Summary Cards -->
         <div class="stats-cards">
           <div class="stat-card">
             <div class="stat-label">Total</div>
-            <div class="stat-value currency" id="stats-total">0.00</div>
-            <div class="stat-change" id="stats-change"></div>
+            <div class="stat-value currency" data-el="stats-total">0.00</div>
+            <div class="stat-change" data-el="stats-change"></div>
           </div>
           <div class="stat-card">
             <div class="stat-label">Invoices</div>
-            <div class="stat-value" id="stats-count">0</div>
+            <div class="stat-value" data-el="stats-count">0</div>
           </div>
           <div class="stat-card">
             <div class="stat-label">Average</div>
-            <div class="stat-value currency" id="stats-average">0.00</div>
+            <div class="stat-value currency" data-el="stats-average">0.00</div>
           </div>
         </div>
 
@@ -377,22 +379,22 @@
               <h3 class="chart-title">By Category</h3>
             </div>
             <div class="chart-container">
-              <canvas id="category-chart"></canvas>
+              <canvas data-el="category-chart"></canvas>
             </div>
-            <div class="chart-legend" id="category-legend"></div>
+            <div class="chart-legend" data-el="category-legend"></div>
           </div>
           <div class="chart-card">
             <div class="chart-header">
               <h3 class="chart-title">Top Stores</h3>
             </div>
             <div class="chart-container chart-container-bar">
-              <canvas id="store-chart"></canvas>
+              <canvas data-el="store-chart"></canvas>
             </div>
           </div>
         </div>
 
         <!-- Empty State for Stats -->
-        <div class="stats-empty" id="stats-empty" style="display: none">
+        <div class="stats-empty" data-el="stats-empty" style="display: none">
           <div class="empty-state">
             <div class="empty-icon">📊</div>
             <div class="empty-title">No data available</div>
@@ -405,7 +407,7 @@
     </main>
 
     <!-- Add Invoice Modal -->
-    <div class="modal-overlay" id="add-modal">
+    <div class="modal-overlay" data-el="add-modal">
       <div class="modal">
         <div class="modal-header">
           <h3 class="modal-title">New Invoice</h3>
@@ -424,14 +426,14 @@
           </button>
         </div>
         <div class="modal-body">
-          <form id="add-form">
+          <form data-el="add-form">
             <div class="form-row">
               <div class="form-group">
                 <label class="form-label">Date</label>
                 <input
                   type="date"
                   class="form-input"
-                  id="invoice-date"
+                  data-el="invoice-date"
                   required
                 />
               </div>
@@ -440,7 +442,7 @@
                 <input
                   type="text"
                   class="form-input"
-                  id="invoice-store"
+                  data-el="invoice-store"
                   placeholder="e.g. Amazon"
                   required
                 />
@@ -451,7 +453,7 @@
               <input
                 type="text"
                 class="form-input"
-                id="invoice-type"
+                data-el="invoice-type"
                 placeholder="e.g. Groceries, Restaurant, Electronics"
                 list="type-suggestions"
               />
@@ -480,7 +482,7 @@
                   Add Item
                 </button>
               </div>
-              <div id="items-container">
+              <div data-el="items-container">
                 <div class="item-input-row">
                   <div class="form-group">
                     <label class="form-label">Item Name</label>
@@ -521,7 +523,7 @@
               </div>
               <div class="calculated-total">
                 <span class="calculated-total-label">Calculated Total</span>
-                <span class="calculated-total-value" id="calculated-total"
+                <span class="calculated-total-value" data-el="calculated-total"
                   >€0.00</span
                 >
               </div>
@@ -538,7 +540,7 @@
     </div>
 
     <!-- Import Modal -->
-    <div class="modal-overlay" id="import-modal">
+    <div class="modal-overlay" data-el="import-modal">
       <div class="modal">
         <div class="modal-header">
           <h3 class="modal-title">JSON Import</h3>
@@ -557,7 +559,7 @@
           </button>
         </div>
         <div class="modal-body">
-          <div class="dropzone" id="dropzone">
+          <div class="dropzone" data-el="dropzone">
             <div class="dropzone-icon">📁</div>
             <div class="dropzone-text">
               Drag JSON files here or click to select<br /><small
@@ -567,21 +569,21 @@
             </div>
             <input
               type="file"
-              id="file-input"
+              data-el="file-input"
               accept=".json"
               multiple
               style="display: none"
             />
           </div>
           <div
-            id="selected-files"
+            data-el="selected-files"
             style="display: none; margin-bottom: 1rem"
           ></div>
           <div class="form-group">
             <label class="form-label">Or paste JSON directly</label>
             <textarea
               class="form-input json-textarea"
-              id="json-input"
+              data-el="json-input"
               placeholder='[{"date": "2024-01-01", "store": "...", "total": "...", "items": [...]}]'
             ></textarea>
           </div>
@@ -596,7 +598,7 @@
     </div>
 
     <!-- Bulk Edit Modal -->
-    <div class="modal-overlay" id="bulk-edit-modal">
+    <div class="modal-overlay" data-el="bulk-edit-modal">
       <div class="modal" style="max-width: 400px">
         <div class="modal-header">
           <h3 class="modal-title">Bulk Edit</h3>
@@ -616,14 +618,14 @@
         </div>
         <div class="modal-body">
           <p style="margin-bottom: 1rem; color: var(--text-secondary)">
-            <span id="bulk-edit-count">0</span> invoice(s) selected
+            <span data-el="bulk-edit-count">0</span> invoice(s) selected
           </p>
           <div class="form-group">
             <label class="form-label">New Store Name</label>
             <input
               type="text"
               class="form-input"
-              id="bulk-edit-store"
+              data-el="bulk-edit-store"
               placeholder="e.g. Walmart (leave empty to keep unchanged)"
             />
           </div>
@@ -632,7 +634,7 @@
             <input
               type="text"
               class="form-input"
-              id="bulk-edit-category"
+              data-el="bulk-edit-category"
               list="bulk-category-suggestions"
               placeholder="e.g. Groceries (leave empty to keep unchanged)"
             />
@@ -649,10 +651,10 @@
     </div>
 
     <!-- Bulk Action Toolbar -->
-    <div class="bulk-action-toolbar" id="bulk-action-toolbar">
+    <div class="bulk-action-toolbar" data-el="bulk-action-toolbar">
       <div class="bulk-action-content">
         <span class="bulk-action-count">
-          <span id="selected-count">0</span> selected
+          <span data-el="selected-count">0</span> selected
         </span>
         <div class="bulk-action-buttons">
           <button
@@ -711,10 +713,12 @@
     </div>
 
     <!-- Confirm Delete Modal -->
-    <div class="modal-overlay" id="confirm-modal">
+    <div class="modal-overlay" data-el="confirm-modal">
       <div class="modal" style="max-width: 400px">
         <div class="modal-header">
-          <h3 class="modal-title" id="confirm-modal-title">Confirm Deletion</h3>
+          <h3 class="modal-title" data-el="confirm-modal-title">
+            Confirm Deletion
+          </h3>
           <button class="modal-close" onclick="closeConfirmModal(false)">
             <svg
               width="20"
@@ -730,7 +734,10 @@
           </button>
         </div>
         <div class="modal-body">
-          <p id="confirm-modal-message" style="color: var(--text-secondary)">
+          <p
+            data-el="confirm-modal-message"
+            style="color: var(--text-secondary)"
+          >
             Are you sure you want to delete this entry?
           </p>
         </div>
@@ -761,7 +768,7 @@
     </div>
 
     <!-- Toast Container -->
-    <div class="toast-container" id="toast-container"></div>
+    <div class="toast-container" data-el="toast-container"></div>
 
     <script
       src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"

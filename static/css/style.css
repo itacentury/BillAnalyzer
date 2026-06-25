@@ -69,6 +69,11 @@ body {
   letter-spacing: -0.03em;
 }
 
+.logo h1 {
+  font-size: inherit;
+  font-weight: inherit;
+}
+
 .logo-icon {
   display: flex;
   align-items: center;
