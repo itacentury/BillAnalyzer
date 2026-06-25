@@ -8,6 +8,10 @@ Summa is an invoice management and expense-tracking web app: a Flask REST backen
 backed by SQLite, plus a vanilla-JS Progressive Web App frontend. There is no
 build step for the frontend and no test suite.
 
+## Code Style
+
+See @docs/code-style.md for code style and convention rules (applies on every machine).
+
 ## Commands
 
 Tooling is driven through `uv` (Python 3.12+):
