@@ -1,3 +1,12 @@
+/* Functions invoked from inline HTML handlers (index.html and generated markup);
+   declared as exported so no-unused-vars does not flag them. */
+/* exported toggleInvoice, openAddModal, editInvoice, openImportModal,
+   closeConfirmModal, addItemRow, removeItemRow, saveInvoice, deleteInvoice,
+   removeFile, importJson, navigateToPrevious, navigateToNext, resetToCurrent,
+   resetAllFilters, toggleInvoiceSelection, toggleSelectAll, selectAllInvoices,
+   deselectAllInvoices, openBulkEditModal, saveBulkEdit, bulkDeleteInvoices,
+   toggleAdvancedFilters, showInvoicesView, showStatsView */
+
 // Register Service Worker for PWA
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
@@ -17,7 +26,7 @@ let invoices = [];
 let currentDate = new Date(); // Current date for navigation reference
 let editingInvoiceId = null; // Track if we're editing an invoice
 let filterMode = "month"; // 'week', 'month', 'year', 'all', 'custom'
-let selectedInvoices = new Set(); // Track selected invoice IDs for bulk operations
+const selectedInvoices = new Set(); // Track selected invoice IDs for bulk operations
 let currentView = "invoices"; // 'invoices' or 'stats'
 let categoryChart = null; // Chart.js instance for category doughnut
 let storeChart = null; // Chart.js instance for store bar chart
@@ -141,7 +150,7 @@ async function loadInvoices() {
     if (currentView === "stats") {
       loadStats();
     }
-  } catch (error) {
+  } catch {
     showToast("Failed to load invoices", "error");
   }
 }
@@ -582,7 +591,7 @@ async function saveInvoice() {
     } else {
       showToast("Failed to save", "error");
     }
-  } catch (error) {
+  } catch {
     showToast("Failed to save", "error");
   }
 }
@@ -602,7 +611,7 @@ async function deleteInvoice(id) {
     } else {
       showToast("Failed to delete", "error");
     }
-  } catch (error) {
+  } catch {
     showToast("Failed to delete", "error");
   }
 }
@@ -672,7 +681,7 @@ async function loadFilesIntoTextarea() {
       } else {
         allData.push(parsed);
       }
-    } catch (e) {
+    } catch {
       showToast(`Failed to read ${file.name}`, "error");
     }
   }
@@ -695,7 +704,7 @@ async function importJson() {
   try {
     data = JSON.parse(jsonText);
     if (!Array.isArray(data)) data = [data];
-  } catch (error) {
+  } catch {
     showToast("Invalid JSON format", "error");
     return;
   }
@@ -728,7 +737,7 @@ async function importJson() {
     } else {
       showToast("Import failed", "error");
     }
-  } catch (error) {
+  } catch {
     showToast("Import failed", "error");
   } finally {
     // Restore button state
@@ -836,7 +845,7 @@ function updateFilterDisplay() {
   const resetBtn = document.querySelector(".month-reset-btn");
 
   switch (filterMode) {
-    case "week":
+    case "week": {
       const weekNum = getISOWeek(currentDate);
       const weekYear = getISOWeekYear(currentDate);
       monthDisplay.textContent = `W${weekNum} / ${weekYear}`;
@@ -844,7 +853,8 @@ function updateFilterDisplay() {
       resetBtn.textContent = "Current Week";
       resetBtn.style.display = "";
       break;
-    case "month":
+    }
+    case "month": {
       const monthName = monthNames[currentDate.getMonth()];
       const year = currentDate.getFullYear();
       monthDisplay.textContent = `${monthName} ${year}`;
@@ -852,6 +862,7 @@ function updateFilterDisplay() {
       resetBtn.textContent = "Current Month";
       resetBtn.style.display = "";
       break;
+    }
     case "year":
       monthDisplay.textContent = `${currentDate.getFullYear()}`;
       navButtons.forEach((btn) => (btn.style.visibility = "visible"));
@@ -1158,7 +1169,7 @@ async function saveBulkEdit() {
     } else {
       showToast("Failed to update", "error");
     }
-  } catch (error) {
+  } catch {
     showToast("Failed to update", "error");
   }
 }
@@ -1193,7 +1204,7 @@ async function bulkDeleteInvoices() {
     } else {
       showToast("Failed to delete", "error");
     }
-  } catch (error) {
+  } catch {
     showToast("Failed to delete", "error");
   }
 }
@@ -1309,7 +1320,7 @@ async function loadStats() {
     const response = await fetch(`/api/stats?${params}`);
     const data = await response.json();
     renderStats(data);
-  } catch (error) {
+  } catch {
     showToast("Failed to load statistics", "error");
   }
 }
