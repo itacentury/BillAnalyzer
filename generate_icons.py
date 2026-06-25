@@ -1,42 +1,48 @@
 #!/usr/bin/env python3
 """Generate PWA icons for Summa app."""
 
-import os
+from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
 # Icon sizes needed for PWA
-SIZES = [72, 96, 128, 144, 152, 192, 384, 512]
-MASKABLE_SIZES = [192, 512]
+SIZES: list[int] = [72, 96, 128, 144, 152, 192, 384, 512]
+MASKABLE_SIZES: list[int] = [192, 512]
 
 # Colors matching the app theme
-GRADIENT_START = (59, 130, 246)  # #3b82f6
-GRADIENT_END = (139, 92, 246)  # #8b5cf6
+GRADIENT_START: tuple[int, int, int] = (59, 130, 246)  # #3b82f6
+GRADIENT_END: tuple[int, int, int] = (139, 92, 246)  # #8b5cf6
 
-OUTPUT_DIR = "static/icons"
+OUTPUT_DIR: Path = Path("static/icons")
 
 
 def create_gradient(size: int) -> Image.Image:
     """Create a diagonal gradient background."""
-    img = Image.new("RGB", (size, size))
+    img: Image.Image = Image.new("RGB", (size, size))
     for y in range(size):
         for x in range(size):
             # Diagonal gradient
-            ratio = (x + y) / (2 * size)
-            r = int(GRADIENT_START[0] + (GRADIENT_END[0] - GRADIENT_START[0]) * ratio)
-            g = int(GRADIENT_START[1] + (GRADIENT_END[1] - GRADIENT_START[1]) * ratio)
-            b = int(GRADIENT_START[2] + (GRADIENT_END[2] - GRADIENT_START[2]) * ratio)
+            ratio: float = (x + y) / (2 * size)
+            r: int = int(
+                GRADIENT_START[0] + (GRADIENT_END[0] - GRADIENT_START[0]) * ratio
+            )
+            g: int = int(
+                GRADIENT_START[1] + (GRADIENT_END[1] - GRADIENT_START[1]) * ratio
+            )
+            b: int = int(
+                GRADIENT_START[2] + (GRADIENT_END[2] - GRADIENT_START[2]) * ratio
+            )
             img.putpixel((x, y), (r, g, b))
     return img
 
 
 def add_rounded_corners(img: Image.Image, radius: int) -> Image.Image:
     """Add rounded corners to an image."""
-    mask = Image.new("L", img.size, 0)
-    draw = ImageDraw.Draw(mask)
+    mask: Image.Image = Image.new("L", img.size, 0)
+    draw: ImageDraw.ImageDraw = ImageDraw.Draw(mask)
     draw.rounded_rectangle([(0, 0), img.size], radius=radius, fill=255)
 
-    result = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    result: Image.Image = Image.new("RGBA", img.size, (0, 0, 0, 0))
     result.paste(img, mask=mask)
     return result
 
@@ -44,7 +50,8 @@ def add_rounded_corners(img: Image.Image, radius: int) -> Image.Image:
 def draw_sigma_polygon(draw: ImageDraw.ImageDraw, size: int, maskable: bool) -> None:
     """Draw a Sigma symbol as a polygon when no font is available."""
     # Scale factor based on icon size
-    scale = size / 100.0
+    scale: float = size / 100.0
+    offset: float
     # Smaller for maskable icons (safe zone)
     if maskable:
         scale *= 0.65
@@ -54,7 +61,7 @@ def draw_sigma_polygon(draw: ImageDraw.ImageDraw, size: int, maskable: bool) -> 
         offset = size * 0.225
 
     # Sigma shape points (designed for 100x100, scaled)
-    points = [
+    points: list[tuple[int, int]] = [
         (70, 20),  # Top right
         (30, 20),  # Top left
         (50, 50),  # Middle point
@@ -68,21 +75,23 @@ def draw_sigma_polygon(draw: ImageDraw.ImageDraw, size: int, maskable: bool) -> 
     ]
 
     # Scale and offset points
-    scaled_points = [(x * scale + offset, y * scale + offset) for x, y in points]
+    scaled_points: list[tuple[float, float]] = [
+        (x * scale + offset, y * scale + offset) for x, y in points
+    ]
     draw.polygon(scaled_points, fill="white")
 
 
 def create_icon(size: int, maskable: bool = False) -> Image.Image:
     """Create an icon of the specified size."""
-    img = create_gradient(size)
-    draw = ImageDraw.Draw(img)
+    img: Image.Image = create_gradient(size)
+    draw: ImageDraw.ImageDraw = ImageDraw.Draw(img)
 
     # Calculate font size (roughly 60% of icon size for regular, 40% for maskable)
-    font_size = int(size * (0.4 if maskable else 0.6))
+    font_size: int = int(size * (0.4 if maskable else 0.6))
 
     # Try to use a good font, fall back to drawing manually
     font: ImageFont.FreeTypeFont | ImageFont.ImageFont | None = None
-    font_paths = [
+    font_paths: list[str] = [
         # Fedora/RHEL
         "/usr/share/fonts/liberation-serif-fonts/LiberationSerif-Bold.ttf",
         "/usr/share/fonts/liberation-sans-fonts/LiberationSans-Bold.ttf",
@@ -97,7 +106,7 @@ def create_icon(size: int, maskable: bool = False) -> Image.Image:
     ]
 
     for font_path in font_paths:
-        if os.path.exists(font_path):
+        if Path(font_path).exists():
             try:
                 font = ImageFont.truetype(font_path, font_size)
                 break
@@ -106,12 +115,12 @@ def create_icon(size: int, maskable: bool = False) -> Image.Image:
 
     # Draw the Sigma symbol
     if font is not None:
-        text = "Σ"
-        bbox = draw.textbbox((0, 0), text, font=font)
-        text_width = bbox[2] - bbox[0]
-        text_height = bbox[3] - bbox[1]
-        x = (size - text_width) // 2 - bbox[0]
-        y = (size - text_height) // 2 - bbox[1] - int(size * 0.02)
+        text: str = "Σ"
+        bbox: tuple[float, float, float, float] = draw.textbbox((0, 0), text, font=font)
+        text_width: float = bbox[2] - bbox[0]
+        text_height: float = bbox[3] - bbox[1]
+        x: float = (size - text_width) // 2 - bbox[0]
+        y: float = (size - text_height) // 2 - bbox[1] - int(size * 0.02)
         draw.text((x, y), text, fill="white", font=font)
     else:
         # Fallback: Draw Sigma as polygon
@@ -119,7 +128,7 @@ def create_icon(size: int, maskable: bool = False) -> Image.Image:
 
     # Add rounded corners for regular icons (not maskable)
     if not maskable:
-        radius = int(size * 0.15)  # 15% corner radius
+        radius: int = int(size * 0.15)  # 15% corner radius
         img = add_rounded_corners(img, radius)
     else:
         # Convert to RGBA for consistency
@@ -130,25 +139,25 @@ def create_icon(size: int, maskable: bool = False) -> Image.Image:
 
 def main() -> None:
     """Generate all PWA icons."""
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     # Generate regular icons
     for size in SIZES:
-        icon = create_icon(size, maskable=False)
-        filepath = os.path.join(OUTPUT_DIR, f"icon-{size}.png")
+        icon: Image.Image = create_icon(size, maskable=False)
+        filepath: Path = OUTPUT_DIR / f"icon-{size}.png"
         icon.save(filepath, "PNG")
         print(f"Created {filepath}")
 
     # Generate maskable icons (with safe zone padding)
     for size in MASKABLE_SIZES:
         icon = create_icon(size, maskable=True)
-        filepath = os.path.join(OUTPUT_DIR, f"icon-maskable-{size}.png")
+        filepath = OUTPUT_DIR / f"icon-maskable-{size}.png"
         icon.save(filepath, "PNG")
         print(f"Created {filepath}")
 
     # Generate Apple Touch Icon (180x180)
-    apple_icon = create_icon(180, maskable=False)
-    apple_path = os.path.join(OUTPUT_DIR, "apple-touch-icon.png")
+    apple_icon: Image.Image = create_icon(180, maskable=False)
+    apple_path: Path = OUTPUT_DIR / "apple-touch-icon.png"
     apple_icon.save(apple_path, "PNG")
     print(f"Created {apple_path}")
 
