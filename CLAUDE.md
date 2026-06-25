@@ -74,7 +74,7 @@ here. Key conventions:
 framework, no bundler) talking to the API; styling in `static/css/style.css`.
 
 **PWA.** `static/sw.js` caches static assets under `CACHE_NAME`
-(`summa-cache-v1`). **When you change any cached static asset, bump
+(`summa-cache-v2`). **When you change any cached static asset, bump
 `CACHE_NAME`** or clients keep serving the stale cached version. The service
 worker is registered from `app.js`.
 
