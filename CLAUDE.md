@@ -24,8 +24,26 @@ uv run ruff check .           # lint (E, F, I; E501 intentionally ignored)
 uv run mypy                   # strict type check (files set in pyproject.toml)
 ```
 
-CI (`.github/workflows/ci.yml`) runs, and must pass: `ruff check .`,
-`ruff format --check .`, and `mypy`. Run these three before pushing.
+Frontend (JS/CSS/HTML) is linted and formatted through `npm` (Node 22):
+
+```bash
+npm install        # install the lint/format toolchain
+npm run lint       # eslint + stylelint + prettier --check (what CI runs)
+npm run format     # prettier --write across the repo
+```
+
+ESLint config (`eslint.config.js`) lints `static/js/app.js` (browser script) and
+`static/sw.js` (service worker), and runs `@html-eslint` over `templates/*.html`
+for semantic/a11y checks (its formatting rules are off — Prettier owns
+formatting, via `prettier-plugin-jinja-template` for the Jinja template).
+Stylelint (`.stylelintrc.json`) enforces the `docs/code-style.md` CSS rules
+(recess-order property order, no `!important`, no id selectors, value hygiene).
+Functions called only from inline HTML handlers are listed in a top-of-file
+`/* exported … */` directive in `app.js` so `no-unused-vars` does not flag them.
+
+CI (`.github/workflows/ci.yml`) has two jobs that must pass: `lint` (`ruff check
+.`, `ruff format --check .`, `mypy`) and `frontend` (`npm run lint`). Run both
+before pushing.
 
 Docker: `docker compose up -d` serves on `http://localhost:8000` with the DB
 persisted in the `summa_data` volume.

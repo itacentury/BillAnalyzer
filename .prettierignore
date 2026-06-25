@@ -1,0 +1,8 @@
+node_modules/
+.venv/
+static/icons/
+uv.lock
+package-lock.json
+*.db
+*.db-shm
+*.db-wal

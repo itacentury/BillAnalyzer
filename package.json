@@ -1,0 +1,27 @@
+{
+  "name": "summa-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Frontend lint and format toolchain for the Summa PWA.",
+  "type": "module",
+  "scripts": {
+    "lint:js": "eslint .",
+    "lint:css": "stylelint \"static/**/*.css\"",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "fix": "eslint . --fix && stylelint \"static/**/*.css\" --fix && prettier --write .",
+    "lint": "npm run lint:js && npm run lint:css && npm run format:check"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@html-eslint/eslint-plugin": "^0.62.0",
+    "@html-eslint/parser": "^0.62.0",
+    "eslint": "^10.5.0",
+    "globals": "^17.7.0",
+    "prettier": "^3.8.4",
+    "prettier-plugin-jinja-template": "^2.2.0",
+    "stylelint": "^17.13.0",
+    "stylelint-config-recess-order": "^7.7.0",
+    "stylelint-config-standard": "^40.0.0"
+  }
+}
