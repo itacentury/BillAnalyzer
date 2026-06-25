@@ -73,9 +73,9 @@ here. Key conventions:
 **Frontend — `static/js/app.js` + `templates/index.html`.** Plain JS (no
 framework, no bundler) talking to the API; styling in `static/css/style.css`.
 
-**PWA.** `static/sw.js` caches static assets under `CACHE_NAME`
-(`summa-cache-v2`). **When you change any cached static asset, bump
-`CACHE_NAME`** or clients keep serving the stale cached version. The service
+**PWA.** `static/sw.js` caches static assets under the `CACHE_NAME` constant.
+**When you change any cached static asset, bump `CACHE_NAME`** (in
+`static/sw.js`) or clients keep serving the stale cached version. The service
 worker is registered from `app.js`.
 
 ## Deployment
