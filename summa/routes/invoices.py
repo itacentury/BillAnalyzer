@@ -116,40 +116,46 @@ def get_categories() -> Response:
 
 
 @invoices_bp.route("/api/invoices", methods=["POST"])
-def add_invoice() -> Response:
+def add_invoice() -> ApiResponse:
     """Create a new invoice with its associated items."""
     data: Any = request.json
     conn: sqlite3.Connection = get_db()
     cursor: sqlite3.Cursor = conn.cursor()
 
-    cursor.execute(
-        "INSERT INTO invoices (date, store, category, total) VALUES (?, ?, ?, ?)",
-        (
-            strip_text(data["date"]),
-            strip_text(data["store"]),
-            strip_text(data.get("category")),
-            float(data["total"]),
-        ),
-    )
-    invoice_id: int | None = cursor.lastrowid
-
-    for item in data.get("items", []):
+    try:
         cursor.execute(
-            "INSERT INTO invoice_items (invoice_id, item_name, item_price) VALUES (?, ?, ?)",
-            (invoice_id, strip_text(item["item_name"]), float(item["item_price"])),
+            "INSERT INTO invoices (date, store, category, total) VALUES (?, ?, ?, ?)",
+            (
+                strip_text(data["date"]),
+                strip_text(data["store"]),
+                strip_text(data.get("category")),
+                float(data["total"]),
+            ),
         )
+        invoice_id: int | None = cursor.lastrowid
 
-    conn.commit()
-    conn.close()
-    item_count: int = len(data.get("items", []))
-    logger.info(
-        "Invoice created: id=%s, store='%s', total=%.2f, items=%d",
-        invoice_id,
-        data.get("store"),
-        float(data["total"]),
-        item_count,
-    )
-    return jsonify({"success": True, "id": invoice_id})
+        for item in data.get("items", []):
+            cursor.execute(
+                "INSERT INTO invoice_items (invoice_id, item_name, item_price) VALUES (?, ?, ?)",
+                (invoice_id, strip_text(item["item_name"]), float(item["item_price"])),
+            )
+
+        conn.commit()
+        item_count: int = len(data.get("items", []))
+        logger.info(
+            "Invoice created: id=%s, store='%s', total=%.2f, items=%d",
+            invoice_id,
+            data.get("store"),
+            float(data["total"]),
+            item_count,
+        )
+        return jsonify({"success": True, "id": invoice_id})
+    except sqlite3.Error as e:
+        conn.rollback()
+        logger.error("Failed to create invoice: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        conn.close()
 
 
 @invoices_bp.route("/api/invoices/import", methods=["POST"])
@@ -265,19 +271,26 @@ def update_invoice(invoice_id: int) -> ApiResponse:
 
 
 @invoices_bp.route("/api/invoices/<int:invoice_id>", methods=["DELETE"])
-def delete_invoice(invoice_id: int) -> Response:
+def delete_invoice(invoice_id: int) -> ApiResponse:
     """Soft-delete an invoice by setting its deleted_at timestamp."""
     conn: sqlite3.Connection = get_db()
     cursor: sqlite3.Cursor = conn.cursor()
-    # Soft delete: set deleted_at timestamp instead of removing from database
-    cursor.execute(
-        "UPDATE invoices SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?",
-        (invoice_id,),
-    )
-    conn.commit()
-    conn.close()
-    logger.info("Invoice soft-deleted: id=%d", invoice_id)
-    return jsonify({"success": True})
+
+    try:
+        # Soft delete: set deleted_at timestamp instead of removing from database
+        cursor.execute(
+            "UPDATE invoices SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?",
+            (invoice_id,),
+        )
+        conn.commit()
+        logger.info("Invoice soft-deleted: id=%d", invoice_id)
+        return jsonify({"success": True})
+    except sqlite3.Error as e:
+        conn.rollback()
+        logger.error("Failed to delete invoice id=%d: %s", invoice_id, e)
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        conn.close()
 
 
 @invoices_bp.route("/api/invoices/bulk-update", methods=["PUT"])
