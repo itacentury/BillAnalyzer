@@ -65,7 +65,7 @@ def get_invoices() -> Response:
 
     cursor.execute(query, params)
 
-    result: list[dict[str, str | list[dict[str, str]]]] = []
+    result: list[dict[str, Any]] = []
     for invoice in cursor.fetchall():
         cursor.execute(
             "SELECT * FROM invoice_items WHERE invoice_id = ?", (invoice["id"],)
