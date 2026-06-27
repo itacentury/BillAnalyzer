@@ -64,7 +64,7 @@ RUN chmod +x /entrypoint.sh
 RUN mkdir -p /data && chown appuser:appuser /data
 
 # Set environment variables
-ENV FLASK_APP=summa
+ENV FLASK_APP=summa.wsgi
 ENV FLASK_ENV=production
 ENV PYTHONUNBUFFERED=1
 ENV DATABASE_PATH=/data/invoices.db
@@ -78,4 +78,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 
 # Use entrypoint for permission handling, then run gunicorn
 ENTRYPOINT ["/entrypoint.sh"]
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "2", "--threads", "4", "summa:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "2", "--threads", "4", "summa.wsgi:app"]

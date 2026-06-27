@@ -1,7 +1,7 @@
 """Summa: invoice management and expense-tracking web application.
 
-Exposes the application factory ``create_app()`` and a module-level ``app``
-instance for WSGI servers (gunicorn) and the Flask CLI.
+Exposes the application factory ``create_app()``. Importing this package has no
+side effects; the eager WSGI ``app`` instance lives in :mod:`summa.wsgi`.
 """
 
 import logging
@@ -42,9 +42,7 @@ def create_app() -> Flask:
     return app
 
 
-app: Flask = create_app()
-
-
 def main() -> None:
     """Start the Flask development server."""
+    app: Flask = create_app()
     app.run(debug=True, port=8000)

@@ -87,9 +87,19 @@
         },
       },
       {
+        "label": "Test: All",
+        "type": "shell",
+        "command": "uv run pytest",
+        "group": "build",
+        "presentation": {
+          "panel": "shared",
+          "clear": true,
+        },
+      },
+      {
         "label": "Run: Start Server",
         "type": "shell",
-        "command": "uv run flask --app summa run --debug --port 8000",
+        "command": "uv run flask --app summa.wsgi run --debug --port 8000",
         "group": "build",
         "isBackground": true,
         "presentation": {
@@ -130,7 +140,7 @@
         "module": "flask",
         "args": ["run", "--debug", "--port", "8000"],
         "env": {
-          "FLASK_APP": "summa",
+          "FLASK_APP": "summa.wsgi",
           "FLASK_DEBUG": "1",
         },
         "jinja": true,

@@ -52,8 +52,9 @@ persisted in the `summa_data` volume.
 
 **Backend — `summa/` package (app factory).** `create_app()` in
 `summa/__init__.py` builds the Flask app, enables CORS, registers the blueprints
-and calls `init_db()`; a module-level `app = create_app()` is the WSGI/CLI target
-(`FLASK_APP=summa`, gunicorn `summa:app`). Routes are split into blueprints under
+and calls `init_db()`. Importing the `summa` package itself has no side effects;
+the eager WSGI/CLI instance `app = create_app()` lives in `summa/wsgi.py`
+(`FLASK_APP=summa.wsgi`, gunicorn `summa.wsgi:app`). Routes are split into blueprints under
 `summa/routes/` (`web.py` → `/`, `invoices.py` → `/api/invoices*` + `/stores` +
 `/categories`, `stats.py` → `/api/stats`); the DB layer lives in `summa/db.py`
 and shared types/helpers in `summa/helpers.py`. Key conventions:

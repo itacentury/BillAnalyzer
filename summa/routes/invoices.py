@@ -7,7 +7,15 @@ from typing import Any
 from flask import Blueprint, Response, jsonify, request
 
 from summa.db import get_db
-from summa.helpers import ApiResponse, strip_text
+from summa.helpers import (
+    ApiResponse,
+    Invoice,
+    ValidationError,
+    escape_like,
+    parse_invoice,
+    parse_invoice_list,
+    strip_text,
+)
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -37,10 +45,11 @@ def get_invoices() -> Response:
 
     if filters["search"]:
         query += (
-            " AND (store LIKE ? OR id IN "
-            "(SELECT invoice_id FROM invoice_items WHERE item_name LIKE ?))"
+            " AND (store LIKE ? ESCAPE '\\' OR id IN "
+            "(SELECT invoice_id FROM invoice_items WHERE item_name LIKE ? ESCAPE '\\'))"
         )
-        params.extend([f"%{filters['search']}%", f"%{filters['search']}%"])
+        escaped: str = escape_like(filters["search"])
+        params.extend([f"%{escaped}%", f"%{escaped}%"])
 
     if filters["store"]:
         query += " AND store = ?"
@@ -119,35 +128,34 @@ def get_categories() -> Response:
 def add_invoice() -> ApiResponse:
     """Create a new invoice with its associated items."""
     data: Any = request.json
+    try:
+        invoice: Invoice = parse_invoice(data)
+    except ValidationError as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+
     conn: sqlite3.Connection = get_db()
     cursor: sqlite3.Cursor = conn.cursor()
 
     try:
         cursor.execute(
             "INSERT INTO invoices (date, store, category, total) VALUES (?, ?, ?, ?)",
-            (
-                strip_text(data["date"]),
-                strip_text(data["store"]),
-                strip_text(data.get("category")),
-                float(data["total"]),
-            ),
+            (invoice.date, invoice.store, invoice.category, invoice.total),
         )
         invoice_id: int | None = cursor.lastrowid
 
-        for item in data.get("items", []):
+        for item in invoice.items:
             cursor.execute(
                 "INSERT INTO invoice_items (invoice_id, item_name, item_price) VALUES (?, ?, ?)",
-                (invoice_id, strip_text(item["item_name"]), float(item["item_price"])),
+                (invoice_id, item.item_name, item.item_price),
             )
 
         conn.commit()
-        item_count: int = len(data.get("items", []))
         logger.info(
             "Invoice created: id=%s, store='%s', total=%.2f, items=%d",
             invoice_id,
-            data.get("store"),
-            float(data["total"]),
-            item_count,
+            invoice.store,
+            invoice.total,
+            len(invoice.items),
         )
         return jsonify({"success": True, "id": invoice_id})
     except sqlite3.Error as e:
@@ -162,6 +170,11 @@ def add_invoice() -> ApiResponse:
 def import_invoices() -> ApiResponse:
     """Bulk import invoices, skipping duplicates based on date, store, and total."""
     data: Any = request.json
+    try:
+        invoices: list[Invoice] = parse_invoice_list(data)
+    except ValidationError as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+
     conn: sqlite3.Connection = get_db()
     cursor: sqlite3.Cursor = conn.cursor()
 
@@ -169,16 +182,11 @@ def import_invoices() -> ApiResponse:
     skipped_count: int = 0
 
     try:
-        for invoice_data in data:
-            store: str | None = strip_text(invoice_data["store"])
-            date: str | None = strip_text(invoice_data["date"])
-            category: str | None = strip_text(invoice_data.get("category"))
-            total: float = float(invoice_data["total"])
-
+        for invoice in invoices:
             # Duplicate check: same combination of date, store and total amount
             cursor.execute(
                 "SELECT id FROM invoices WHERE date = ? AND store = ? AND total = ?",
-                (date, store, total),
+                (invoice.date, invoice.store, invoice.total),
             )
             existing: Any = cursor.fetchone()
 
@@ -188,19 +196,15 @@ def import_invoices() -> ApiResponse:
 
             cursor.execute(
                 "INSERT INTO invoices (date, store, category, total) VALUES (?, ?, ?, ?)",
-                (date, store, category, total),
+                (invoice.date, invoice.store, invoice.category, invoice.total),
             )
             invoice_id: int | None = cursor.lastrowid
 
-            for item in invoice_data.get("items", []):
+            for item in invoice.items:
                 cursor.execute(
                     "INSERT INTO invoice_items "
                     "(invoice_id, item_name, item_price) VALUES (?, ?, ?)",
-                    (
-                        invoice_id,
-                        strip_text(item["item_name"]),
-                        float(item["item_price"]),
-                    ),
+                    (invoice_id, item.item_name, item.item_price),
                 )
             imported_count += 1
 
@@ -209,7 +213,7 @@ def import_invoices() -> ApiResponse:
             "Import completed: imported=%d, skipped=%d (of %d total)",
             imported_count,
             skipped_count,
-            len(data),
+            len(invoices),
         )
         return jsonify(
             {"success": True, "imported": imported_count, "skipped": skipped_count}
@@ -226,6 +230,11 @@ def import_invoices() -> ApiResponse:
 def update_invoice(invoice_id: int) -> ApiResponse:
     """Update an existing invoice and replace all its items."""
     data: Any = request.json
+    try:
+        invoice: Invoice = parse_invoice(data)
+    except ValidationError as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+
     conn: sqlite3.Connection = get_db()
     cursor: sqlite3.Cursor = conn.cursor()
 
@@ -233,33 +242,26 @@ def update_invoice(invoice_id: int) -> ApiResponse:
         # Update invoice
         cursor.execute(
             "UPDATE invoices SET date = ?, store = ?, category = ?, total = ? WHERE id = ?",
-            (
-                strip_text(data["date"]),
-                strip_text(data["store"]),
-                strip_text(data.get("category")),
-                float(data["total"]),
-                invoice_id,
-            ),
+            (invoice.date, invoice.store, invoice.category, invoice.total, invoice_id),
         )
 
         # Delete existing items
         cursor.execute("DELETE FROM invoice_items WHERE invoice_id = ?", (invoice_id,))
 
         # Insert new items
-        for item in data.get("items", []):
+        for item in invoice.items:
             cursor.execute(
                 "INSERT INTO invoice_items (invoice_id, item_name, item_price) VALUES (?, ?, ?)",
-                (invoice_id, strip_text(item["item_name"]), float(item["item_price"])),
+                (invoice_id, item.item_name, item.item_price),
             )
 
         conn.commit()
-        item_count: int = len(data.get("items", []))
         logger.info(
             "Invoice updated: id=%d, store='%s', total=%.2f, items=%d",
             invoice_id,
-            data.get("store"),
-            float(data["total"]),
-            item_count,
+            invoice.store,
+            invoice.total,
+            len(invoice.items),
         )
         return jsonify({"success": True})
     except sqlite3.Error as e:
