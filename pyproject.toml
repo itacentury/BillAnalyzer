@@ -15,8 +15,10 @@ dev = [
     "mypy>=1.13.0,<2",
     "types-flask-cors>=6.0.0.20250809,<7",
     {include-group = "icons"},
+    {include-group = "test"},
 ]
 icons = ["pillow>=11.0.0,<12"]
+test = ["pytest>=8.3,<9"]
 
 [tool.ruff]
 line-length = 88
@@ -28,7 +30,10 @@ select = ["E", "F", "I"]
 # literals (e.g. SQL statements) untouched, so E501 would only produce noise.
 ignore = ["E501"]
 
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
 [tool.mypy]
 python_version = "3.12"
-files = ["summa", "generate_icons.py"]
+files = ["summa", "generate_icons.py", "tests"]
 strict = true

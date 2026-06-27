@@ -87,6 +87,16 @@
         },
       },
       {
+        "label": "Test: All",
+        "type": "shell",
+        "command": "uv run pytest",
+        "group": "build",
+        "presentation": {
+          "panel": "shared",
+          "clear": true,
+        },
+      },
+      {
         "label": "Run: Start Server",
         "type": "shell",
         "command": "uv run flask --app summa run --debug --port 8000",
