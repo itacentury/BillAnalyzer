@@ -149,6 +149,35 @@ def test_get_invoices_search_matches_store_and_item(
     assert len(result) == 2
 
 
+def test_get_invoices_search_escapes_like_wildcards(
+    client: FlaskClient, seed_invoice: SeedInvoice
+) -> None:
+    """LIKE wildcards in the search term match literally, not as wildcards."""
+    seed_invoice(store="Sale")
+    seed_invoice(store="S_le")
+
+    underscore = _get_json(client.get("/api/invoices?search=S_le"))
+    assert [invoice["store"] for invoice in underscore] == ["S_le"]
+
+    seed_invoice(store="50")
+    seed_invoice(store="50%")
+
+    percent = _get_json(client.get("/api/invoices?search=50%25"))
+    assert [invoice["store"] for invoice in percent] == ["50%"]
+
+
+def test_get_invoices_default_sort_is_date_desc(
+    client: FlaskClient, seed_invoice: SeedInvoice
+) -> None:
+    """Without sort_by the listing defaults to date descending."""
+    seed_invoice(date="2024-02-01", store="Feb")
+    seed_invoice(date="2024-01-01", store="Jan")
+    seed_invoice(date="2024-03-01", store="Mar")
+
+    dates = [invoice["date"] for invoice in _get_json(client.get("/api/invoices"))]
+    assert dates == ["2024-03-01", "2024-02-01", "2024-01-01"]
+
+
 def test_get_invoices_sorting(client: FlaskClient, seed_invoice: SeedInvoice) -> None:
     """sort_by/sort_order order the results by the chosen column."""
     seed_invoice(store="A", total=30.0)
@@ -235,6 +264,17 @@ def test_import_non_numeric_total_returns_400(client: FlaskClient) -> None:
     assert _get_json(client.get("/api/invoices")) == []
 
 
+def test_import_non_list_payload_returns_400(client: FlaskClient) -> None:
+    """A payload that is not a list of invoices is rejected with 400."""
+    response = client.post(
+        "/api/invoices/import",
+        json={"date": "2024-01-01", "store": "Single", "total": 1.0},
+    )
+    assert response.status_code == 400
+    assert _get_json(response)["error"] == "Expected a list of invoices"
+    assert _get_json(client.get("/api/invoices")) == []
+
+
 # --- PUT /api/invoices/<id> ---------------------------------------------------
 
 
@@ -276,6 +316,17 @@ def test_update_invoice_missing_field_returns_400(
     )
     assert response.status_code == 400
     assert _get_json(response)["error"] == "Missing required field: date"
+
+
+def test_update_nonexistent_invoice_reports_success(client: FlaskClient) -> None:
+    """Updating an unknown id succeeds silently and creates nothing."""
+    response = client.put(
+        "/api/invoices/999999",
+        json={"date": "2024-04-01", "store": "Ghost", "total": 1.0, "items": []},
+    )
+    assert response.status_code == 200
+    assert _get_json(response) == {"success": True}
+    assert _get_json(client.get("/api/invoices")) == []
 
 
 # --- DELETE /api/invoices/<id> ------------------------------------------------

@@ -11,6 +11,7 @@ from summa.helpers import (
     ApiResponse,
     Invoice,
     ValidationError,
+    escape_like,
     parse_invoice,
     parse_invoice_list,
     strip_text,
@@ -44,10 +45,11 @@ def get_invoices() -> Response:
 
     if filters["search"]:
         query += (
-            " AND (store LIKE ? OR id IN "
-            "(SELECT invoice_id FROM invoice_items WHERE item_name LIKE ?))"
+            " AND (store LIKE ? ESCAPE '\\' OR id IN "
+            "(SELECT invoice_id FROM invoice_items WHERE item_name LIKE ? ESCAPE '\\'))"
         )
-        params.extend([f"%{filters['search']}%", f"%{filters['search']}%"])
+        escaped: str = escape_like(filters["search"])
+        params.extend([f"%{escaped}%", f"%{escaped}%"])
 
     if filters["store"]:
         query += " AND store = ?"

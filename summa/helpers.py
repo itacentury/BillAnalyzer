@@ -40,6 +40,12 @@ def strip_text(value: Any) -> str | None:
     return stripped if stripped else None
 
 
+def escape_like(value: str) -> str:
+    """Escape LIKE wildcards so a search term matches literally."""
+    # Escape the escape char first, then the two LIKE wildcards.
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
 def _require(data: dict[str, Any], key: str) -> Any:
     """Return data[key], raising ValidationError if the key is absent."""
     if key not in data:
