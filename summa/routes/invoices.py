@@ -1,111 +1,20 @@
-"""Flask web application for managing and analyzing invoices.
-
-Provides REST API endpoints for CRUD operations on invoices,
-bulk operations, statistics, and a web interface for visualization.
-"""
+"""REST API routes for invoice CRUD, bulk operations, stores and categories."""
 
 import logging
-import os
 import sqlite3
-from datetime import datetime, timedelta
-from typing import Any, Final
+from typing import Any
 
-from flask import Flask, Response, jsonify, render_template, request
-from flask_cors import CORS
+from flask import Blueprint, Response, jsonify, request
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-)
+from summa.db import get_db
+from summa.helpers import ApiResponse, strip_text
+
 logger: logging.Logger = logging.getLogger(__name__)
 
-app: Flask = Flask(__name__)
-CORS(app)  # Enable CORS for all routes (required for native mobile apps)
-DATABASE: Final[str] = os.environ.get("DATABASE_PATH", "invoices.db")
-
-# Type alias for API responses that may include HTTP status codes
-ApiResponse = Response | tuple[Response, int]
+invoices_bp: Blueprint = Blueprint("invoices", __name__)
 
 
-def get_db() -> sqlite3.Connection:
-    """Create and return a database connection with WAL mode enabled."""
-    conn: sqlite3.Connection = sqlite3.connect(DATABASE, timeout=30.0)
-    conn.row_factory = sqlite3.Row
-    # Enable WAL mode for better concurrency
-    conn.execute("PRAGMA journal_mode=WAL")
-    return conn
-
-
-def strip_text(value: Any) -> str | None:
-    """Strip whitespace from text values, returning None for empty strings."""
-    if value is None:
-        return None
-    stripped: str = str(value).strip()
-    return stripped if stripped else None
-
-
-def init_db() -> None:
-    """Initialize the database schema and apply migrations if needed."""
-    conn: sqlite3.Connection = get_db()
-    cursor: sqlite3.Cursor = conn.cursor()
-
-    cursor.execute(
-        """
-        CREATE TABLE IF NOT EXISTS invoices (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            date TEXT NOT NULL,
-            store TEXT NOT NULL,
-            category TEXT DEFAULT NULL,
-            total REAL NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            deleted_at TIMESTAMP DEFAULT NULL
-        )
-    """
-    )
-
-    cursor.execute(
-        """
-        CREATE TABLE IF NOT EXISTS invoice_items (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            invoice_id INTEGER NOT NULL,
-            item_name TEXT NOT NULL,
-            item_price REAL NOT NULL,
-            FOREIGN KEY (invoice_id) REFERENCES invoices (id) ON DELETE CASCADE
-        )
-    """
-    )
-
-    # Migration: Add deleted_at column if it doesn't exist (for existing databases)
-    cursor.execute("PRAGMA table_info(invoices)")
-    columns: list[str] = [column[1] for column in cursor.fetchall()]
-    if "deleted_at" not in columns:
-        try:
-            cursor.execute(
-                "ALTER TABLE invoices ADD COLUMN deleted_at TIMESTAMP DEFAULT NULL"
-            )
-            logger.info("Migration applied: added 'deleted_at' column")
-        except sqlite3.OperationalError:
-            logger.debug("Column 'deleted_at' already exists, skipping migration")
-
-    if "category" not in columns:
-        try:
-            cursor.execute("ALTER TABLE invoices ADD COLUMN category TEXT DEFAULT NULL")
-            logger.info("Migration applied: added 'category' column")
-        except sqlite3.OperationalError:
-            logger.debug("Column 'category' already exists, skipping migration")
-
-    conn.commit()
-    conn.close()
-    logger.info("Database initialized successfully")
-
-
-@app.route("/")
-def index() -> str:
-    """Render the main web interface."""
-    return render_template("index.html")
-
-
-@app.route("/api/invoices", methods=["GET"])
+@invoices_bp.route("/api/invoices", methods=["GET"])
 def get_invoices() -> Response:
     """Retrieve all invoices with optional filtering and sorting."""
     conn: sqlite3.Connection = get_db()
@@ -179,7 +88,7 @@ def get_invoices() -> Response:
     return jsonify(result)
 
 
-@app.route("/api/stores", methods=["GET"])
+@invoices_bp.route("/api/stores", methods=["GET"])
 def get_stores() -> Response:
     """Return a list of all unique store names."""
     conn: sqlite3.Connection = get_db()
@@ -192,7 +101,7 @@ def get_stores() -> Response:
     return jsonify(stores)
 
 
-@app.route("/api/categories", methods=["GET"])
+@invoices_bp.route("/api/categories", methods=["GET"])
 def get_categories() -> Response:
     """Return a list of all unique invoice categories."""
     conn: sqlite3.Connection = get_db()
@@ -206,7 +115,7 @@ def get_categories() -> Response:
     return jsonify(categories)
 
 
-@app.route("/api/invoices", methods=["POST"])
+@invoices_bp.route("/api/invoices", methods=["POST"])
 def add_invoice() -> Response:
     """Create a new invoice with its associated items."""
     data: Any = request.json
@@ -243,7 +152,7 @@ def add_invoice() -> Response:
     return jsonify({"success": True, "id": invoice_id})
 
 
-@app.route("/api/invoices/import", methods=["POST"])
+@invoices_bp.route("/api/invoices/import", methods=["POST"])
 def import_invoices() -> ApiResponse:
     """Bulk import invoices, skipping duplicates based on date, store, and total."""
     data: Any = request.json
@@ -307,7 +216,7 @@ def import_invoices() -> ApiResponse:
         conn.close()
 
 
-@app.route("/api/invoices/<int:invoice_id>", methods=["PUT"])
+@invoices_bp.route("/api/invoices/<int:invoice_id>", methods=["PUT"])
 def update_invoice(invoice_id: int) -> ApiResponse:
     """Update an existing invoice and replace all its items."""
     data: Any = request.json
@@ -355,7 +264,7 @@ def update_invoice(invoice_id: int) -> ApiResponse:
         conn.close()
 
 
-@app.route("/api/invoices/<int:invoice_id>", methods=["DELETE"])
+@invoices_bp.route("/api/invoices/<int:invoice_id>", methods=["DELETE"])
 def delete_invoice(invoice_id: int) -> Response:
     """Soft-delete an invoice by setting its deleted_at timestamp."""
     conn: sqlite3.Connection = get_db()
@@ -371,7 +280,7 @@ def delete_invoice(invoice_id: int) -> Response:
     return jsonify({"success": True})
 
 
-@app.route("/api/invoices/bulk-update", methods=["PUT"])
+@invoices_bp.route("/api/invoices/bulk-update", methods=["PUT"])
 def bulk_update_invoices() -> ApiResponse:
     """Update store name and/or category for multiple invoices at once."""
     data: Any = request.json
@@ -423,7 +332,7 @@ def bulk_update_invoices() -> ApiResponse:
         conn.close()
 
 
-@app.route("/api/invoices/bulk-delete", methods=["POST"])
+@invoices_bp.route("/api/invoices/bulk-delete", methods=["POST"])
 def bulk_delete_invoices() -> ApiResponse:
     """Soft-delete multiple invoices at once."""
     data: Any = request.json
@@ -456,138 +365,3 @@ def bulk_delete_invoices() -> ApiResponse:
         return jsonify({"success": False, "error": str(e)}), 500
     finally:
         conn.close()
-
-
-def _calculate_comparison(
-    cursor: sqlite3.Cursor,
-    date_from: str,
-    date_to: str,
-    total_amount: float,
-) -> dict[str, Any]:
-    """Calculate spending comparison with the previous period of equal length."""
-    comparison: dict[str, Any] = {"previous_total": 0, "change_percent": 0}
-    if not (date_from and date_to):
-        return comparison
-
-    try:
-        start: datetime = datetime.strptime(date_from, "%Y-%m-%d")
-        end: datetime = datetime.strptime(date_to, "%Y-%m-%d")
-        period_days: int = (end - start).days + 1
-
-        prev_end: datetime = start - timedelta(days=1)
-        prev_start: datetime = prev_end - timedelta(days=period_days - 1)
-
-        cursor.execute(
-            "SELECT SUM(total) as sum FROM invoices "
-            "WHERE deleted_at IS NULL AND date >= ? AND date <= ?",
-            (prev_start.strftime("%Y-%m-%d"), prev_end.strftime("%Y-%m-%d")),
-        )
-        prev_row: sqlite3.Row | None = cursor.fetchone()
-        assert prev_row is not None  # SUM aggregate always returns exactly one row
-        prev_total: float = prev_row["sum"] or 0
-        comparison["previous_total"] = round(prev_total, 2)
-
-        if prev_total > 0:
-            comparison["change_percent"] = round(
-                ((total_amount - prev_total) / prev_total) * 100, 1
-            )
-    except ValueError:
-        logger.warning(
-            "Invalid date format for comparison: date_from='%s', date_to='%s'",
-            date_from,
-            date_to,
-        )
-
-    return comparison
-
-
-@app.route("/api/stats", methods=["GET"])
-def get_stats() -> Response:
-    """Return aggregate statistics about invoices with optional date filtering."""
-    conn: sqlite3.Connection = get_db()
-    cursor: sqlite3.Cursor = conn.cursor()
-
-    date_from: str = request.args.get("date_from", "")
-    date_to: str = request.args.get("date_to", "")
-
-    # Build base query conditions
-    base_conditions: str = "deleted_at IS NULL"
-    params: list[str] = []
-
-    if date_from:
-        base_conditions += " AND date >= ?"
-        params.append(date_from)
-    if date_to:
-        base_conditions += " AND date <= ?"
-        params.append(date_to)
-
-    # Summary statistics
-    cursor.execute(
-        f"SELECT COUNT(*) as count, SUM(total) as sum FROM invoices WHERE {base_conditions}",
-        params,
-    )
-    row: sqlite3.Row | None = cursor.fetchone()
-    assert row is not None  # COUNT(*)/SUM aggregate always returns exactly one row
-    total_invoices: int = row["count"]
-    total_amount: float = row["sum"] or 0
-
-    average_invoice: float = total_amount / total_invoices if total_invoices > 0 else 0
-
-    # Category breakdown
-    cursor.execute(
-        f"""SELECT COALESCE(category, 'Uncategorized') as category,
-                   SUM(total) as amount, COUNT(*) as count
-            FROM invoices WHERE {base_conditions}
-            GROUP BY category ORDER BY amount DESC""",
-        params,
-    )
-    by_category: list[dict[str, Any]] = [
-        {
-            "category": r["category"],
-            "amount": round(r["amount"], 2),
-            "count": r["count"],
-        }
-        for r in cursor.fetchall()
-    ]
-
-    # Store breakdown (top 10)
-    cursor.execute(
-        f"""SELECT store, SUM(total) as amount, COUNT(*) as count
-            FROM invoices WHERE {base_conditions}
-            GROUP BY store ORDER BY amount DESC LIMIT 10""",
-        params,
-    )
-    by_store: list[dict[str, Any]] = [
-        {"store": r["store"], "amount": round(r["amount"], 2), "count": r["count"]}
-        for r in cursor.fetchall()
-    ]
-
-    comparison: dict[str, Any] = _calculate_comparison(
-        cursor, date_from, date_to, total_amount
-    )
-
-    conn.close()
-    return jsonify(
-        {
-            "summary": {
-                "total_amount": round(total_amount, 2),
-                "total_invoices": total_invoices,
-                "average_invoice": round(average_invoice, 2),
-            },
-            "by_category": by_category,
-            "by_store": by_store,
-            "comparison": comparison,
-        }
-    )
-
-
-def main() -> None:
-    """Initialize the database and start the Flask development server."""
-    app.run(debug=True, port=8000)
-
-
-# Initialize database on module load (works with gunicorn and dev server)
-init_db()
-
-if __name__ == "__main__":
-    main()

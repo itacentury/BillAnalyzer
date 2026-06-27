@@ -89,7 +89,7 @@
       {
         "label": "Run: Start Server",
         "type": "shell",
-        "command": "uv run flask --app app.py run --debug --port 8000",
+        "command": "uv run flask --app summa run --debug --port 8000",
         "group": "build",
         "isBackground": true,
         "presentation": {
@@ -130,7 +130,7 @@
         "module": "flask",
         "args": ["run", "--debug", "--port", "8000"],
         "env": {
-          "FLASK_APP": "app.py",
+          "FLASK_APP": "summa",
           "FLASK_DEBUG": "1",
         },
         "jinja": true,

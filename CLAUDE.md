@@ -50,15 +50,21 @@ persisted in the `summa_data` volume.
 
 ## Architecture
 
-**Backend — `app.py` (single module).** All routes, DB access, and schema live
-here. Key conventions:
+**Backend — `summa/` package (app factory).** `create_app()` in
+`summa/__init__.py` builds the Flask app, enables CORS, registers the blueprints
+and calls `init_db()`; a module-level `app = create_app()` is the WSGI/CLI target
+(`FLASK_APP=summa`, gunicorn `summa:app`). Routes are split into blueprints under
+`summa/routes/` (`web.py` → `/`, `invoices.py` → `/api/invoices*` + `/stores` +
+`/categories`, `stats.py` → `/api/stats`); the DB layer lives in `summa/db.py`
+and shared types/helpers in `summa/helpers.py`. Key conventions:
 
 - **SQLite with two tables:** `invoices` and `invoice_items` (FK with
-  `ON DELETE CASCADE`). Connections come from `get_db()`, which sets
-  `row_factory` and enables WAL mode. `DATABASE_PATH` env var overrides the
+  `ON DELETE CASCADE`). Connections come from `get_db()` (`summa/db.py`), which
+  sets `row_factory` and enables WAL mode. `DATABASE_PATH` env var overrides the
   default `invoices.db`.
-- **Schema + migrations live in `init_db()`**, which runs on module import (so it
-  works under both gunicorn and the dev server). Migrations are done inline by
+- **Schema + migrations live in `init_db()`** (`summa/db.py`), which runs inside
+  `create_app()` (so it works under both gunicorn and the dev server). Migrations
+  are done inline by
   inspecting `PRAGMA table_info` and conditionally `ALTER TABLE`-ing new columns
   (e.g. `deleted_at`, `category`). Add future column migrations the same way.
 - **Soft deletes:** rows are never physically deleted. Delete endpoints set
