@@ -72,24 +72,25 @@ def test_add_invoice_allows_empty_items(client: FlaskClient) -> None:
     assert _get_json(client.get("/api/invoices"))[0]["items"] == []
 
 
-def test_add_invoice_missing_field_returns_500(client: FlaskClient) -> None:
-    """A missing required key currently surfaces as a 500.
-
-    KeyError escapes the handler's ``except sqlite3.Error`` block, so Flask
-    returns its generic 500 page rather than the JSON ``{"success": false}``
-    envelope used for database errors.
-    """
+def test_add_invoice_missing_field_returns_400(client: FlaskClient) -> None:
+    """A missing required key is rejected with the JSON 400 envelope."""
     response = client.post("/api/invoices", json={"store": "NoDate", "total": 1.0})
-    assert response.status_code == 500
+    assert response.status_code == 400
+    body = _get_json(response)
+    assert body["success"] is False
+    assert body["error"] == "Missing required field: date"
 
 
-def test_add_invoice_non_numeric_total_returns_500(client: FlaskClient) -> None:
-    """A non-numeric total currently surfaces as a 500 (ValueError not caught)."""
+def test_add_invoice_non_numeric_total_returns_400(client: FlaskClient) -> None:
+    """A non-numeric total is rejected with the JSON 400 envelope."""
     response = client.post(
         "/api/invoices",
         json={"date": "2024-03-01", "store": "Shop", "total": "abc"},
     )
-    assert response.status_code == 500
+    assert response.status_code == 400
+    body = _get_json(response)
+    assert body["success"] is False
+    assert body["error"] == "Field 'total' must be a number"
 
 
 # --- GET /api/invoices --------------------------------------------------------
@@ -223,6 +224,17 @@ def test_import_skips_duplicates(
     assert len(_get_json(client.get("/api/invoices"))) == 2
 
 
+def test_import_non_numeric_total_returns_400(client: FlaskClient) -> None:
+    """A non-numeric total in any imported invoice is rejected with 400."""
+    response = client.post(
+        "/api/invoices/import",
+        json=[{"date": "2024-01-01", "store": "Bad", "total": "abc"}],
+    )
+    assert response.status_code == 400
+    assert _get_json(response)["error"] == "Field 'total' must be a number"
+    assert _get_json(client.get("/api/invoices")) == []
+
+
 # --- PUT /api/invoices/<id> ---------------------------------------------------
 
 
@@ -250,6 +262,20 @@ def test_update_invoice_replaces_items(
     assert invoice["store"] == "New"
     assert invoice["total"] == 42.0
     assert [item["item_name"] for item in invoice["items"]] == ["new item"]
+
+
+def test_update_invoice_missing_field_returns_400(
+    client: FlaskClient, seed_invoice: SeedInvoice
+) -> None:
+    """A missing required key on update is rejected with the JSON 400 envelope."""
+    invoice_id = seed_invoice(store="Keep")
+
+    response = client.put(
+        f"/api/invoices/{invoice_id}",
+        json={"store": "NoDate", "total": 1.0},
+    )
+    assert response.status_code == 400
+    assert _get_json(response)["error"] == "Missing required field: date"
 
 
 # --- DELETE /api/invoices/<id> ------------------------------------------------
