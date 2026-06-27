@@ -1,30 +1,18 @@
 """Shared pytest fixtures providing an isolated, temp-backed Flask test client.
 
-Importing :mod:`summa` runs ``create_app()`` (and therefore ``init_db()``) at
-module import time. To keep that import-time side effect from creating a file, a
-throwaway in-memory ``DATABASE_PATH`` is set *before* ``summa`` is first imported
-here. Each test then gets its own fresh on-disk database via the :func:`client`
-fixture.
+Each test gets its own fresh on-disk database via the :func:`client` fixture,
+which monkeypatches ``db.DATABASE`` and calls ``create_app()`` (so ``init_db()``
+runs against the temp database).
 """
 
-import os
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 import pytest
+from flask.testing import FlaskClient
 
-# Redirect the import-time database to an in-memory SQLite database before
-# importing summa, so the import-time create_app()/init_db() leaves no file
-# behind. Each test gets its own on-disk DB via the client fixture's monkeypatch.
-os.environ.setdefault("DATABASE_PATH", ":memory:")
-
-from flask.testing import FlaskClient  # noqa: E402
-
-from summa import (
-    create_app,  # noqa: E402
-    db,  # noqa: E402
-)
+from summa import create_app, db
 
 SeedInvoice = Callable[..., int]
 
