@@ -67,7 +67,7 @@ def parse_invoice(data: Any) -> Invoice:
         raise ValidationError("Invoice must be a JSON object")
 
     items: list[InvoiceItem] = []
-    for raw_item in data.get("items", []):
+    for raw_item in data.get("items") or []:
         if not isinstance(raw_item, dict):
             raise ValidationError("Each item must be a JSON object")
         name: str | None = strip_text(_require(raw_item, "item_name"))

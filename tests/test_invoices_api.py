@@ -72,6 +72,16 @@ def test_add_invoice_allows_empty_items(client: FlaskClient) -> None:
     assert _get_json(client.get("/api/invoices"))[0]["items"] == []
 
 
+def test_add_invoice_null_items_is_accepted(client: FlaskClient) -> None:
+    """An explicit null items value is treated as no items, not a 500."""
+    response = client.post(
+        "/api/invoices",
+        json={"date": "2024-03-01", "store": "NullItems", "total": 3.0, "items": None},
+    )
+    assert response.status_code == 200
+    assert _get_json(client.get("/api/invoices"))[0]["items"] == []
+
+
 def test_add_invoice_missing_field_returns_400(client: FlaskClient) -> None:
     """A missing required key is rejected with the JSON 400 envelope."""
     response = client.post("/api/invoices", json={"store": "NoDate", "total": 1.0})
