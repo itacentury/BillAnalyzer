@@ -30,5 +30,5 @@ ignore = ["E501"]
 
 [tool.mypy]
 python_version = "3.12"
-files = ["app.py", "generate_icons.py"]
+files = ["summa", "generate_icons.py"]
 strict = true
