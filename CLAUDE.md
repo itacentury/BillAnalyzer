@@ -18,7 +18,7 @@ Tooling is driven through `uv` (Python 3.12+):
 
 ```bash
 uv sync                       # install deps + create .venv
-uv run flask run --port 8000  # run dev server (DB at ./invoices.db)
+uv run python -m summa        # run dev server (port 8000, DB at ./invoices.db)
 uv run ruff format .          # format
 uv run ruff check .           # lint (E, F, I; E501 intentionally ignored)
 uv run mypy                   # strict type check (files set in pyproject.toml)
