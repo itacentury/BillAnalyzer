@@ -48,6 +48,22 @@ export function showStatsView() {
 }
 
 /**
+ * Wire the invoices/stats view toggle and the mobile advanced-filters toggle.
+ */
+export function setupStatsListeners() {
+  document.querySelector(".view-toggle").addEventListener("click", (event) => {
+    const button = event.target.closest(".view-toggle-btn");
+    if (!button) return;
+    if (button.dataset.view === "stats") showStatsView();
+    else showInvoicesView();
+  });
+
+  document
+    .querySelector('[data-el="filters-toggle"]')
+    .addEventListener("click", toggleAdvancedFilters);
+}
+
+/**
  * Load statistics data from the API using current date filters.
  */
 export async function loadStats() {

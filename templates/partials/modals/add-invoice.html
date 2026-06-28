@@ -3,7 +3,7 @@
   <div class="modal">
     <div class="modal-header">
       <h3 class="modal-title">New Invoice</h3>
-      <button class="modal-close" onclick="closeAddModal()">
+      <button class="modal-close">
         <svg
           width="20"
           height="20"
@@ -59,7 +59,7 @@
             <button
               type="button"
               class="btn btn-secondary btn-sm"
-              onclick="addItemRow()"
+              data-action="add-item"
             >
               <svg
                 width="14"
@@ -97,7 +97,7 @@
               <button
                 type="button"
                 class="btn btn-danger btn-sm"
-                onclick="removeItemRow(this)"
+                data-action="remove-item"
                 style="margin-bottom: 0.375rem"
               >
                 <svg
@@ -124,10 +124,8 @@
       </form>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeAddModal()">
-        Cancel
-      </button>
-      <button class="btn btn-primary" onclick="saveInvoice()">Save</button>
+      <button class="btn btn-secondary" data-action="cancel">Cancel</button>
+      <button class="btn btn-primary" data-action="save">Save</button>
     </div>
   </div>
 </div>

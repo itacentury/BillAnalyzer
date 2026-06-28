@@ -8,6 +8,9 @@
 
 import { state, selectedInvoices } from "./state.js";
 import { els, escapeHtml, formatDate } from "./dom.js";
+import { editInvoice } from "./modals.js";
+import { deleteInvoice } from "./invoices.js";
+import { toggleInvoiceSelection } from "./bulk.js";
 
 export function renderInvoices() {
   const { invoiceList } = els();
@@ -34,13 +37,11 @@ export function renderInvoices() {
             <div class="invoice-item ${
               selectedInvoices.has(invoice.id) ? "selected" : ""
             }" data-id="${invoice.id}">
-                <div class="invoice-header" onclick="toggleInvoice(this)">
-                    <label class="invoice-checkbox" onclick="event.stopPropagation()">
+                <div class="invoice-header">
+                    <label class="invoice-checkbox">
                         <input type="checkbox" ${
                           selectedInvoices.has(invoice.id) ? "checked" : ""
-                        } onchange="toggleInvoiceSelection(${
-                          invoice.id
-                        }, this.checked)">
+                        }>
                         <span class="checkbox-mark"></span>
                     </label>
                     <div class="invoice-main">
@@ -81,18 +82,14 @@ export function renderInvoices() {
                           .join("")}
                     </div>
                     <div class="invoice-actions">
-                        <button class="btn btn-secondary btn-sm" onclick="editInvoice(${
-                          invoice.id
-                        })" style="margin-right: 0.5rem;">
+                        <button class="btn btn-secondary btn-sm" data-action="edit" style="margin-right: 0.5rem;">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                                 <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                             </svg>
                             Edit
                         </button>
-                        <button class="btn btn-danger btn-sm" onclick="deleteInvoice(${
-                          invoice.id
-                        })">
+                        <button class="btn btn-danger btn-sm" data-action="delete">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <polyline points="3 6 5 6 21 6"/>
                                 <path d="m19 6-.867 12.142A2 2 0 0 1 16.138 20H7.862a2 2 0 0 1-1.995-1.858L5 6"/>
@@ -128,6 +125,38 @@ export function renderInvoices() {
 export function toggleInvoice(element) {
   const item = element.closest(".invoice-item");
   item.classList.toggle("expanded");
+}
+
+/**
+ * Wire the invoice list via event delegation so runtime-rendered rows need no
+ * per-row listeners. One click and one change listener on the stable container
+ * dispatch by the clicked element's `data-action` / its `.invoice-item[data-id]`.
+ */
+export function setupInvoiceListListeners() {
+  const { invoiceList } = els();
+
+  invoiceList.addEventListener("click", (event) => {
+    const actionButton = event.target.closest("[data-action]");
+    if (actionButton) {
+      const id = Number(actionButton.closest(".invoice-item").dataset.id);
+      if (actionButton.dataset.action === "edit") editInvoice(id);
+      else if (actionButton.dataset.action === "delete") deleteInvoice(id);
+      return;
+    }
+
+    // Clicking the checkbox must not toggle the row (replaces stopPropagation)
+    if (event.target.closest(".invoice-checkbox")) return;
+
+    const header = event.target.closest(".invoice-header");
+    if (header) toggleInvoice(header);
+  });
+
+  invoiceList.addEventListener("change", (event) => {
+    const checkbox = event.target.closest('input[type="checkbox"]');
+    if (!checkbox) return;
+    const id = Number(checkbox.closest(".invoice-item").dataset.id);
+    toggleInvoiceSelection(id, checkbox.checked);
+  });
 }
 
 export function updateBulkActionToolbar() {

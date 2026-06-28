@@ -3,7 +3,7 @@
   <div class="modal" style="max-width: 400px">
     <div class="modal-header">
       <h3 class="modal-title">Bulk Edit</h3>
-      <button class="modal-close" onclick="closeBulkEditModal()">
+      <button class="modal-close">
         <svg
           width="20"
           height="20"
@@ -44,10 +44,8 @@
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeBulkEditModal()">
-        Cancel
-      </button>
-      <button class="btn btn-primary" onclick="saveBulkEdit()">Save</button>
+      <button class="btn btn-secondary" data-action="cancel">Cancel</button>
+      <button class="btn btn-primary" data-action="save">Save</button>
     </div>
   </div>
 </div>

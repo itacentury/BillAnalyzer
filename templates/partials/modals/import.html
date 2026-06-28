@@ -3,7 +3,7 @@
   <div class="modal">
     <div class="modal-header">
       <h3 class="modal-title">JSON Import</h3>
-      <button class="modal-close" onclick="closeImportModal()">
+      <button class="modal-close">
         <svg
           width="20"
           height="20"
@@ -48,10 +48,8 @@
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeImportModal()">
-        Cancel
-      </button>
-      <button class="btn btn-primary" onclick="importJson()">Import</button>
+      <button class="btn btn-secondary" data-action="cancel">Cancel</button>
+      <button class="btn btn-primary" data-action="import">Import</button>
     </div>
   </div>
 </div>

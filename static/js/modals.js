@@ -5,6 +5,8 @@
 
 import { state } from "./state.js";
 import { escapeHtml, showToast } from "./dom.js";
+import { saveInvoice } from "./invoices.js";
+import { importJson } from "./import.js";
 
 /**
  * Lock body scroll to prevent background scrolling while a modal is open.
@@ -83,7 +85,7 @@ export async function editInvoice(id) {
                   item.item_price
                 }">
             </div>
-            <button type="button" class="btn btn-danger btn-sm" onclick="removeItemRow(this)" style="margin-bottom: 0.375rem;">
+            <button type="button" class="btn btn-danger btn-sm" data-action="remove-item" style="margin-bottom: 0.375rem;">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <line x1="18" y1="6" x2="6" y2="18"/>
                     <line x1="6" y1="6" x2="18" y2="18"/>
@@ -113,7 +115,7 @@ function resetAddForm() {
                 <label class="form-label">Price</label>
                 <input type="number" step="0.01" class="form-input item-price" placeholder="0.00">
             </div>
-            <button type="button" class="btn btn-danger btn-sm" onclick="removeItemRow(this)" style="margin-bottom: 0.375rem;">
+            <button type="button" class="btn btn-danger btn-sm" data-action="remove-item" style="margin-bottom: 0.375rem;">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <line x1="18" y1="6" x2="6" y2="18"/>
                     <line x1="6" y1="6" x2="18" y2="18"/>
@@ -184,7 +186,7 @@ export function addItemRow() {
             <label class="form-label">Price</label>
             <input type="number" step="0.01" class="form-input item-price" placeholder="0.00">
         </div>
-        <button type="button" class="btn btn-danger btn-sm" onclick="removeItemRow(this)" style="margin-bottom: 0.375rem;">
+        <button type="button" class="btn btn-danger btn-sm" data-action="remove-item" style="margin-bottom: 0.375rem;">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="18" y1="6" x2="6" y2="18"/>
                 <line x1="6" y1="6" x2="18" y2="18"/>
@@ -210,4 +212,67 @@ export function calculateTotal() {
   });
   document.querySelector('[data-el="calculated-total"]').textContent =
     `€${total.toFixed(2)}`;
+}
+
+/**
+ * Wire the modal open/close buttons and the add/edit form, including delegation
+ * on the items container for the dynamically added item rows.
+ */
+export function setupModalListeners() {
+  // Header buttons that open the modals
+  document
+    .querySelector('[data-action="open-add"]')
+    .addEventListener("click", openAddModal);
+  document
+    .querySelector('[data-action="open-import"]')
+    .addEventListener("click", openImportModal);
+
+  // Add/edit invoice modal
+  const addModal = document.querySelector('[data-el="add-invoice-modal"]');
+  addModal
+    .querySelector(".modal-close")
+    .addEventListener("click", closeAddModal);
+  addModal
+    .querySelector('[data-action="cancel"]')
+    .addEventListener("click", closeAddModal);
+  addModal
+    .querySelector('[data-action="add-item"]')
+    .addEventListener("click", addItemRow);
+  addModal
+    .querySelector('[data-action="save"]')
+    .addEventListener("click", saveInvoice);
+
+  // Item rows are rebuilt at runtime, so delegate from the stable container
+  const itemsContainer = document.querySelector('[data-el="items-container"]');
+  itemsContainer.addEventListener("input", calculateTotal);
+  itemsContainer.addEventListener("click", (event) => {
+    const removeButton = event.target.closest('[data-action="remove-item"]');
+    if (removeButton) removeItemRow(removeButton);
+  });
+
+  // Import modal
+  const importModal = document.querySelector('[data-el="import-modal"]');
+  importModal
+    .querySelector(".modal-close")
+    .addEventListener("click", closeImportModal);
+  importModal
+    .querySelector('[data-action="cancel"]')
+    .addEventListener("click", closeImportModal);
+  importModal
+    .querySelector('[data-action="import"]')
+    .addEventListener("click", importJson);
+
+  // Confirm-delete modal
+  const confirmModal = document.querySelector(
+    '[data-el="confirm-delete-modal"]',
+  );
+  confirmModal
+    .querySelector(".modal-close")
+    .addEventListener("click", () => closeConfirmModal(false));
+  confirmModal
+    .querySelector('[data-action="cancel"]')
+    .addEventListener("click", () => closeConfirmModal(false));
+  confirmModal
+    .querySelector('[data-action="confirm"]')
+    .addEventListener("click", () => closeConfirmModal(true));
 }

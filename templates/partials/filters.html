@@ -2,51 +2,15 @@
 <div class="filters">
   <!-- Quick Filters -->
   <div class="quick-filters">
-    <button
-      class="quick-filter-btn"
-      data-filter="week"
-      onclick="
-        applyFilter('week');
-        loadInvoices();
-      "
-    >
-      Week
-    </button>
-    <button
-      class="quick-filter-btn active"
-      data-filter="month"
-      onclick="
-        applyFilter('month');
-        loadInvoices();
-      "
-    >
-      Month
-    </button>
-    <button
-      class="quick-filter-btn"
-      data-filter="year"
-      onclick="
-        applyFilter('year');
-        loadInvoices();
-      "
-    >
-      Year
-    </button>
-    <button
-      class="quick-filter-btn"
-      data-filter="all"
-      onclick="
-        applyFilter('all');
-        loadInvoices();
-      "
-    >
-      All
-    </button>
+    <button class="quick-filter-btn" data-filter="week">Week</button>
+    <button class="quick-filter-btn active" data-filter="month">Month</button>
+    <button class="quick-filter-btn" data-filter="year">Year</button>
+    <button class="quick-filter-btn" data-filter="all">All</button>
   </div>
 
   <!-- Period Navigator -->
   <div class="month-navigator">
-    <button class="month-nav-btn" onclick="navigateToPrevious()">
+    <button class="month-nav-btn" data-action="nav-prev">
       <svg
         width="16"
         height="16"
@@ -59,7 +23,7 @@
       </svg>
     </button>
     <div class="month-display" data-el="month-display">January 2026</div>
-    <button class="month-nav-btn" onclick="navigateToNext()">
+    <button class="month-nav-btn" data-action="nav-next">
       <svg
         width="16"
         height="16"
@@ -71,7 +35,7 @@
         <polyline points="9 18 15 12 9 6" />
       </svg>
     </button>
-    <button class="month-reset-btn" onclick="resetToCurrent()">
+    <button class="month-reset-btn" data-action="nav-reset">
       Current Month
     </button>
   </div>
@@ -90,11 +54,7 @@
   </div>
 
   <!-- Advanced Filters Toggle (mobile only) -->
-  <button
-    class="filters-advanced-toggle"
-    data-el="filters-toggle"
-    onclick="toggleAdvancedFilters()"
-  >
+  <button class="filters-advanced-toggle" data-el="filters-toggle">
     <svg
       width="16"
       height="16"
@@ -170,7 +130,7 @@
       <div class="filter-reset-row">
         <button
           class="btn btn-secondary btn-sm filter-reset-btn"
-          onclick="resetAllFilters()"
+          data-action="reset-filters"
         >
           <svg
             width="14"

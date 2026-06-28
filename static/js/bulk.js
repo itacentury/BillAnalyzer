@@ -162,6 +162,43 @@ export async function saveBulkEdit() {
   }
 }
 
+/**
+ * Wire the bulk-action toolbar, the bulk-edit modal and the select-all checkbox.
+ */
+export function setupBulkListeners() {
+  const toolbar = document.querySelector('[data-el="bulk-action-toolbar"]');
+  toolbar
+    .querySelector('[data-action="select-all"]')
+    .addEventListener("click", selectAllInvoices);
+  toolbar
+    .querySelector('[data-action="deselect-all"]')
+    .addEventListener("click", deselectAllInvoices);
+  toolbar
+    .querySelector('[data-action="bulk-edit"]')
+    .addEventListener("click", openBulkEditModal);
+  toolbar
+    .querySelector('[data-action="bulk-delete"]')
+    .addEventListener("click", bulkDeleteInvoices);
+
+  const bulkEditModal = document.querySelector('[data-el="bulk-edit-modal"]');
+  bulkEditModal
+    .querySelector(".modal-close")
+    .addEventListener("click", closeBulkEditModal);
+  bulkEditModal
+    .querySelector('[data-action="cancel"]')
+    .addEventListener("click", closeBulkEditModal);
+  bulkEditModal
+    .querySelector('[data-action="save"]')
+    .addEventListener("click", saveBulkEdit);
+
+  const selectAllCheckbox = document.querySelector(
+    '[data-el="select-all-checkbox"] input',
+  );
+  selectAllCheckbox.addEventListener("change", () => {
+    toggleSelectAll(selectAllCheckbox.checked);
+  });
+}
+
 export async function bulkDeleteInvoices() {
   const count = selectedInvoices.size;
   if (count === 0) return;

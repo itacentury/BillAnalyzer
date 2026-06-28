@@ -4,7 +4,7 @@
  */
 
 import { state } from "./state.js";
-import { els } from "./dom.js";
+import { els, debounce } from "./dom.js";
 import { loadInvoices } from "./api.js";
 
 // Apply a specific filter mode
@@ -83,6 +83,88 @@ export function resetAllFilters() {
   // Reset to current month
   applyFilter("month");
   loadInvoices();
+}
+
+/**
+ * Wire the quick-filter buttons, period navigation and the advanced filter
+ * inputs, plus the mobile/desktop search field synchronization.
+ */
+export function setupFilterListeners() {
+  // Quick filters: dispatch by the button's data-filter value
+  document
+    .querySelector(".quick-filters")
+    .addEventListener("click", (event) => {
+      const button = event.target.closest(".quick-filter-btn");
+      if (!button) return;
+      applyFilter(button.dataset.filter);
+      loadInvoices();
+    });
+
+  // Period navigation
+  document
+    .querySelector('[data-action="nav-prev"]')
+    .addEventListener("click", navigateToPrevious);
+  document
+    .querySelector('[data-action="nav-next"]')
+    .addEventListener("click", navigateToNext);
+  document
+    .querySelector('[data-action="nav-reset"]')
+    .addEventListener("click", resetToCurrent);
+  document
+    .querySelector('[data-action="reset-filters"]')
+    .addEventListener("click", resetAllFilters);
+
+  // Advanced filter inputs
+  const {
+    searchInput,
+    storeFilter,
+    typeFilter,
+    dateFrom,
+    dateTo,
+    sortBy,
+    sortOrder,
+  } = els();
+
+  searchInput.addEventListener("input", debounce(loadInvoices, 300));
+  storeFilter.addEventListener("change", loadInvoices);
+  typeFilter.addEventListener("change", loadInvoices);
+  // Manually changing a date filter switches to custom mode
+  dateFrom.addEventListener("change", switchToCustomMode);
+  dateTo.addEventListener("change", switchToCustomMode);
+  sortBy.addEventListener("change", loadInvoices);
+  sortOrder.addEventListener("change", loadInvoices);
+
+  syncSearchInputs();
+}
+
+// Switch to custom filter mode when a date input is edited directly
+function switchToCustomMode() {
+  if (state.filterMode !== "custom") {
+    state.filterMode = "custom";
+    updateFilterDisplay();
+    updateQuickFilterButtons();
+  }
+  loadInvoices();
+}
+
+// Keep the mobile and desktop search fields in sync
+function syncSearchInputs() {
+  const mobileSearch = document.querySelector('[data-el="search"]');
+  const desktopSearch = document.querySelector('[data-el="search-desktop"]');
+
+  if (!mobileSearch || !desktopSearch) return;
+
+  mobileSearch.addEventListener("input", () => {
+    desktopSearch.value = mobileSearch.value;
+  });
+
+  desktopSearch.addEventListener(
+    "input",
+    debounce(() => {
+      mobileSearch.value = desktopSearch.value;
+      loadInvoices();
+    }, 300),
+  );
 }
 
 // Update the navigation display based on filter mode

@@ -40,7 +40,7 @@ function updateSelectedFilesDisplay() {
                     <span style="font-size: 0.875rem;">📄 ${escapeHtml(
                       f.name,
                     )}</span>
-                    <button type="button" class="btn btn-danger btn-sm" onclick="removeFile(${i})" style="padding: 0.25rem 0.5rem;">✕</button>
+                    <button type="button" class="btn btn-danger btn-sm" data-action="remove-file" data-index="${i}" style="padding: 0.25rem 0.5rem;">✕</button>
                 </div>
             `,
               )
@@ -53,6 +53,40 @@ export function removeFile(index) {
   state.pendingFiles.splice(index, 1);
   updateSelectedFilesDisplay();
   loadFilesIntoTextarea();
+}
+
+/**
+ * Wire the dropzone, the file picker and the staged-file remove buttons (the
+ * latter via delegation, since the file list is rebuilt at runtime).
+ */
+export function setupImportListeners() {
+  const dropzone = document.querySelector('[data-el="dropzone"]');
+  const fileInput = document.querySelector('[data-el="file-input"]');
+
+  dropzone.addEventListener("click", () => fileInput.click());
+  dropzone.addEventListener("dragover", (event) => {
+    event.preventDefault();
+    dropzone.classList.add("dragover");
+  });
+  dropzone.addEventListener("dragleave", () => {
+    dropzone.classList.remove("dragover");
+  });
+  dropzone.addEventListener("drop", (event) => {
+    event.preventDefault();
+    dropzone.classList.remove("dragover");
+    const files = event.dataTransfer.files;
+    if (files.length > 0) handleMultipleFiles(files);
+  });
+  fileInput.addEventListener("change", (event) => {
+    if (event.target.files.length > 0) handleMultipleFiles(event.target.files);
+  });
+
+  document
+    .querySelector('[data-el="selected-files"]')
+    .addEventListener("click", (event) => {
+      const removeButton = event.target.closest('[data-action="remove-file"]');
+      if (removeButton) removeFile(Number(removeButton.dataset.index));
+    });
 }
 
 async function loadFilesIntoTextarea() {

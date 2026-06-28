@@ -5,11 +5,7 @@
       <h1>Summa</h1>
     </div>
     <div class="view-toggle">
-      <button
-        class="view-toggle-btn active"
-        data-view="invoices"
-        onclick="showInvoicesView()"
-      >
+      <button class="view-toggle-btn active" data-view="invoices">
         <svg
           width="16"
           height="16"
@@ -27,11 +23,7 @@
         </svg>
         <span>Invoices</span>
       </button>
-      <button
-        class="view-toggle-btn"
-        data-view="stats"
-        onclick="showStatsView()"
-      >
+      <button class="view-toggle-btn" data-view="stats">
         <svg
           width="16"
           height="16"
@@ -50,7 +42,7 @@
     <div class="header-actions">
       <button
         class="btn btn-secondary"
-        onclick="openImportModal()"
+        data-action="open-import"
         title="JSON Import"
       >
         <svg
@@ -69,7 +61,7 @@
       </button>
       <button
         class="btn btn-primary"
-        onclick="openAddModal()"
+        data-action="open-add"
         title="New Invoice"
       >
         <svg
