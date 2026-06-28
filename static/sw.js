@@ -3,11 +3,21 @@
  * Provides offline support and caching strategies.
  */
 
-const CACHE_NAME = "summa-cache-v5";
+const CACHE_NAME = "summa-cache-v6";
 const STATIC_ASSETS = [
   "/",
   "/static/css/style.css",
   "/static/js/app.js",
+  "/static/js/state.js",
+  "/static/js/dom.js",
+  "/static/js/api.js",
+  "/static/js/render.js",
+  "/static/js/modals.js",
+  "/static/js/invoices.js",
+  "/static/js/import.js",
+  "/static/js/filters.js",
+  "/static/js/bulk.js",
+  "/static/js/stats.js",
   "/static/favicon.svg",
   "/static/manifest.json",
   "/static/icons/icon-192.png",
