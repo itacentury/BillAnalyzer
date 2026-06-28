@@ -1,0 +1,20 @@
+<!-- Invoices List -->
+<div class="invoices-section" data-el="invoices-view">
+  <div class="section-header">
+    <div class="section-header-left">
+      <label class="invoice-checkbox" data-el="select-all-checkbox">
+        <input type="checkbox" onchange="toggleSelectAll(this.checked)" />
+        <span class="checkbox-mark"></span>
+      </label>
+      <span class="section-title" data-el="results-count">0 Invoices</span>
+    </div>
+    <span class="section-total" data-el="results-total">0.00</span>
+  </div>
+  <div class="invoice-list" data-el="invoice-list">
+    <div class="empty-state">
+      <div class="empty-icon">📋</div>
+      <div class="empty-title">No invoices yet</div>
+      <div class="empty-text">Add a new invoice or import existing data.</div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,133 @@
+<!-- Add Invoice Modal -->
+<div class="modal-overlay" data-el="add-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title">New Invoice</h3>
+      <button class="modal-close" onclick="closeAddModal()">
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <line x1="18" y1="6" x2="6" y2="18" />
+          <line x1="6" y1="6" x2="18" y2="18" />
+        </svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <form data-el="add-form">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Date</label>
+            <input
+              type="date"
+              class="form-input"
+              data-el="invoice-date"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Store</label>
+            <input
+              type="text"
+              class="form-input"
+              data-el="invoice-store"
+              placeholder="e.g. Amazon"
+              required
+            />
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom: 1rem">
+          <label class="form-label">Category</label>
+          <input
+            type="text"
+            class="form-input"
+            data-el="invoice-type"
+            placeholder="e.g. Groceries, Restaurant, Electronics"
+            list="type-suggestions"
+          />
+          <!-- id required: <input list="…"> associates with a datalist by id, not data-el -->
+          <datalist id="type-suggestions"></datalist>
+        </div>
+
+        <div class="items-input-section">
+          <div class="items-header">
+            <h4>Items</h4>
+            <button
+              type="button"
+              class="btn btn-secondary btn-sm"
+              onclick="addItemRow()"
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              Add Item
+            </button>
+          </div>
+          <div data-el="items-container">
+            <div class="item-input-row">
+              <div class="form-group">
+                <label class="form-label">Item Name</label>
+                <input
+                  type="text"
+                  class="form-input item-name"
+                  placeholder="Product name"
+                />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Price</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  class="form-input item-price"
+                  placeholder="0.00"
+                />
+              </div>
+              <button
+                type="button"
+                class="btn btn-danger btn-sm"
+                onclick="removeItemRow(this)"
+                style="margin-bottom: 0.375rem"
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div class="calculated-total">
+            <span class="calculated-total-label">Calculated Total</span>
+            <span class="calculated-total-value" data-el="calculated-total"
+              >€0.00</span
+            >
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeAddModal()">
+        Cancel
+      </button>
+      <button class="btn btn-primary" onclick="saveInvoice()">Save</button>
+    </div>
+  </div>
+</div>
