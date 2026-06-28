@@ -1,0 +1,53 @@
+<!-- Bulk Edit Modal -->
+<div class="modal-overlay" data-el="bulk-edit-modal">
+  <div class="modal" style="max-width: 400px">
+    <div class="modal-header">
+      <h3 class="modal-title">Bulk Edit</h3>
+      <button class="modal-close" onclick="closeBulkEditModal()">
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <line x1="18" y1="6" x2="6" y2="18" />
+          <line x1="6" y1="6" x2="18" y2="18" />
+        </svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p style="margin-bottom: 1rem; color: var(--text-secondary)">
+        <span data-el="bulk-edit-count">0</span> invoice(s) selected
+      </p>
+      <div class="form-group">
+        <label class="form-label">New Store Name</label>
+        <input
+          type="text"
+          class="form-input"
+          data-el="bulk-edit-store"
+          placeholder="e.g. Walmart (leave empty to keep unchanged)"
+        />
+      </div>
+      <div class="form-group">
+        <label class="form-label">New Category</label>
+        <input
+          type="text"
+          class="form-input"
+          data-el="bulk-edit-category"
+          list="bulk-category-suggestions"
+          placeholder="e.g. Groceries (leave empty to keep unchanged)"
+        />
+        <!-- id required: <input list="…"> associates with a datalist by id, not data-el -->
+        <datalist id="bulk-category-suggestions"></datalist>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeBulkEditModal()">
+        Cancel
+      </button>
+      <button class="btn btn-primary" onclick="saveBulkEdit()">Save</button>
+    </div>
+  </div>
+</div>

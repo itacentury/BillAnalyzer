@@ -1,0 +1,191 @@
+<!-- Filters -->
+<div class="filters">
+  <!-- Quick Filters -->
+  <div class="quick-filters">
+    <button
+      class="quick-filter-btn"
+      data-filter="week"
+      onclick="
+        applyFilter('week');
+        loadInvoices();
+      "
+    >
+      Week
+    </button>
+    <button
+      class="quick-filter-btn active"
+      data-filter="month"
+      onclick="
+        applyFilter('month');
+        loadInvoices();
+      "
+    >
+      Month
+    </button>
+    <button
+      class="quick-filter-btn"
+      data-filter="year"
+      onclick="
+        applyFilter('year');
+        loadInvoices();
+      "
+    >
+      Year
+    </button>
+    <button
+      class="quick-filter-btn"
+      data-filter="all"
+      onclick="
+        applyFilter('all');
+        loadInvoices();
+      "
+    >
+      All
+    </button>
+  </div>
+
+  <!-- Period Navigator -->
+  <div class="month-navigator">
+    <button class="month-nav-btn" onclick="navigateToPrevious()">
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+      >
+        <polyline points="15 18 9 12 15 6" />
+      </svg>
+    </button>
+    <div class="month-display" data-el="month-display">January 2026</div>
+    <button class="month-nav-btn" onclick="navigateToNext()">
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+      >
+        <polyline points="9 18 15 12 9 6" />
+      </svg>
+    </button>
+    <button class="month-reset-btn" onclick="resetToCurrent()">
+      Current Month
+    </button>
+  </div>
+
+  <!-- Search (always visible) -->
+  <div class="filter-search-mobile">
+    <div class="form-group">
+      <label class="form-label">Search</label>
+      <input
+        type="text"
+        class="form-input"
+        data-el="search"
+        placeholder="Search store or item..."
+      />
+    </div>
+  </div>
+
+  <!-- Advanced Filters Toggle (mobile only) -->
+  <button
+    class="filters-advanced-toggle"
+    data-el="filters-toggle"
+    onclick="toggleAdvancedFilters()"
+  >
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+    >
+      <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+    </svg>
+    <span>Advanced Filters</span>
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+    >
+      <polyline points="6 9 12 15 18 9" />
+    </svg>
+  </button>
+
+  <!-- Advanced Filters (collapsible on mobile) -->
+  <div class="filters-collapsible" data-el="filters-collapsible">
+    <div class="filters-collapsible-inner">
+      <div class="filters-grid" data-el="filters-grid">
+        <div class="form-group filter-desktop-search">
+          <label class="form-label">Search</label>
+          <input
+            type="text"
+            class="form-input"
+            data-el="search-desktop"
+            placeholder="Search store or item..."
+          />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Store</label>
+          <select class="form-select" data-el="store-filter">
+            <option value="">All Stores</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Category</label>
+          <select class="form-select" data-el="type-filter">
+            <option value="">All Categories</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">From</label>
+          <input type="date" class="form-input" data-el="date-from" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">To</label>
+          <input type="date" class="form-input" data-el="date-to" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Sort By</label>
+          <select class="form-select" data-el="sort-by">
+            <option value="date">Date</option>
+            <option value="store">Store</option>
+            <option value="total">Amount</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Order</label>
+          <select class="form-select" data-el="sort-order">
+            <option value="desc">Descending</option>
+            <option value="asc">Ascending</option>
+          </select>
+        </div>
+      </div>
+      <div class="filter-reset-row">
+        <button
+          class="btn btn-secondary btn-sm filter-reset-btn"
+          onclick="resetAllFilters()"
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+            <path d="M3 3v5h5" />
+          </svg>
+          Reset Filters
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

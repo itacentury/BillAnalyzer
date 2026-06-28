@@ -1,0 +1,50 @@
+<!-- Statistics View -->
+<div class="stats-view" data-el="stats-view" style="display: none">
+  <h2 class="visually-hidden">Statistics</h2>
+  <!-- Summary Cards -->
+  <div class="stats-cards">
+    <div class="stat-card">
+      <div class="stat-label">Total</div>
+      <div class="stat-value currency" data-el="stats-total">0.00</div>
+      <div class="stat-change" data-el="stats-change"></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Invoices</div>
+      <div class="stat-value" data-el="stats-count">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Average</div>
+      <div class="stat-value currency" data-el="stats-average">0.00</div>
+    </div>
+  </div>
+
+  <!-- Charts Section -->
+  <div class="stats-charts">
+    <div class="chart-card">
+      <div class="chart-header">
+        <h3 class="chart-title">By Category</h3>
+      </div>
+      <div class="chart-container">
+        <canvas data-el="category-chart"></canvas>
+      </div>
+      <div class="chart-legend" data-el="category-legend"></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header">
+        <h3 class="chart-title">Top Stores</h3>
+      </div>
+      <div class="chart-container chart-container-bar">
+        <canvas data-el="store-chart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Empty State for Stats -->
+  <div class="stats-empty" data-el="stats-empty" style="display: none">
+    <div class="empty-state">
+      <div class="empty-icon">📊</div>
+      <div class="empty-title">No data available</div>
+      <div class="empty-text">There are no invoices for this time period.</div>
+    </div>
+  </div>
+</div>
