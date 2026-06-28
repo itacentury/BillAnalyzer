@@ -3,11 +3,13 @@
  * Provides offline support and caching strategies.
  */
 
-const CACHE_NAME = "summa-cache-v5";
+const CACHE_NAME = "summa-cache-v8";
+// JS modules are not listed here: they are discovered at install time from the
+// server-rendered /static/js-manifest.json (which globs static/js/*.js), so
+// adding a module needs no edit to this file.
 const STATIC_ASSETS = [
   "/",
   "/static/css/style.css",
-  "/static/js/app.js",
   "/static/favicon.svg",
   "/static/manifest.json",
   "/static/icons/icon-192.png",
@@ -19,9 +21,19 @@ const STATIC_ASSETS = [
  */
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
+    caches.open(CACHE_NAME).then(async (cache) => {
       console.log("[SW] Caching static assets");
-      return cache.addAll(STATIC_ASSETS);
+      try {
+        const response = await fetch("/static/js-manifest.json");
+        const jsModules = await response.json();
+        await cache.addAll([...STATIC_ASSETS, ...jsModules]);
+      } catch (error) {
+        console.log(
+          "[SW] JS manifest unavailable, caching core assets only:",
+          error,
+        );
+        await cache.addAll(STATIC_ASSETS);
+      }
     }),
   );
   // Activate immediately

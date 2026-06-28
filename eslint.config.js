@@ -15,10 +15,10 @@ export default [
     ignores: ["node_modules/**", "static/icons/**"],
   },
   {
-    files: ["static/js/app.js"],
+    files: ["static/js/**/*.js"],
     ...js.configs.recommended,
     languageOptions: {
-      sourceType: "script",
+      sourceType: "module",
       globals: { ...globals.browser, Chart: "readonly" },
     },
     rules: { ...js.configs.recommended.rules, ...styleRules },

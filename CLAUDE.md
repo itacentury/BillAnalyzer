@@ -83,7 +83,11 @@ framework, no bundler) talking to the API; styling in `static/css/style.css`.
 **PWA.** `static/sw.js` caches static assets under the `CACHE_NAME` constant.
 **When you change any cached static asset, bump `CACHE_NAME`** (in
 `static/sw.js`) or clients keep serving the stale cached version. The service
-worker is registered from `app.js`.
+worker is registered from `app.js`. JS modules under `static/js/` are
+auto-discovered at install time via the `/static/js-manifest.json` route
+(`summa/routes/web.py`, which globs `static/js/*.js`), so adding a module needs
+no `sw.js` edit — only a `CACHE_NAME` bump when an existing cached asset's
+content changes.
 
 ## Deployment
 

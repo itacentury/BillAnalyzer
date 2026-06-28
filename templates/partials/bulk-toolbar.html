@@ -5,13 +5,13 @@
       <span data-el="selected-count">0</span> selected
     </span>
     <div class="bulk-action-buttons">
-      <button class="btn btn-secondary btn-sm" onclick="selectAllInvoices()">
+      <button class="btn btn-secondary btn-sm" data-action="select-all">
         Select All
       </button>
-      <button class="btn btn-secondary btn-sm" onclick="deselectAllInvoices()">
+      <button class="btn btn-secondary btn-sm" data-action="deselect-all">
         Deselect All
       </button>
-      <button class="btn btn-primary btn-sm" onclick="openBulkEditModal()">
+      <button class="btn btn-primary btn-sm" data-action="bulk-edit">
         <svg
           width="14"
           height="14"
@@ -27,7 +27,7 @@
         </svg>
         Edit
       </button>
-      <button class="btn btn-danger btn-sm" onclick="bulkDeleteInvoices()">
+      <button class="btn btn-danger btn-sm" data-action="bulk-delete">
         <svg
           width="14"
           height="14"
