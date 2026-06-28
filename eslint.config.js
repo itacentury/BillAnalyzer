@@ -57,20 +57,11 @@ export default [
     },
   },
   {
-    ...html.configs["flat/recommended"],
+    // Partials are document fragments, not full pages: the document-scope
+    // rules (doctype/lang/title) and heading-level continuity don't apply.
+    // Everything else cascades from the templates/**/*.html block above.
     files: ["templates/partials/**/*.html"],
     rules: {
-      ...html.configs["flat/recommended"].rules,
-      // Formatting is owned by Prettier; disable @html-eslint's stylistic rules.
-      "@html-eslint/indent": "off",
-      "@html-eslint/quotes": "off",
-      "@html-eslint/element-newline": "off",
-      "@html-eslint/attrs-newline": "off",
-      "@html-eslint/no-extra-spacing-tags": "off",
-      "@html-eslint/require-closing-tags": ["error", { selfClosing: "always" }],
-      "@html-eslint/use-baseline": "off",
-      // Partials are document fragments, not full pages: the document-scope
-      // rules (doctype/lang/title) and heading-level continuity don't apply.
       "@html-eslint/require-doctype": "off",
       "@html-eslint/require-lang": "off",
       "@html-eslint/require-title": "off",
