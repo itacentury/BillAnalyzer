@@ -1,11 +1,12 @@
 /**
  * Cross-partial heading-level continuity check.
  *
- * `@html-eslint` lints each Jinja partial in isolation, so it cannot see heading
- * order across `{% include %}` boundaries. This script assembles the partials in
- * the order `templates/index.html` includes them and verifies that heading levels
- * never jump by more than one (and that the document starts at h1) — the
- * `no-skip-heading-levels` guarantee, restored for the split templates.
+ * `@html-eslint`'s `no-skip-heading-levels` runs on each Jinja partial in
+ * isolation, so it catches skips within a fragment but cannot see heading order
+ * across `{% include %}` boundaries. This script assembles the partials in the
+ * order `templates/index.html` includes them and verifies that heading levels
+ * never jump by more than one (and that the document starts at h1), extending the
+ * within-fragment guarantee across the whole assembled document.
  *
  * Assumes a flat structure: only includes named directly in index.html are
  * scanned (no recursion into nested includes), and headings written directly in
