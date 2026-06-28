@@ -6,6 +6,11 @@
  * the order `templates/index.html` includes them and verifies that heading levels
  * never jump by more than one (and that the document starts at h1) — the
  * `no-skip-heading-levels` guarantee, restored for the split templates.
+ *
+ * Assumes a flat structure: only includes named directly in index.html are
+ * scanned (no recursion into nested includes), and headings written directly in
+ * index.html itself are ignored. Both hold today (leaf partials, heading-free
+ * shell); revisit if partials start including sub-partials.
  */
 
 import { readFileSync } from "node:fs";
