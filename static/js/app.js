@@ -363,16 +363,21 @@ function unlockScroll() {
 
 function openAddModal() {
   editingInvoiceId = null;
-  document.querySelector('[data-el="add-modal"] .modal-title').textContent =
-    "New Invoice";
-  document.querySelector('[data-el="add-modal"]').classList.add("active");
+  document.querySelector(
+    '[data-el="add-invoice-modal"] .modal-title',
+  ).textContent = "New Invoice";
+  document
+    .querySelector('[data-el="add-invoice-modal"]')
+    .classList.add("active");
   lockScroll();
   resetAddForm();
   document.querySelector('[data-el="invoice-date"]').valueAsDate = new Date();
 }
 
 function closeAddModal() {
-  document.querySelector('[data-el="add-modal"]').classList.remove("active");
+  document
+    .querySelector('[data-el="add-invoice-modal"]')
+    .classList.remove("active");
   unlockScroll();
   editingInvoiceId = null;
   resetAddForm();
@@ -387,8 +392,9 @@ async function editInvoice(id) {
     return;
   }
 
-  document.querySelector('[data-el="add-modal"] .modal-title').textContent =
-    "Edit Invoice";
+  document.querySelector(
+    '[data-el="add-invoice-modal"] .modal-title',
+  ).textContent = "Edit Invoice";
 
   // Fill in the form
   document.querySelector('[data-el="invoice-date"]').value = invoice.date;
@@ -426,7 +432,9 @@ async function editInvoice(id) {
   });
 
   calculateTotal();
-  document.querySelector('[data-el="add-modal"]').classList.add("active");
+  document
+    .querySelector('[data-el="add-invoice-modal"]')
+    .classList.add("active");
   lockScroll();
 }
 
@@ -466,10 +474,14 @@ let confirmModalResolve = null;
  * Show a custom confirmation modal that matches the app design.
  */
 function showConfirmModal(message, title = "Confirm Deletion") {
-  document.querySelector('[data-el="confirm-modal-title"]').textContent = title;
-  document.querySelector('[data-el="confirm-modal-message"]').textContent =
-    message;
-  document.querySelector('[data-el="confirm-modal"]').classList.add("active");
+  document.querySelector('[data-el="confirm-delete-modal-title"]').textContent =
+    title;
+  document.querySelector(
+    '[data-el="confirm-delete-modal-message"]',
+  ).textContent = message;
+  document
+    .querySelector('[data-el="confirm-delete-modal"]')
+    .classList.add("active");
   lockScroll();
 
   return new Promise((resolve) => {
@@ -482,7 +494,7 @@ function showConfirmModal(message, title = "Confirm Deletion") {
  */
 function closeConfirmModal(confirmed) {
   document
-    .querySelector('[data-el="confirm-modal"]')
+    .querySelector('[data-el="confirm-delete-modal"]')
     .classList.remove("active");
   unlockScroll();
   if (confirmModalResolve) {

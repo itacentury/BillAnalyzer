@@ -1,8 +1,8 @@
 <!-- Confirm Delete Modal -->
-<div class="modal-overlay" data-el="confirm-modal">
+<div class="modal-overlay" data-el="confirm-delete-modal">
   <div class="modal" style="max-width: 400px">
     <div class="modal-header">
-      <h3 class="modal-title" data-el="confirm-modal-title">
+      <h3 class="modal-title" data-el="confirm-delete-modal-title">
         Confirm Deletion
       </h3>
       <button class="modal-close" onclick="closeConfirmModal(false)">
@@ -20,7 +20,10 @@
       </button>
     </div>
     <div class="modal-body">
-      <p data-el="confirm-modal-message" style="color: var(--text-secondary)">
+      <p
+        data-el="confirm-delete-modal-message"
+        style="color: var(--text-secondary)"
+      >
         Are you sure you want to delete this entry?
       </p>
     </div>
