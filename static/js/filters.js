@@ -154,7 +154,7 @@ export function updateQuickFilterButtons() {
 }
 
 // Set date filters based on current mode
-export function setDateFiltersForMode() {
+function setDateFiltersForMode() {
   const { dateFrom, dateTo } = els();
   switch (state.filterMode) {
     case "week":
