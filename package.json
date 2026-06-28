@@ -7,10 +7,11 @@
   "scripts": {
     "lint:js": "eslint .",
     "lint:css": "stylelint \"static/**/*.css\"",
+    "lint:headings": "node scripts/check-heading-levels.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "fix": "eslint . --fix && stylelint \"static/**/*.css\" --fix && prettier --write .",
-    "lint": "npm run lint:js && npm run lint:css && npm run format:check"
+    "lint": "npm run lint:js && npm run lint:css && npm run lint:headings && npm run format:check"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

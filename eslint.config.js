@@ -57,15 +57,16 @@ export default [
     },
   },
   {
-    // Partials are document fragments, not full pages: the document-scope
-    // rules (doctype/lang/title) and heading-level continuity don't apply.
-    // Everything else cascades from the templates/**/*.html block above.
+    // Partials are document fragments, not full pages, so the document-scope
+    // rules (doctype/lang/title) don't apply. Everything else cascades from the
+    // templates/**/*.html block above. Heading-level continuity can't be checked
+    // per fragment either; it is enforced across the assembled document by
+    // scripts/check-heading-levels.mjs (npm run lint:headings).
     files: ["templates/partials/**/*.html"],
     rules: {
       "@html-eslint/require-doctype": "off",
       "@html-eslint/require-lang": "off",
       "@html-eslint/require-title": "off",
-      "@html-eslint/no-skip-heading-levels": "off",
     },
   },
 ];
