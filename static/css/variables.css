@@ -1,0 +1,26 @@
+/* Design tokens: colors, radii, shadows, transitions. */
+:root {
+  --bg-primary: #0a0a0a;
+  --bg-secondary: #141414;
+  --bg-tertiary: #1a1a1a;
+  --bg-card: #111;
+  --border-color: #2a2a2a;
+  --border-subtle: #1f1f1f;
+  --text-primary: #fafafa;
+  --text-secondary: #a0a0a0;
+  --text-muted: #666;
+  --accent: #3b82f6;
+  --accent-hover: #2563eb;
+  --accent-subtle: rgb(59 130 246 / 10%);
+  --success: #22c55e;
+  --success-subtle: rgb(34 197 94 / 10%);
+  --danger: #ef4444;
+  --danger-subtle: rgb(239 68 68 / 10%);
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 40%);
+  --shadow-md: 0 4px 12px rgb(0 0 0 / 50%);
+  --shadow-lg: 0 8px 24px rgb(0 0 0 / 60%);
+  --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}

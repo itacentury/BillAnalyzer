@@ -13,13 +13,25 @@ def index() -> str:
     return render_template("index.html")
 
 
+def _asset_manifest(subdirectory: str, suffix: str) -> Response:
+    """Return sorted URLs of static assets in ``subdirectory`` for the service worker to precache."""
+    static_root: str | None = current_app.static_folder
+    assert static_root is not None  # always set by create_app()
+    asset_directory: Path = Path(static_root) / subdirectory
+    urls: list[str] = sorted(
+        f"/static/{subdirectory}/{path.name}"
+        for path in asset_directory.glob(f"*{suffix}")
+    )
+    return jsonify(urls)
+
+
 @web_bp.route("/static/js-manifest.json")
 def js_manifest() -> Response:
     """Return the URLs of all frontend JS modules for the service worker to precache."""
-    static_root: str | None = current_app.static_folder
-    assert static_root is not None  # always set by create_app()
-    js_directory: Path = Path(static_root) / "js"
-    urls: list[str] = sorted(
-        f"/static/js/{path.name}" for path in js_directory.glob("*.js")
-    )
-    return jsonify(urls)
+    return _asset_manifest("js", ".js")
+
+
+@web_bp.route("/static/css-manifest.json")
+def css_manifest() -> Response:
+    """Return the URLs of all frontend CSS files for the service worker to precache."""
+    return _asset_manifest("css", ".css")
