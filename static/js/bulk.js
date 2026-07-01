@@ -3,8 +3,8 @@
  */
 
 import { state, selectedInvoices } from "./state.js";
-import { escapeHtml, showToast } from "./dom.js";
-import { loadInvoices, loadStores, loadCategories } from "./api.js";
+import { populateDatalist, showToast } from "./dom.js";
+import { refreshAllData } from "./api.js";
 import { renderInvoices, updateBulkActionToolbar } from "./render.js";
 import { lockScroll, unlockScroll, showConfirmModal } from "./modals.js";
 
@@ -98,9 +98,7 @@ async function populateBulkCategorySuggestions() {
     const response = await fetch("/api/categories");
     const categories = await response.json();
     const datalist = document.getElementById("bulk-category-suggestions");
-    datalist.innerHTML = categories
-      .map((cat) => `<option value="${escapeHtml(cat)}">`)
-      .join("");
+    populateDatalist(datalist, categories);
   } catch (error) {
     console.error("Error loading categories:", error);
   }
@@ -151,9 +149,7 @@ export async function saveBulkEdit() {
       showToast(`${result.updated} invoice(s) updated`, "success");
       closeBulkEditModal();
       selectedInvoices.clear();
-      loadInvoices();
-      loadStores();
-      loadCategories();
+      refreshAllData();
     } else {
       showToast("Failed to update", "error");
     }
@@ -224,8 +220,7 @@ export async function bulkDeleteInvoices() {
     if (result.success) {
       showToast(`${result.deleted} invoice(s) deleted`, "success");
       selectedInvoices.clear();
-      loadInvoices();
-      loadStores();
+      refreshAllData();
     } else {
       showToast("Failed to delete", "error");
     }

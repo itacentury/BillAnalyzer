@@ -43,6 +43,33 @@ def test_add_invoice_creates_invoice_with_items(client: FlaskClient) -> None:
     assert len(listed[0]["items"]) == 2
 
 
+def test_list_invoices_groups_items_per_invoice(
+    client: FlaskClient, seed_invoice: SeedInvoice
+) -> None:
+    """Each invoice keeps its own items when several invoices are listed at once."""
+    seed_invoice(
+        date="2024-01-01",
+        store="First",
+        items=[{"item_name": "apple", "item_price": 1.0}],
+    )
+    seed_invoice(
+        date="2024-01-02",
+        store="Second",
+        items=[
+            {"item_name": "bread", "item_price": 2.0},
+            {"item_name": "cheese", "item_price": 3.0},
+        ],
+    )
+
+    listed = _get_json(client.get("/api/invoices"))
+    items_by_store = {invoice["store"]: invoice["items"] for invoice in listed}
+    assert [item["item_name"] for item in items_by_store["First"]] == ["apple"]
+    assert [item["item_name"] for item in items_by_store["Second"]] == [
+        "bread",
+        "cheese",
+    ]
+
+
 def test_add_invoice_strips_whitespace(client: FlaskClient) -> None:
     """strip_text normalizes surrounding whitespace on text fields."""
     client.post(

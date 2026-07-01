@@ -67,6 +67,34 @@ export function escapeHtml(text) {
 }
 
 /**
+ * Format a numeric amount with exactly two decimals (no currency symbol).
+ */
+export function formatCurrency(amount) {
+  return Number(amount).toFixed(2);
+}
+
+/**
+ * Fill a <select> with an "all" placeholder followed by the given values.
+ */
+export function populateDropdown(select, values, allLabel) {
+  const options = [`<option value="">${allLabel}</option>`];
+  for (const value of values) {
+    const safe = escapeHtml(value);
+    options.push(`<option value="${safe}">${safe}</option>`);
+  }
+  select.innerHTML = options.join("");
+}
+
+/**
+ * Fill a <datalist> with option suggestions for the given values.
+ */
+export function populateDatalist(datalist, values) {
+  datalist.innerHTML = values
+    .map((value) => `<option value="${escapeHtml(value)}">`)
+    .join("");
+}
+
+/**
  * Show a transient toast notification.
  */
 export function showToast(message, type = "success") {

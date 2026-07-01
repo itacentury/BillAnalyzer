@@ -4,7 +4,7 @@
 
 import { state } from "./state.js";
 import { showToast } from "./dom.js";
-import { loadInvoices, loadStores, loadCategories } from "./api.js";
+import { refreshAllData } from "./api.js";
 import { closeAddModal, showConfirmModal } from "./modals.js";
 
 export async function saveInvoice() {
@@ -53,9 +53,7 @@ export async function saveInvoice() {
     if (response.ok) {
       showToast(successMessage, "success");
       closeAddModal();
-      loadInvoices();
-      loadStores();
-      loadCategories();
+      refreshAllData();
     } else {
       showToast("Failed to save", "error");
     }
@@ -74,8 +72,7 @@ export async function deleteInvoice(id) {
     const response = await fetch(`/api/invoices/${id}`, { method: "DELETE" });
     if (response.ok) {
       showToast("Invoice deleted", "success");
-      loadInvoices();
-      loadStores();
+      refreshAllData();
     } else {
       showToast("Failed to delete", "error");
     }

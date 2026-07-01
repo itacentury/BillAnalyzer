@@ -4,7 +4,7 @@
  */
 
 import { state, chartColors } from "./state.js";
-import { els, escapeHtml, showToast } from "./dom.js";
+import { els, escapeHtml, formatCurrency, showToast } from "./dom.js";
 
 /**
  * Toggle the visibility of advanced filters on mobile.
@@ -103,11 +103,11 @@ function renderStats(data) {
   statsCharts.style.display = "";
 
   document.querySelector('[data-el="stats-total"]').textContent =
-    summary.total_amount.toFixed(2);
+    formatCurrency(summary.total_amount);
   document.querySelector('[data-el="stats-count"]').textContent =
     summary.total_invoices;
   document.querySelector('[data-el="stats-average"]').textContent =
-    summary.average_invoice.toFixed(2);
+    formatCurrency(summary.average_invoice);
 
   const changeEl = document.querySelector('[data-el="stats-change"]');
   if (comparison.previous_total > 0) {
@@ -148,7 +148,7 @@ function renderCategoryChart(data) {
         <div class="legend-item">
           <span class="legend-color" style="background: ${chartColors[i % chartColors.length]}"></span>
           <span class="legend-label">${escapeHtml(item.category)}</span>
-          <span class="legend-value">€${item.amount.toFixed(2)}</span>
+          <span class="legend-value">€${formatCurrency(item.amount)}</span>
           <span class="legend-percent">${percent}%</span>
         </div>
       `;
@@ -190,7 +190,7 @@ function renderCategoryChart(data) {
               const value = context.raw;
               const percent =
                 total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-              return `€${value.toFixed(2)} (${percent}%)`;
+              return `€${formatCurrency(value)} (${percent}%)`;
             },
           },
         },
@@ -241,7 +241,7 @@ function renderStoreChart(data) {
           borderWidth: 1,
           padding: 12,
           callbacks: {
-            label: (context) => `€${context.raw.toFixed(2)}`,
+            label: (context) => `€${formatCurrency(context.raw)}`,
           },
         },
       },

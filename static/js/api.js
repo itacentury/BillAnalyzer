@@ -3,9 +3,24 @@
  */
 
 import { state } from "./state.js";
-import { els, getSearchValue, showToast } from "./dom.js";
+import {
+  els,
+  getSearchValue,
+  populateDatalist,
+  populateDropdown,
+  showToast,
+} from "./dom.js";
 import { renderInvoices } from "./render.js";
 import { loadStats } from "./stats.js";
+
+/**
+ * Reload the invoice list plus the store and category lookups in one call.
+ */
+export function refreshAllData() {
+  loadInvoices();
+  loadStores();
+  loadCategories();
+}
 
 export async function loadInvoices() {
   const { storeFilter, typeFilter, dateFrom, dateTo, sortBy, sortOrder } =
@@ -41,10 +56,7 @@ export async function loadStores() {
     const response = await fetch("/api/stores");
     const stores = await response.json();
 
-    storeFilter.innerHTML = '<option value="">All Stores</option>';
-    stores.forEach((store) => {
-      storeFilter.innerHTML += `<option value="${store}">${store}</option>`;
-    });
+    populateDropdown(storeFilter, stores, "All Stores");
 
     // Restore filter or jump to next store if previous one no longer exists
     if (previousValue) {
@@ -73,10 +85,7 @@ export async function loadCategories() {
 
     // Populate type filter dropdown
     if (typeFilter) {
-      typeFilter.innerHTML = '<option value="">All Categories</option>';
-      categories.forEach((type) => {
-        typeFilter.innerHTML += `<option value="${type}">${type}</option>`;
-      });
+      populateDropdown(typeFilter, categories, "All Categories");
 
       // Restore filter or reset to "All Categories" if category no longer exists
       if (previousValue) {
@@ -92,9 +101,7 @@ export async function loadCategories() {
     // Populate datalist suggestions for add/edit form
     const typeSuggestions = document.getElementById("type-suggestions");
     if (typeSuggestions) {
-      typeSuggestions.innerHTML = categories
-        .map((type) => `<option value="${type}">`)
-        .join("");
+      populateDatalist(typeSuggestions, categories);
     }
   } catch (error) {
     console.error("Error loading categories:", error);
