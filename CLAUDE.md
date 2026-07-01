@@ -78,16 +78,21 @@ and shared types/helpers in `summa/helpers.py`. Key conventions:
   (empty string -> `None`). CORS is enabled globally for native mobile clients.
 
 **Frontend — `static/js/app.js` + `templates/index.html`.** Plain JS (no
-framework, no bundler) talking to the API; styling in `static/css/style.css`.
+framework, no bundler) talking to the API. Styling is split per component under
+`static/css/` (`variables`, `base`, `header`, `filters`, `invoices`, `modals`,
+`components`, `stats`), loaded via ordered `<link>` tags in `index.html` — the
+order is cascade-significant, and each file co-locates its own responsive
+`@media` rules.
 
 **PWA.** `static/sw.js` caches static assets under the `CACHE_NAME` constant.
 **When you change any cached static asset, bump `CACHE_NAME`** (in
 `static/sw.js`) or clients keep serving the stale cached version. The service
-worker is registered from `app.js`. JS modules under `static/js/` are
-auto-discovered at install time via the `/static/js-manifest.json` route
-(`summa/routes/web.py`, which globs `static/js/*.js`), so adding a module needs
-no `sw.js` edit — only a `CACHE_NAME` bump when an existing cached asset's
-content changes.
+worker is registered from `app.js`. JS modules under `static/js/` and CSS files
+under `static/css/` are auto-discovered at install time via the
+`/static/js-manifest.json` and `/static/css-manifest.json` routes
+(`summa/routes/web.py`, which glob `static/js/*.js` and `static/css/*.css`), so
+adding a module or stylesheet needs no `sw.js` edit — only a `CACHE_NAME` bump
+when an existing cached asset's content changes.
 
 ## Deployment
 
