@@ -1,10 +1,13 @@
 """Integration tests for the invoice CRUD, bulk and lookup endpoints."""
 
+from collections.abc import Iterator
 from typing import Any
 
+import pytest
 from flask.testing import FlaskClient
 
 from summa import db
+from summa.routes import invoices as invoices_routes
 from tests.conftest import SeedInvoice
 
 
@@ -238,6 +241,33 @@ def test_get_invoices_ignores_unknown_sort_column(
     response = client.get("/api/invoices?sort_by=total;DROP TABLE invoices")
     assert response.status_code == 200
     assert len(_get_json(response)) == 2
+
+
+def test_list_invoices_spans_multiple_id_chunks(
+    client: FlaskClient,
+    seed_invoice: SeedInvoice,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Item fetching accumulates and stays correctly grouped across several batches."""
+
+    def tiny_chunks(items: list[int]) -> Iterator[list[int]]:
+        return db.chunked(items, size=2)
+
+    # Force a chunk size far below the number of invoices so the id list is split
+    # into multiple SELECTs, exercising the multi-chunk accumulation path.
+    monkeypatch.setattr(invoices_routes, "chunked", tiny_chunks)
+
+    for number in range(5):
+        seed_invoice(
+            store=f"Store {number}",
+            items=[{"item_name": f"item {number}", "item_price": float(number)}],
+        )
+
+    listed = _get_json(client.get("/api/invoices"))
+    assert len(listed) == 5
+    for invoice in listed:
+        index: str = invoice["store"].removeprefix("Store ")
+        assert [item["item_name"] for item in invoice["items"]] == [f"item {index}"]
 
 
 # --- GET /api/stores and /api/categories --------------------------------------

@@ -53,6 +53,16 @@ def placeholders_for(count: int) -> str:
     return ",".join("?" * count)
 
 
+# Safe batch size below the legacy SQLite SQLITE_MAX_VARIABLE_NUMBER (999, pre-3.32).
+SQLITE_MAX_VARIABLES: Final[int] = 900
+
+
+def chunked(items: list[int], size: int = SQLITE_MAX_VARIABLES) -> Iterator[list[int]]:
+    """Yield successive `size`-length chunks of `items`."""
+    for start in range(0, len(items), size):
+        yield items[start : start + size]
+
+
 def init_db() -> None:
     """Initialize the database schema and apply migrations if needed."""
     conn: sqlite3.Connection = get_db()

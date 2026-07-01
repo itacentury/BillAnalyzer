@@ -6,7 +6,7 @@ from typing import Any
 
 from flask import Blueprint, Response, jsonify, request
 
-from summa.db import db_cursor, insert_invoice_items, placeholders_for
+from summa.db import chunked, db_cursor, insert_invoice_items, placeholders_for
 from summa.helpers import (
     ApiResponse,
     Invoice,
@@ -95,18 +95,16 @@ def _fetch_items_by_invoice(
     cursor: sqlite3.Cursor, invoice_ids: list[int]
 ) -> dict[int, list[dict[str, Any]]]:
     """Fetch all items for the given invoices, grouped by invoice id."""
-    if not invoice_ids:
-        return {}
-
-    cursor.execute(
-        f"SELECT * FROM invoice_items WHERE invoice_id IN ({placeholders_for(len(invoice_ids))})",
-        invoice_ids,
-    )
     items_by_invoice: dict[int, list[dict[str, Any]]] = {}
-    for item in cursor.fetchall():
-        items_by_invoice.setdefault(item["invoice_id"], []).append(
-            {"item_name": item["item_name"], "item_price": item["item_price"]}
+    for chunk in chunked(invoice_ids):
+        cursor.execute(
+            f"SELECT * FROM invoice_items WHERE invoice_id IN ({placeholders_for(len(chunk))})",
+            chunk,
         )
+        for item in cursor.fetchall():
+            items_by_invoice.setdefault(item["invoice_id"], []).append(
+                {"item_name": item["item_name"], "item_price": item["item_price"]}
+            )
     return items_by_invoice
 
 
@@ -292,16 +290,16 @@ def bulk_update_invoices() -> ApiResponse:
         # Empty string means remove category (set to NULL)
         params.append(strip_text(new_category))
 
-    params.extend(invoice_ids)
-
     try:
         with db_cursor() as cursor:
-            cursor.execute(
-                f"UPDATE invoices SET {', '.join(set_clauses)} "
-                f"WHERE id IN ({placeholders_for(len(invoice_ids))})",
-                params,
-            )
-            updated_count: int = cursor.rowcount
+            updated_count: int = 0
+            for chunk in chunked(invoice_ids):
+                cursor.execute(
+                    f"UPDATE invoices SET {', '.join(set_clauses)} "
+                    f"WHERE id IN ({placeholders_for(len(chunk))})",
+                    [*params, *chunk],
+                )
+                updated_count += cursor.rowcount
         logger.info(
             "Bulk update completed: %d invoices updated (ids=%s)",
             updated_count,
@@ -325,12 +323,14 @@ def bulk_delete_invoices() -> ApiResponse:
     try:
         with db_cursor() as cursor:
             # Soft delete: set deleted_at timestamp instead of removing from database
-            cursor.execute(
-                "UPDATE invoices SET deleted_at = CURRENT_TIMESTAMP "
-                f"WHERE id IN ({placeholders_for(len(invoice_ids))})",
-                invoice_ids,
-            )
-            deleted_count: int = cursor.rowcount
+            deleted_count: int = 0
+            for chunk in chunked(invoice_ids):
+                cursor.execute(
+                    "UPDATE invoices SET deleted_at = CURRENT_TIMESTAMP "
+                    f"WHERE id IN ({placeholders_for(len(chunk))})",
+                    chunk,
+                )
+                deleted_count += cursor.rowcount
         logger.info(
             "Bulk soft-delete completed: %d invoices deleted (ids=%s)",
             deleted_count,
