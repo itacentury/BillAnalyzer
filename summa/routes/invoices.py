@@ -6,11 +6,12 @@ from typing import Any
 
 from flask import Blueprint, Response, jsonify, request
 
-from summa.db import get_db
+from summa.db import chunked, db_cursor, insert_invoice_items, placeholders_for
 from summa.helpers import (
     ApiResponse,
     Invoice,
     ValidationError,
+    error_response,
     escape_like,
     parse_invoice,
     parse_invoice_list,
@@ -25,9 +26,6 @@ invoices_bp: Blueprint = Blueprint("invoices", __name__)
 @invoices_bp.route("/api/invoices", methods=["GET"])
 def get_invoices() -> Response:
     """Retrieve all invoices with optional filtering and sorting."""
-    conn: sqlite3.Connection = get_db()
-    cursor: sqlite3.Cursor = conn.cursor()
-
     # Get filter parameters
     filters: dict[str, str] = {
         "search": request.args.get("search", ""),
@@ -72,55 +70,64 @@ def get_invoices() -> Response:
         order: str = "DESC" if filters["sort_order"] == "desc" else "ASC"
         query += f" ORDER BY {filters['sort_by']} {order}"
 
-    cursor.execute(query, params)
-
-    result: list[dict[str, Any]] = []
-    for invoice in cursor.fetchall():
-        cursor.execute(
-            "SELECT * FROM invoice_items WHERE invoice_id = ?", (invoice["id"],)
-        )
-        result.append(
-            {
-                "id": invoice["id"],
-                "date": invoice["date"],
-                "store": invoice["store"],
-                "category": invoice["category"],
-                "total": invoice["total"],
-                "items": [
-                    {"item_name": item["item_name"], "item_price": item["item_price"]}
-                    for item in cursor.fetchall()
-                ],
-            }
+    with db_cursor() as cursor:
+        cursor.execute(query, params)
+        invoices: list[sqlite3.Row] = cursor.fetchall()
+        items_by_invoice: dict[int, list[dict[str, Any]]] = _fetch_items_by_invoice(
+            cursor, [invoice["id"] for invoice in invoices]
         )
 
-    conn.close()
+    result: list[dict[str, Any]] = [
+        {
+            "id": invoice["id"],
+            "date": invoice["date"],
+            "store": invoice["store"],
+            "category": invoice["category"],
+            "total": invoice["total"],
+            "items": items_by_invoice.get(invoice["id"], []),
+        }
+        for invoice in invoices
+    ]
     return jsonify(result)
+
+
+def _fetch_items_by_invoice(
+    cursor: sqlite3.Cursor, invoice_ids: list[int]
+) -> dict[int, list[dict[str, Any]]]:
+    """Fetch all items for the given invoices, grouped by invoice id."""
+    items_by_invoice: dict[int, list[dict[str, Any]]] = {}
+    for chunk in chunked(invoice_ids):
+        cursor.execute(
+            f"SELECT * FROM invoice_items WHERE invoice_id IN ({placeholders_for(len(chunk))})",
+            chunk,
+        )
+        for item in cursor.fetchall():
+            items_by_invoice.setdefault(item["invoice_id"], []).append(
+                {"item_name": item["item_name"], "item_price": item["item_price"]}
+            )
+    return items_by_invoice
 
 
 @invoices_bp.route("/api/stores", methods=["GET"])
 def get_stores() -> Response:
     """Return a list of all unique store names."""
-    conn: sqlite3.Connection = get_db()
-    cursor: sqlite3.Cursor = conn.cursor()
-    cursor.execute(
-        "SELECT DISTINCT store FROM invoices WHERE deleted_at IS NULL ORDER BY store"
-    )
-    stores: list[str] = [row["store"] for row in cursor.fetchall()]
-    conn.close()
+    with db_cursor() as cursor:
+        cursor.execute(
+            "SELECT DISTINCT store FROM invoices WHERE deleted_at IS NULL ORDER BY store"
+        )
+        stores: list[str] = [row["store"] for row in cursor.fetchall()]
     return jsonify(stores)
 
 
 @invoices_bp.route("/api/categories", methods=["GET"])
 def get_categories() -> Response:
     """Return a list of all unique invoice categories."""
-    conn: sqlite3.Connection = get_db()
-    cursor: sqlite3.Cursor = conn.cursor()
-    cursor.execute(
-        "SELECT DISTINCT category FROM invoices "
-        "WHERE deleted_at IS NULL AND category IS NOT NULL ORDER BY category"
-    )
-    categories: list[str] = [row["category"] for row in cursor.fetchall()]
-    conn.close()
+    with db_cursor() as cursor:
+        cursor.execute(
+            "SELECT DISTINCT category FROM invoices "
+            "WHERE deleted_at IS NULL AND category IS NOT NULL ORDER BY category"
+        )
+        categories: list[str] = [row["category"] for row in cursor.fetchall()]
     return jsonify(categories)
 
 
@@ -131,25 +138,16 @@ def add_invoice() -> ApiResponse:
     try:
         invoice: Invoice = parse_invoice(data)
     except ValidationError as e:
-        return jsonify({"success": False, "error": str(e)}), 400
-
-    conn: sqlite3.Connection = get_db()
-    cursor: sqlite3.Cursor = conn.cursor()
+        return error_response(str(e), 400)
 
     try:
-        cursor.execute(
-            "INSERT INTO invoices (date, store, category, total) VALUES (?, ?, ?, ?)",
-            (invoice.date, invoice.store, invoice.category, invoice.total),
-        )
-        invoice_id: int | None = cursor.lastrowid
-
-        for item in invoice.items:
+        with db_cursor() as cursor:
             cursor.execute(
-                "INSERT INTO invoice_items (invoice_id, item_name, item_price) VALUES (?, ?, ?)",
-                (invoice_id, item.item_name, item.item_price),
+                "INSERT INTO invoices (date, store, category, total) VALUES (?, ?, ?, ?)",
+                (invoice.date, invoice.store, invoice.category, invoice.total),
             )
-
-        conn.commit()
+            invoice_id: int | None = cursor.lastrowid
+            insert_invoice_items(cursor, invoice_id, invoice.items)
         logger.info(
             "Invoice created: id=%s, store='%s', total=%.2f, items=%d",
             invoice_id,
@@ -159,11 +157,8 @@ def add_invoice() -> ApiResponse:
         )
         return jsonify({"success": True, "id": invoice_id})
     except sqlite3.Error as e:
-        conn.rollback()
         logger.error("Failed to create invoice: %s", e)
-        return jsonify({"success": False, "error": str(e)}), 500
-    finally:
-        conn.close()
+        return error_response(str(e), 500)
 
 
 @invoices_bp.route("/api/invoices/import", methods=["POST"])
@@ -173,42 +168,32 @@ def import_invoices() -> ApiResponse:
     try:
         invoices: list[Invoice] = parse_invoice_list(data)
     except ValidationError as e:
-        return jsonify({"success": False, "error": str(e)}), 400
-
-    conn: sqlite3.Connection = get_db()
-    cursor: sqlite3.Cursor = conn.cursor()
+        return error_response(str(e), 400)
 
     imported_count: int = 0
     skipped_count: int = 0
 
     try:
-        for invoice in invoices:
-            # Duplicate check: same combination of date, store and total amount
-            cursor.execute(
-                "SELECT id FROM invoices WHERE date = ? AND store = ? AND total = ?",
-                (invoice.date, invoice.store, invoice.total),
-            )
-            existing: Any = cursor.fetchone()
-
-            if existing:
-                skipped_count += 1
-                continue
-
-            cursor.execute(
-                "INSERT INTO invoices (date, store, category, total) VALUES (?, ?, ?, ?)",
-                (invoice.date, invoice.store, invoice.category, invoice.total),
-            )
-            invoice_id: int | None = cursor.lastrowid
-
-            for item in invoice.items:
+        with db_cursor() as cursor:
+            for invoice in invoices:
+                # Duplicate check: same combination of date, store and total amount
                 cursor.execute(
-                    "INSERT INTO invoice_items "
-                    "(invoice_id, item_name, item_price) VALUES (?, ?, ?)",
-                    (invoice_id, item.item_name, item.item_price),
+                    "SELECT id FROM invoices WHERE date = ? AND store = ? AND total = ?",
+                    (invoice.date, invoice.store, invoice.total),
                 )
-            imported_count += 1
+                existing: Any = cursor.fetchone()
 
-        conn.commit()
+                if existing:
+                    skipped_count += 1
+                    continue
+
+                cursor.execute(
+                    "INSERT INTO invoices (date, store, category, total) VALUES (?, ?, ?, ?)",
+                    (invoice.date, invoice.store, invoice.category, invoice.total),
+                )
+                insert_invoice_items(cursor, cursor.lastrowid, invoice.items)
+                imported_count += 1
+
         logger.info(
             "Import completed: imported=%d, skipped=%d (of %d total)",
             imported_count,
@@ -219,11 +204,8 @@ def import_invoices() -> ApiResponse:
             {"success": True, "imported": imported_count, "skipped": skipped_count}
         )
     except sqlite3.Error as e:
-        conn.rollback()
         logger.error("Import failed: %s", e)
-        return jsonify({"success": False, "error": str(e)}), 500
-    finally:
-        conn.close()
+        return error_response(str(e), 500)
 
 
 @invoices_bp.route("/api/invoices/<int:invoice_id>", methods=["PUT"])
@@ -233,29 +215,25 @@ def update_invoice(invoice_id: int) -> ApiResponse:
     try:
         invoice: Invoice = parse_invoice(data)
     except ValidationError as e:
-        return jsonify({"success": False, "error": str(e)}), 400
-
-    conn: sqlite3.Connection = get_db()
-    cursor: sqlite3.Cursor = conn.cursor()
+        return error_response(str(e), 400)
 
     try:
-        # Update invoice
-        cursor.execute(
-            "UPDATE invoices SET date = ?, store = ?, category = ?, total = ? WHERE id = ?",
-            (invoice.date, invoice.store, invoice.category, invoice.total, invoice_id),
-        )
-
-        # Delete existing items
-        cursor.execute("DELETE FROM invoice_items WHERE invoice_id = ?", (invoice_id,))
-
-        # Insert new items
-        for item in invoice.items:
+        with db_cursor() as cursor:
             cursor.execute(
-                "INSERT INTO invoice_items (invoice_id, item_name, item_price) VALUES (?, ?, ?)",
-                (invoice_id, item.item_name, item.item_price),
+                "UPDATE invoices SET date = ?, store = ?, category = ?, total = ? WHERE id = ?",
+                (
+                    invoice.date,
+                    invoice.store,
+                    invoice.category,
+                    invoice.total,
+                    invoice_id,
+                ),
             )
-
-        conn.commit()
+            # Replace all items: remove the old ones, then insert the new set
+            cursor.execute(
+                "DELETE FROM invoice_items WHERE invoice_id = ?", (invoice_id,)
+            )
+            insert_invoice_items(cursor, invoice_id, invoice.items)
         logger.info(
             "Invoice updated: id=%d, store='%s', total=%.2f, items=%d",
             invoice_id,
@@ -265,34 +243,25 @@ def update_invoice(invoice_id: int) -> ApiResponse:
         )
         return jsonify({"success": True})
     except sqlite3.Error as e:
-        conn.rollback()
         logger.error("Failed to update invoice id=%d: %s", invoice_id, e)
-        return jsonify({"success": False, "error": str(e)}), 500
-    finally:
-        conn.close()
+        return error_response(str(e), 500)
 
 
 @invoices_bp.route("/api/invoices/<int:invoice_id>", methods=["DELETE"])
 def delete_invoice(invoice_id: int) -> ApiResponse:
     """Soft-delete an invoice by setting its deleted_at timestamp."""
-    conn: sqlite3.Connection = get_db()
-    cursor: sqlite3.Cursor = conn.cursor()
-
     try:
-        # Soft delete: set deleted_at timestamp instead of removing from database
-        cursor.execute(
-            "UPDATE invoices SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?",
-            (invoice_id,),
-        )
-        conn.commit()
+        with db_cursor() as cursor:
+            # Soft delete: set deleted_at timestamp instead of removing from database
+            cursor.execute(
+                "UPDATE invoices SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?",
+                (invoice_id,),
+            )
         logger.info("Invoice soft-deleted: id=%d", invoice_id)
         return jsonify({"success": True})
     except sqlite3.Error as e:
-        conn.rollback()
         logger.error("Failed to delete invoice id=%d: %s", invoice_id, e)
-        return jsonify({"success": False, "error": str(e)}), 500
-    finally:
-        conn.close()
+        return error_response(str(e), 500)
 
 
 @invoices_bp.route("/api/invoices/bulk-update", methods=["PUT"])
@@ -304,35 +273,33 @@ def bulk_update_invoices() -> ApiResponse:
     new_category: str | None = data.get("category")
 
     if not invoice_ids:
-        return jsonify({"success": False, "error": "Missing ids"}), 400
+        return error_response("Missing ids", 400)
 
     if not new_store and new_category is None:
-        return jsonify({"success": False, "error": "Missing store or category"}), 400
+        return error_response("Missing store or category", 400)
 
-    conn: sqlite3.Connection = get_db()
-    cursor: sqlite3.Cursor = conn.cursor()
+    set_clauses: list[str] = []
+    params: list[str | int | None] = []
+
+    if new_store:
+        set_clauses.append("store = ?")
+        params.append(new_store)
+
+    if new_category is not None:
+        set_clauses.append("category = ?")
+        # Empty string means remove category (set to NULL)
+        params.append(strip_text(new_category))
 
     try:
-        placeholders: str = ",".join("?" * len(invoice_ids))
-        set_clauses: list[str] = []
-        params: list[str | int | None] = []
-
-        if new_store:
-            set_clauses.append("store = ?")
-            params.append(new_store)
-
-        if new_category is not None:
-            set_clauses.append("category = ?")
-            # Empty string means remove category (set to NULL)
-            params.append(strip_text(new_category))
-
-        params.extend(invoice_ids)
-        cursor.execute(
-            f"UPDATE invoices SET {', '.join(set_clauses)} WHERE id IN ({placeholders})",
-            params,
-        )
-        updated_count: int = cursor.rowcount
-        conn.commit()
+        with db_cursor() as cursor:
+            updated_count: int = 0
+            for chunk in chunked(invoice_ids):
+                cursor.execute(
+                    f"UPDATE invoices SET {', '.join(set_clauses)} "
+                    f"WHERE id IN ({placeholders_for(len(chunk))})",
+                    [*params, *chunk],
+                )
+                updated_count += cursor.rowcount
         logger.info(
             "Bulk update completed: %d invoices updated (ids=%s)",
             updated_count,
@@ -340,11 +307,8 @@ def bulk_update_invoices() -> ApiResponse:
         )
         return jsonify({"success": True, "updated": updated_count})
     except sqlite3.Error as e:
-        conn.rollback()
         logger.error("Bulk update failed for ids=%s: %s", invoice_ids, e)
-        return jsonify({"success": False, "error": str(e)}), 500
-    finally:
-        conn.close()
+        return error_response(str(e), 500)
 
 
 @invoices_bp.route("/api/invoices/bulk-delete", methods=["POST"])
@@ -354,20 +318,19 @@ def bulk_delete_invoices() -> ApiResponse:
     invoice_ids: list[int] = data.get("ids", [])
 
     if not invoice_ids:
-        return jsonify({"success": False, "error": "Missing ids"}), 400
-
-    conn: sqlite3.Connection = get_db()
-    cursor: sqlite3.Cursor = conn.cursor()
+        return error_response("Missing ids", 400)
 
     try:
-        placeholders: str = ",".join("?" * len(invoice_ids))
-        # Soft delete: set deleted_at timestamp instead of removing from database
-        cursor.execute(
-            f"UPDATE invoices SET deleted_at = CURRENT_TIMESTAMP WHERE id IN ({placeholders})",
-            invoice_ids,
-        )
-        deleted_count: int = cursor.rowcount
-        conn.commit()
+        with db_cursor() as cursor:
+            # Soft delete: set deleted_at timestamp instead of removing from database
+            deleted_count: int = 0
+            for chunk in chunked(invoice_ids):
+                cursor.execute(
+                    "UPDATE invoices SET deleted_at = CURRENT_TIMESTAMP "
+                    f"WHERE id IN ({placeholders_for(len(chunk))})",
+                    chunk,
+                )
+                deleted_count += cursor.rowcount
         logger.info(
             "Bulk soft-delete completed: %d invoices deleted (ids=%s)",
             deleted_count,
@@ -375,8 +338,5 @@ def bulk_delete_invoices() -> ApiResponse:
         )
         return jsonify({"success": True, "deleted": deleted_count})
     except sqlite3.Error as e:
-        conn.rollback()
         logger.error("Bulk delete failed for ids=%s: %s", invoice_ids, e)
-        return jsonify({"success": False, "error": str(e)}), 500
-    finally:
-        conn.close()
+        return error_response(str(e), 500)

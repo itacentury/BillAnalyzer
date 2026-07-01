@@ -1,23 +1,12 @@
+{% from "partials/_macros.html" import modal_close_button %}
 <!-- Confirm Delete Modal -->
 <div class="modal-overlay" data-el="confirm-delete-modal">
-  <div class="modal" style="max-width: 400px">
+  <div class="modal modal-sm">
     <div class="modal-header">
       <h3 class="modal-title" data-el="confirm-delete-modal-title">
         Confirm Deletion
       </h3>
-      <button class="modal-close">
-        <svg
-          width="20"
-          height="20"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-        >
-          <line x1="18" y1="6" x2="6" y2="18" />
-          <line x1="6" y1="6" x2="18" y2="18" />
-        </svg>
-      </button>
+      {{ modal_close_button() }}
     </div>
     <div class="modal-body">
       <p

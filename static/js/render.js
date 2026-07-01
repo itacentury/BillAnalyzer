@@ -7,7 +7,7 @@
  */
 
 import { state, selectedInvoices } from "./state.js";
-import { els, escapeHtml, formatDate } from "./dom.js";
+import { els, escapeHtml, formatCurrency, formatDate } from "./dom.js";
 import { editInvoice } from "./modals.js";
 import { deleteInvoice } from "./invoices.js";
 import { toggleInvoiceSelection } from "./bulk.js";
@@ -54,9 +54,9 @@ export function renderInvoices() {
                         ${invoice.category ? `<span class="invoice-type">${escapeHtml(invoice.category)}</span>` : ""}
                     </div>
                     <div class="invoice-meta">
-                        <span class="invoice-total">${parseFloat(
+                        <span class="invoice-total">${formatCurrency(
                           invoice.total,
-                        ).toFixed(2)}</span>
+                        )}</span>
                         <div class="invoice-expand">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <polyline points="6 9 12 15 18 9"/>
@@ -73,9 +73,9 @@ export function renderInvoices() {
                                 <span class="item-name">${escapeHtml(
                                   item.item_name,
                                 )}</span>
-                                <span class="item-price">€${parseFloat(
+                                <span class="item-price">€${formatCurrency(
                                   item.item_price,
-                                ).toFixed(2)}</span>
+                                )}</span>
                             </div>
                         `,
                           )
@@ -117,7 +117,7 @@ export function renderInvoices() {
     state.invoices.length
   } invoice${state.invoices.length !== 1 ? "s" : ""}`;
   document.querySelector('[data-el="results-total"]').textContent =
-    totalSum.toFixed(2);
+    formatCurrency(totalSum);
 
   updateBulkActionToolbar();
 }

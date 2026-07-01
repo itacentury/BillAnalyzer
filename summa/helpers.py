@@ -3,10 +3,15 @@
 from dataclasses import dataclass
 from typing import Any
 
-from flask import Response
+from flask import Response, jsonify
 
 # Type alias for API responses that may include HTTP status codes
 ApiResponse = Response | tuple[Response, int]
+
+
+def error_response(message: str, status: int) -> tuple[Response, int]:
+    """Build a standard {success: False, error: …} JSON error response."""
+    return jsonify({"success": False, "error": message}), status
 
 
 class ValidationError(Exception):

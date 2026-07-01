@@ -5,7 +5,7 @@
 
 import { state } from "./state.js";
 import { escapeHtml, showToast } from "./dom.js";
-import { loadInvoices, loadStores } from "./api.js";
+import { refreshAllData } from "./api.js";
 import { closeImportModal } from "./modals.js";
 
 export function handleMultipleFiles(files) {
@@ -158,8 +158,7 @@ export async function importJson() {
       }
       showToast(message, "success");
       closeImportModal();
-      loadInvoices();
-      loadStores();
+      refreshAllData();
     } else {
       showToast("Import failed", "error");
     }

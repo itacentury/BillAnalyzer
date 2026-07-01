@@ -8,7 +8,7 @@
  */
 
 import { applyFilter, setupFilterListeners } from "./filters.js";
-import { loadInvoices, loadStores, loadCategories } from "./api.js";
+import { refreshAllData } from "./api.js";
 import { setupModalListeners } from "./modals.js";
 import { setupInvoiceListListeners } from "./render.js";
 import { setupBulkListeners } from "./bulk.js";
@@ -31,9 +31,7 @@ if ("serviceWorker" in navigator) {
 
 function init() {
   applyFilter("month");
-  loadInvoices();
-  loadStores();
-  loadCategories();
+  refreshAllData();
 
   setupFilterListeners();
   setupModalListeners();

@@ -3,7 +3,11 @@
 import logging
 import os
 import sqlite3
+from collections.abc import Iterator
+from contextlib import contextmanager
 from typing import Final
+
+from summa.helpers import InvoiceItem
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -17,6 +21,46 @@ def get_db() -> sqlite3.Connection:
     # Enable WAL mode for better concurrency
     conn.execute("PRAGMA journal_mode=WAL")
     return conn
+
+
+@contextmanager
+def db_cursor() -> Iterator[sqlite3.Cursor]:
+    """Yield a cursor, committing on success and rolling back on error."""
+    conn: sqlite3.Connection = get_db()
+    try:
+        cursor: sqlite3.Cursor = conn.cursor()
+        yield cursor
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def insert_invoice_items(
+    cursor: sqlite3.Cursor, invoice_id: int | None, items: list[InvoiceItem]
+) -> None:
+    """Insert all line items for an invoice."""
+    cursor.executemany(
+        "INSERT INTO invoice_items (invoice_id, item_name, item_price) VALUES (?, ?, ?)",
+        [(invoice_id, item.item_name, item.item_price) for item in items],
+    )
+
+
+def placeholders_for(count: int) -> str:
+    """Return a comma-separated list of `count` SQL placeholders."""
+    return ",".join("?" * count)
+
+
+# Safe batch size below the legacy SQLite SQLITE_MAX_VARIABLE_NUMBER (999, pre-3.32).
+SQLITE_MAX_VARIABLES: Final[int] = 900
+
+
+def chunked(items: list[int], size: int = SQLITE_MAX_VARIABLES) -> Iterator[list[int]]:
+    """Yield successive `size`-length chunks of `items`."""
+    for start in range(0, len(items), size):
+        yield items[start : start + size]
 
 
 def init_db() -> None:

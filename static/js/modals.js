@@ -4,9 +4,34 @@
  */
 
 import { state } from "./state.js";
-import { escapeHtml, showToast } from "./dom.js";
+import { escapeHtml, formatCurrency, showToast } from "./dom.js";
 import { saveInvoice } from "./invoices.js";
 import { importJson } from "./import.js";
+
+/**
+ * Build the inner markup for one add/edit item row (name, price, remove button).
+ * Pre-fills the inputs when an existing item is passed.
+ */
+function itemRowInnerHtml(item = null) {
+  const nameValue = item ? ` value="${escapeHtml(item.item_name)}"` : "";
+  const priceValue = item ? ` value="${item.item_price}"` : "";
+  return `
+    <div class="form-group">
+      <label class="form-label">Item Name</label>
+      <input type="text" class="form-input item-name" placeholder="Product name"${nameValue}>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Price</label>
+      <input type="number" step="0.01" class="form-input item-price" placeholder="0.00"${priceValue}>
+    </div>
+    <button type="button" class="btn btn-danger btn-sm" data-action="remove-item">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="18" y1="6" x2="6" y2="18"/>
+        <line x1="6" y1="6" x2="18" y2="18"/>
+      </svg>
+    </button>
+  `;
+}
 
 /**
  * Lock body scroll to prevent background scrolling while a modal is open.
@@ -72,26 +97,7 @@ export async function editInvoice(id) {
   invoice.items.forEach((item) => {
     const row = document.createElement("div");
     row.className = "item-input-row";
-    row.innerHTML = `
-            <div class="form-group">
-                <label class="form-label">Item Name</label>
-                <input type="text" class="form-input item-name" placeholder="Product name" value="${escapeHtml(
-                  item.item_name,
-                )}">
-            </div>
-            <div class="form-group">
-                <label class="form-label">Price</label>
-                <input type="number" step="0.01" class="form-input item-price" placeholder="0.00" value="${
-                  item.item_price
-                }">
-            </div>
-            <button type="button" class="btn btn-danger btn-sm" data-action="remove-item" style="margin-bottom: 0.375rem;">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="18" y1="6" x2="6" y2="18"/>
-                    <line x1="6" y1="6" x2="18" y2="18"/>
-                </svg>
-            </button>
-        `;
+    row.innerHTML = itemRowInnerHtml(item);
     itemsContainer.appendChild(row);
   });
 
@@ -105,24 +111,8 @@ export async function editInvoice(id) {
 function resetAddForm() {
   document.querySelector('[data-el="add-form"]').reset();
   document.querySelector('[data-el="invoice-type"]').value = "";
-  document.querySelector('[data-el="items-container"]').innerHTML = `
-        <div class="item-input-row">
-            <div class="form-group">
-                <label class="form-label">Item Name</label>
-                <input type="text" class="form-input item-name" placeholder="Product name">
-            </div>
-            <div class="form-group">
-                <label class="form-label">Price</label>
-                <input type="number" step="0.01" class="form-input item-price" placeholder="0.00">
-            </div>
-            <button type="button" class="btn btn-danger btn-sm" data-action="remove-item" style="margin-bottom: 0.375rem;">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="18" y1="6" x2="6" y2="18"/>
-                    <line x1="6" y1="6" x2="18" y2="18"/>
-                </svg>
-            </button>
-        </div>
-    `;
+  document.querySelector('[data-el="items-container"]').innerHTML =
+    `<div class="item-input-row">${itemRowInnerHtml()}</div>`;
   calculateTotal();
 }
 
@@ -177,22 +167,7 @@ export function addItemRow() {
   const container = document.querySelector('[data-el="items-container"]');
   const row = document.createElement("div");
   row.className = "item-input-row";
-  row.innerHTML = `
-        <div class="form-group">
-            <label class="form-label">Item Name</label>
-            <input type="text" class="form-input item-name" placeholder="Product name">
-        </div>
-        <div class="form-group">
-            <label class="form-label">Price</label>
-            <input type="number" step="0.01" class="form-input item-price" placeholder="0.00">
-        </div>
-        <button type="button" class="btn btn-danger btn-sm" data-action="remove-item" style="margin-bottom: 0.375rem;">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="18" y1="6" x2="6" y2="18"/>
-                <line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
-        </button>
-    `;
+  row.innerHTML = itemRowInnerHtml();
   container.appendChild(row);
 }
 
@@ -211,7 +186,7 @@ export function calculateTotal() {
     total += parseFloat(input.value) || 0;
   });
   document.querySelector('[data-el="calculated-total"]').textContent =
-    `€${total.toFixed(2)}`;
+    `€${formatCurrency(total)}`;
 }
 
 /**

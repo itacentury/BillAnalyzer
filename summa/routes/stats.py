@@ -7,7 +7,7 @@ from typing import Any
 
 from flask import Blueprint, Response, jsonify, request
 
-from summa.db import get_db
+from summa.db import db_cursor
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -60,9 +60,6 @@ def _calculate_comparison(
 @stats_bp.route("/api/stats", methods=["GET"])
 def get_stats() -> Response:
     """Return aggregate statistics about invoices with optional date filtering."""
-    conn: sqlite3.Connection = get_db()
-    cursor: sqlite3.Cursor = conn.cursor()
-
     date_from: str = request.args.get("date_from", "")
     date_to: str = request.args.get("date_to", "")
 
@@ -77,52 +74,52 @@ def get_stats() -> Response:
         base_conditions += " AND date <= ?"
         params.append(date_to)
 
-    # Summary statistics
-    cursor.execute(
-        f"SELECT COUNT(*) as count, SUM(total) as sum FROM invoices WHERE {base_conditions}",
-        params,
-    )
-    row: sqlite3.Row | None = cursor.fetchone()
-    assert row is not None  # COUNT(*)/SUM aggregate always returns exactly one row
-    total_invoices: int = row["count"]
-    total_amount: float = row["sum"] or 0
+    with db_cursor() as cursor:
+        # Summary statistics
+        cursor.execute(
+            f"SELECT COUNT(*) as count, SUM(total) as sum FROM invoices WHERE {base_conditions}",
+            params,
+        )
+        row: sqlite3.Row | None = cursor.fetchone()
+        assert row is not None  # COUNT(*)/SUM aggregate always returns exactly one row
+        total_invoices: int = row["count"]
+        total_amount: float = row["sum"] or 0
+
+        # Category breakdown
+        cursor.execute(
+            f"""SELECT COALESCE(category, 'Uncategorized') as category,
+                       SUM(total) as amount, COUNT(*) as count
+                FROM invoices WHERE {base_conditions}
+                GROUP BY category ORDER BY amount DESC""",
+            params,
+        )
+        by_category: list[dict[str, Any]] = [
+            {
+                "category": r["category"],
+                "amount": round(r["amount"], 2),
+                "count": r["count"],
+            }
+            for r in cursor.fetchall()
+        ]
+
+        # Store breakdown (top 10)
+        cursor.execute(
+            f"""SELECT store, SUM(total) as amount, COUNT(*) as count
+                FROM invoices WHERE {base_conditions}
+                GROUP BY store ORDER BY amount DESC LIMIT 10""",
+            params,
+        )
+        by_store: list[dict[str, Any]] = [
+            {"store": r["store"], "amount": round(r["amount"], 2), "count": r["count"]}
+            for r in cursor.fetchall()
+        ]
+
+        comparison: dict[str, Any] = _calculate_comparison(
+            cursor, date_from, date_to, total_amount
+        )
 
     average_invoice: float = total_amount / total_invoices if total_invoices > 0 else 0
 
-    # Category breakdown
-    cursor.execute(
-        f"""SELECT COALESCE(category, 'Uncategorized') as category,
-                   SUM(total) as amount, COUNT(*) as count
-            FROM invoices WHERE {base_conditions}
-            GROUP BY category ORDER BY amount DESC""",
-        params,
-    )
-    by_category: list[dict[str, Any]] = [
-        {
-            "category": r["category"],
-            "amount": round(r["amount"], 2),
-            "count": r["count"],
-        }
-        for r in cursor.fetchall()
-    ]
-
-    # Store breakdown (top 10)
-    cursor.execute(
-        f"""SELECT store, SUM(total) as amount, COUNT(*) as count
-            FROM invoices WHERE {base_conditions}
-            GROUP BY store ORDER BY amount DESC LIMIT 10""",
-        params,
-    )
-    by_store: list[dict[str, Any]] = [
-        {"store": r["store"], "amount": round(r["amount"], 2), "count": r["count"]}
-        for r in cursor.fetchall()
-    ]
-
-    comparison: dict[str, Any] = _calculate_comparison(
-        cursor, date_from, date_to, total_amount
-    )
-
-    conn.close()
     return jsonify(
         {
             "summary": {
