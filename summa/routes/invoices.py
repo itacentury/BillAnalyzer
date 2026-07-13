@@ -70,11 +70,14 @@ def get_invoices() -> Response:
         where += " AND date <= ?"
         params.append(filters["date_to"])
 
-    # Sorting
-    order: str = ""
+    # Sorting. Always include `id` as a unique tie-breaker so rows sharing a
+    # sort value keep a stable relative order across LIMIT/OFFSET page
+    # boundaries (otherwise paging can skip or duplicate rows).
     if filters["sort_by"] in ["date", "store", "total"]:
         direction: str = "DESC" if filters["sort_order"] == "desc" else "ASC"
-        order = f" ORDER BY {filters['sort_by']} {direction}"
+        order: str = f" ORDER BY {filters['sort_by']} {direction}, id DESC"
+    else:
+        order = " ORDER BY id DESC"
 
     # Pagination
     page: int = parse_bounded_int(request.args.get("page"), 1, 1, 1_000_000)
