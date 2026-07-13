@@ -2,7 +2,7 @@
  * Server I/O for the invoice list and the store/category filter dropdowns.
  */
 
-import { state } from "./state.js";
+import { state, selectedInvoices } from "./state.js";
 import {
   els,
   getSearchValue,
@@ -27,6 +27,10 @@ export function refreshAllData() {
  * search, sort or post-mutation refresh; use `goToPage` for pagination.
  */
 export async function loadInvoices() {
+  // A new query invalidates the selection: clearing here (but not in goToPage /
+  // reloadCurrentPage) drops out-of-view ids on filter/search/sort/period
+  // changes while preserving cross-page "select all" within a fixed filter set.
+  selectedInvoices.clear();
   state.page = 1;
   await fetchInvoices();
 }
