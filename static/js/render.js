@@ -14,13 +14,9 @@ import { toggleInvoiceSelection } from "./bulk.js";
 
 export function renderInvoices() {
   const { invoiceList } = els();
-  // Clear selection for invoices that are no longer in the list
-  const currentIds = new Set(state.invoices.map((inv) => inv.id));
-  selectedInvoices.forEach((id) => {
-    if (!currentIds.has(id)) {
-      selectedInvoices.delete(id);
-    }
-  });
+  // Selection is intentionally not pruned to the current page: it spans the
+  // whole filtered set (see "select all"), so ids on other pages must survive
+  // a re-render or page change.
 
   if (state.invoices.length === 0) {
     invoiceList.innerHTML = `
@@ -191,20 +187,14 @@ export function updateBulkActionToolbar() {
     toolbar.classList.remove("visible");
   }
 
-  // Update "select all" checkbox state
+  // Update "select all" checkbox state against the full filtered set (all
+  // pages), not just the visible page.
   const selectAllCheckbox = document.querySelector(
     '[data-el="select-all-checkbox"] input',
   );
-  if (selectAllCheckbox && state.invoices.length > 0) {
-    const allSelected = state.invoices.every((inv) =>
-      selectedInvoices.has(inv.id),
-    );
-    const someSelected = state.invoices.some((inv) =>
-      selectedInvoices.has(inv.id),
-    );
-
-    selectAllCheckbox.checked = allSelected;
-    selectAllCheckbox.indeterminate = someSelected && !allSelected;
+  if (selectAllCheckbox && state.totalCount > 0) {
+    selectAllCheckbox.checked = count >= state.totalCount;
+    selectAllCheckbox.indeterminate = count > 0 && count < state.totalCount;
   } else if (selectAllCheckbox) {
     selectAllCheckbox.checked = false;
     selectAllCheckbox.indeterminate = false;

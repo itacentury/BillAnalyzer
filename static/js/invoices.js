@@ -2,7 +2,7 @@
  * Single-invoice create/update/delete actions.
  */
 
-import { state } from "./state.js";
+import { state, selectedInvoices } from "./state.js";
 import { els, hasOption, showToast } from "./dom.js";
 import { loadCategories, loadInvoices, loadStores } from "./api.js";
 import { closeAddModal, showConfirmModal } from "./modals.js";
@@ -77,6 +77,9 @@ export async function deleteInvoice(id) {
     const response = await fetch(`/api/invoices/${id}`, { method: "DELETE" });
     if (response.ok) {
       showToast("Invoice deleted", "success");
+      // Drop the id from any active selection; without render-time pruning it
+      // would otherwise linger and inflate the bulk-action count.
+      selectedInvoices.delete(id);
       // A store/category option lingering after its last invoice is deleted is
       // cosmetic and self-heals on the next lookup load, so reload the list only.
       loadInvoices();

@@ -27,55 +27,61 @@ DEFAULT_PAGE_SIZE: Final[int] = 50
 MAX_PAGE_SIZE: Final[int] = 200
 
 
-@invoices_bp.route("/api/invoices", methods=["GET"])
-def get_invoices() -> Response:
-    """Retrieve a page of invoices with optional filtering and sorting."""
-    # Get filter parameters
-    filters: dict[str, str] = {
-        "search": request.args.get("search", ""),
-        "store": request.args.get("store", ""),
-        "category": request.args.get("category", ""),
-        "date_from": request.args.get("date_from", ""),
-        "date_to": request.args.get("date_to", ""),
-        "sort_by": request.args.get("sort_by", "date"),
-        "sort_order": request.args.get("sort_order", "desc"),
-    }
+def _build_invoice_filter(args: Any) -> tuple[str, list[str]]:
+    """Build the shared WHERE clause and params for invoice list filtering.
 
-    # Build the WHERE clause - exclude soft-deleted invoices. Kept separate from
-    # ORDER BY/LIMIT so the same clause and params drive the count/sum query.
+    Excludes soft-deleted invoices. Kept separate from ORDER BY/LIMIT so the same
+    clause and params can drive the list, count/sum and id-list queries alike.
+    """
     where: str = "WHERE deleted_at IS NULL"
     params: list[str] = []
 
-    if filters["search"]:
+    search: str = args.get("search", "")
+    if search:
         where += (
             " AND (store LIKE ? ESCAPE '\\' OR id IN "
             "(SELECT invoice_id FROM invoice_items WHERE item_name LIKE ? ESCAPE '\\'))"
         )
-        escaped: str = escape_like(filters["search"])
+        escaped: str = escape_like(search)
         params.extend([f"%{escaped}%", f"%{escaped}%"])
 
-    if filters["store"]:
+    store: str = args.get("store", "")
+    if store:
         where += " AND store = ?"
-        params.append(filters["store"])
+        params.append(store)
 
-    if filters["category"]:
+    category: str = args.get("category", "")
+    if category:
         where += " AND category = ?"
-        params.append(filters["category"])
+        params.append(category)
 
-    if filters["date_from"]:
+    date_from: str = args.get("date_from", "")
+    if date_from:
         where += " AND date >= ?"
-        params.append(filters["date_from"])
+        params.append(date_from)
 
-    if filters["date_to"]:
+    date_to: str = args.get("date_to", "")
+    if date_to:
         where += " AND date <= ?"
-        params.append(filters["date_to"])
+        params.append(date_to)
+
+    return where, params
+
+
+@invoices_bp.route("/api/invoices", methods=["GET"])
+def get_invoices() -> Response:
+    """Retrieve a page of invoices with optional filtering and sorting."""
+    where, params = _build_invoice_filter(request.args)
 
     # Sorting. Always include `id` as a unique tie-breaker so rows sharing a
     # sort value keep a stable relative order across LIMIT/OFFSET page
     # boundaries (otherwise paging can skip or duplicate rows).
-    if filters["sort_by"] in ["date", "store", "total"]:
-        direction: str = "DESC" if filters["sort_order"] == "desc" else "ASC"
-        order: str = f" ORDER BY {filters['sort_by']} {direction}, id DESC"
+    sort_by: str = request.args.get("sort_by", "date")
+    if sort_by in ["date", "store", "total"]:
+        direction: str = (
+            "DESC" if request.args.get("sort_order", "desc") == "desc" else "ASC"
+        )
+        order: str = f" ORDER BY {sort_by} {direction}, id DESC"
     else:
         order = " ORDER BY id DESC"
 
@@ -125,6 +131,21 @@ def get_invoices() -> Response:
             "total_sum": total_sum,
         }
     )
+
+
+@invoices_bp.route("/api/invoices/ids", methods=["GET"])
+def get_invoice_ids() -> Response:
+    """Return the ids of every invoice matching the current filters.
+
+    Backs cross-page "select all": the client needs the full filtered id set,
+    which the paginated list endpoint does not expose. Reuses the same filter
+    clause so both endpoints always agree on what "matching" means.
+    """
+    where, params = _build_invoice_filter(request.args)
+    with db_cursor() as cursor:
+        cursor.execute(f"SELECT id FROM invoices {where} ORDER BY id", params)
+        ids: list[int] = [row["id"] for row in cursor.fetchall()]
+    return jsonify({"ids": ids})
 
 
 def _fetch_items_by_invoice(

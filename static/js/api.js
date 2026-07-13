@@ -39,10 +39,14 @@ export async function goToPage(page) {
   await fetchInvoices();
 }
 
-async function fetchInvoices() {
+/**
+ * Assemble the active filter/search/sort params shared by the list endpoint and
+ * the filtered-ids endpoint, so both always see the same query.
+ */
+function buildFilterParams() {
   const { storeFilter, typeFilter, dateFrom, dateTo, sortBy, sortOrder } =
     els();
-  const params = new URLSearchParams({
+  return new URLSearchParams({
     search: getSearchValue(),
     store: storeFilter.value,
     category: typeFilter.value,
@@ -50,9 +54,23 @@ async function fetchInvoices() {
     date_to: dateTo.value,
     sort_by: sortBy.value,
     sort_order: sortOrder.value,
-    page: state.page,
-    page_size: state.pageSize,
   });
+}
+
+/**
+ * Fetch the ids of every invoice matching the active filters (all pages).
+ * Backs cross-page "select all".
+ */
+export async function fetchFilteredIds() {
+  const response = await fetch(`/api/invoices/ids?${buildFilterParams()}`);
+  const data = await response.json();
+  return data.ids;
+}
+
+async function fetchInvoices() {
+  const params = buildFilterParams();
+  params.set("page", state.page);
+  params.set("page_size", state.pageSize);
 
   try {
     const response = await fetch(`/api/invoices?${params}`);

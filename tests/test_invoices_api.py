@@ -567,3 +567,45 @@ def test_pagination_totals_reflect_filters_not_page(
     assert body["total_count"] == 3
     assert body["total_sum"] == 15.0
     assert len(body["invoices"]) == 1
+
+
+# --- GET /api/invoices/ids ----------------------------------------------------
+
+
+def test_invoice_ids_returns_all_matches_ignoring_pagination(
+    client: FlaskClient, seed_invoice: SeedInvoice
+) -> None:
+    """The id list covers the whole filtered set regardless of page/page_size."""
+    ids = {seed_invoice(store=f"Store {day}") for day in range(1, 6)}
+
+    body = _get_json(client.get("/api/invoices/ids?page=2&page_size=2"))
+    assert set(body["ids"]) == ids
+
+
+def test_invoice_ids_honor_filters(
+    client: FlaskClient, seed_invoice: SeedInvoice
+) -> None:
+    """store/category/date/search filters narrow the id list identically."""
+    keep = seed_invoice(store="Keep", category="Food", date="2024-02-15")
+    other = seed_invoice(store="Other", category="Food", date="2024-02-15")
+    drinks = seed_invoice(store="Keep", category="Drinks", date="2024-02-15")
+    later = seed_invoice(store="Keep", category="Food", date="2024-05-01")
+
+    by_store = _get_json(client.get("/api/invoices/ids?store=Keep&category=Food"))
+    assert set(by_store["ids"]) == {keep, later}
+
+    by_date = _get_json(
+        client.get("/api/invoices/ids?date_from=2024-02-01&date_to=2024-02-28")
+    )
+    assert set(by_date["ids"]) == {keep, other, drinks}
+
+
+def test_invoice_ids_exclude_soft_deleted(
+    client: FlaskClient, seed_invoice: SeedInvoice
+) -> None:
+    """Soft-deleted invoices never appear in the id list."""
+    visible = seed_invoice(store="Visible")
+    seed_invoice(store="Gone", deleted=True)
+
+    body = _get_json(client.get("/api/invoices/ids"))
+    assert body["ids"] == [visible]
