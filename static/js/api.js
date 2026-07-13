@@ -40,6 +40,19 @@ export async function goToPage(page) {
 }
 
 /**
+ * Reload the current page after a mutation, preserving the user's position.
+ * If a deletion emptied the current page, step back to the last page with rows.
+ */
+export async function reloadCurrentPage() {
+  await fetchInvoices();
+  const totalPages = Math.max(1, Math.ceil(state.totalCount / state.pageSize));
+  if (state.page > totalPages) {
+    state.page = totalPages;
+    await fetchInvoices();
+  }
+}
+
+/**
  * Assemble the active filter/search/sort params shared by the list endpoint and
  * the filtered-ids endpoint, so both always see the same query.
  */

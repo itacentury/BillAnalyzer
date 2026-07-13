@@ -4,7 +4,12 @@
 
 import { state, selectedInvoices } from "./state.js";
 import { els, hasOption, showToast } from "./dom.js";
-import { loadCategories, loadInvoices, loadStores } from "./api.js";
+import {
+  loadCategories,
+  loadInvoices,
+  loadStores,
+  reloadCurrentPage,
+} from "./api.js";
 import { closeAddModal, showConfirmModal } from "./modals.js";
 
 export async function saveInvoice() {
@@ -33,6 +38,9 @@ export async function saveInvoice() {
     0,
   );
 
+  // Capture before closeAddModal() clears state.editingInvoiceId below.
+  const isEdit = Boolean(state.editingInvoiceId);
+
   try {
     let url = "/api/invoices";
     let method = "POST";
@@ -58,7 +66,10 @@ export async function saveInvoice() {
       const { storeFilter, typeFilter } = els();
       if (!hasOption(storeFilter, store)) loadStores();
       if (type && !hasOption(typeFilter, type)) loadCategories();
-      loadInvoices();
+      // Editing keeps the user on the current page; a new invoice jumps to
+      // page 1 so it is visible at the top of the date-descending sort.
+      if (isEdit) reloadCurrentPage();
+      else loadInvoices();
     } else {
       showToast("Failed to save", "error");
     }
@@ -82,7 +93,7 @@ export async function deleteInvoice(id) {
       selectedInvoices.delete(id);
       // A store/category option lingering after its last invoice is deleted is
       // cosmetic and self-heals on the next lookup load, so reload the list only.
-      loadInvoices();
+      reloadCurrentPage();
     } else {
       showToast("Failed to delete", "error");
     }

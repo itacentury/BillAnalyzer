@@ -4,7 +4,12 @@
 
 import { state, selectedInvoices } from "./state.js";
 import { populateDatalist, showToast } from "./dom.js";
-import { fetchFilteredIds, loadInvoices, refreshAllData } from "./api.js";
+import {
+  fetchFilteredIds,
+  loadCategories,
+  loadStores,
+  reloadCurrentPage,
+} from "./api.js";
 import { renderInvoices, updateBulkActionToolbar } from "./render.js";
 import { lockScroll, unlockScroll, showConfirmModal } from "./modals.js";
 
@@ -167,7 +172,11 @@ export async function saveBulkEdit() {
       showToast(`${result.updated} invoice(s) updated`, "success");
       closeBulkEditModal();
       selectedInvoices.clear();
-      refreshAllData();
+      // Preserve the current page. A bulk edit can rename stores / add or
+      // remove categories, so the lookup dropdowns still need refreshing.
+      reloadCurrentPage();
+      loadStores();
+      loadCategories();
     } else {
       showToast("Failed to update", "error");
     }
@@ -239,7 +248,7 @@ export async function bulkDeleteInvoices() {
       showToast(`${result.deleted} invoice(s) deleted`, "success");
       selectedInvoices.clear();
       // Reload the list only; stale lookup options self-heal (see deleteInvoice).
-      loadInvoices();
+      reloadCurrentPage();
     } else {
       showToast("Failed to delete", "error");
     }
