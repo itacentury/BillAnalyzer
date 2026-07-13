@@ -50,6 +50,7 @@ export async function selectAllInvoices() {
     ids.forEach((id) => selectedInvoices.add(id));
   } catch {
     showToast("Failed to select all invoices", "error");
+    renderInvoices();
     return;
   }
   renderInvoices();
