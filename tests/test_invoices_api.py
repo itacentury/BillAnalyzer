@@ -16,6 +16,11 @@ def _get_json(response: Any) -> Any:
     return response.get_json()
 
 
+def _list(client: FlaskClient, query: str = "") -> Any:
+    """Return the invoices array from a GET /api/invoices response."""
+    return _get_json(client.get(f"/api/invoices{query}"))["invoices"]
+
+
 # --- POST /api/invoices -------------------------------------------------------
 
 
@@ -40,7 +45,7 @@ def test_add_invoice_creates_invoice_with_items(client: FlaskClient) -> None:
     assert body["success"] is True
     assert isinstance(body["id"], int)
 
-    listed = _get_json(client.get("/api/invoices"))
+    listed = _list(client)
     assert len(listed) == 1
     assert listed[0]["store"] == "Grocer"
     assert len(listed[0]["items"]) == 2
@@ -64,7 +69,7 @@ def test_list_invoices_groups_items_per_invoice(
         ],
     )
 
-    listed = _get_json(client.get("/api/invoices"))
+    listed = _list(client)
     items_by_store = {invoice["store"]: invoice["items"] for invoice in listed}
     assert [item["item_name"] for item in items_by_store["First"]] == ["apple"]
     assert [item["item_name"] for item in items_by_store["Second"]] == [
@@ -86,7 +91,7 @@ def test_add_invoice_strips_whitespace(client: FlaskClient) -> None:
         },
     )
 
-    invoice = _get_json(client.get("/api/invoices"))[0]
+    invoice = _list(client)[0]
     assert invoice["date"] == "2024-03-01"
     assert invoice["store"] == "Spaced Store"
     assert invoice["category"] == "Cat"
@@ -99,7 +104,7 @@ def test_add_invoice_allows_empty_items(client: FlaskClient) -> None:
         json={"date": "2024-03-01", "store": "NoItems", "total": 3.0},
     )
     assert response.status_code == 200
-    assert _get_json(client.get("/api/invoices"))[0]["items"] == []
+    assert _list(client)[0]["items"] == []
 
 
 def test_add_invoice_null_items_is_accepted(client: FlaskClient) -> None:
@@ -109,7 +114,7 @@ def test_add_invoice_null_items_is_accepted(client: FlaskClient) -> None:
         json={"date": "2024-03-01", "store": "NullItems", "total": 3.0, "items": None},
     )
     assert response.status_code == 200
-    assert _get_json(client.get("/api/invoices"))[0]["items"] == []
+    assert _list(client)[0]["items"] == []
 
 
 def test_add_invoice_missing_field_returns_400(client: FlaskClient) -> None:
@@ -143,7 +148,7 @@ def test_get_invoices_excludes_soft_deleted(
     seed_invoice(store="Visible")
     seed_invoice(store="Gone", deleted=True)
 
-    stores = [invoice["store"] for invoice in _get_json(client.get("/api/invoices"))]
+    stores = [invoice["store"] for invoice in _list(client)]
     assert stores == ["Visible"]
 
 
@@ -155,10 +160,10 @@ def test_get_invoices_filters_by_store_and_category(
     seed_invoice(store="Rewe", category="Food")
     seed_invoice(store="Aldi", category="Drinks")
 
-    by_store = _get_json(client.get("/api/invoices?store=Aldi"))
+    by_store = _list(client, "?store=Aldi")
     assert len(by_store) == 2
 
-    by_category = _get_json(client.get("/api/invoices?category=Drinks"))
+    by_category = _list(client, "?category=Drinks")
     assert len(by_category) == 1
     assert by_category[0]["store"] == "Aldi"
 
@@ -171,9 +176,7 @@ def test_get_invoices_filters_by_date_range(
     seed_invoice(date="2024-02-01", store="Feb")
     seed_invoice(date="2024-03-01", store="Mar")
 
-    result = _get_json(
-        client.get("/api/invoices?date_from=2024-02-01&date_to=2024-02-28")
-    )
+    result = _list(client, "?date_from=2024-02-01&date_to=2024-02-28")
     assert [invoice["store"] for invoice in result] == ["Feb"]
 
 
@@ -185,7 +188,7 @@ def test_get_invoices_search_matches_store_and_item(
     seed_invoice(store="Other", items=[{"item_name": "banana bread", "item_price": 3}])
     seed_invoice(store="Unrelated", items=[{"item_name": "apple", "item_price": 1}])
 
-    result = _get_json(client.get("/api/invoices?search=banana"))
+    result = _list(client, "?search=banana")
     assert len(result) == 2
 
 
@@ -196,13 +199,13 @@ def test_get_invoices_search_escapes_like_wildcards(
     seed_invoice(store="Sale")
     seed_invoice(store="S_le")
 
-    underscore = _get_json(client.get("/api/invoices?search=S_le"))
+    underscore = _list(client, "?search=S_le")
     assert [invoice["store"] for invoice in underscore] == ["S_le"]
 
     seed_invoice(store="50")
     seed_invoice(store="50%")
 
-    percent = _get_json(client.get("/api/invoices?search=50%25"))
+    percent = _list(client, "?search=50%25")
     assert [invoice["store"] for invoice in percent] == ["50%"]
 
 
@@ -214,7 +217,7 @@ def test_get_invoices_default_sort_is_date_desc(
     seed_invoice(date="2024-01-01", store="Jan")
     seed_invoice(date="2024-03-01", store="Mar")
 
-    dates = [invoice["date"] for invoice in _get_json(client.get("/api/invoices"))]
+    dates = [invoice["date"] for invoice in _list(client)]
     assert dates == ["2024-03-01", "2024-02-01", "2024-01-01"]
 
 
@@ -224,10 +227,10 @@ def test_get_invoices_sorting(client: FlaskClient, seed_invoice: SeedInvoice) ->
     seed_invoice(store="B", total=10.0)
     seed_invoice(store="C", total=20.0)
 
-    ascending = _get_json(client.get("/api/invoices?sort_by=total&sort_order=asc"))
+    ascending = _list(client, "?sort_by=total&sort_order=asc")
     assert [invoice["total"] for invoice in ascending] == [10.0, 20.0, 30.0]
 
-    descending = _get_json(client.get("/api/invoices?sort_by=total&sort_order=desc"))
+    descending = _list(client, "?sort_by=total&sort_order=desc")
     assert [invoice["total"] for invoice in descending] == [30.0, 20.0, 10.0]
 
 
@@ -240,7 +243,7 @@ def test_get_invoices_ignores_unknown_sort_column(
 
     response = client.get("/api/invoices?sort_by=total;DROP TABLE invoices")
     assert response.status_code == 200
-    assert len(_get_json(response)) == 2
+    assert len(_get_json(response)["invoices"]) == 2
 
 
 def test_list_invoices_spans_multiple_id_chunks(
@@ -263,7 +266,7 @@ def test_list_invoices_spans_multiple_id_chunks(
             items=[{"item_name": f"item {number}", "item_price": float(number)}],
         )
 
-    listed = _get_json(client.get("/api/invoices"))
+    listed = _list(client)
     assert len(listed) == 5
     for invoice in listed:
         index: str = invoice["store"].removeprefix("Store ")
@@ -317,7 +320,7 @@ def test_import_skips_duplicates(
     body = _get_json(response)
     assert response.status_code == 200
     assert body == {"success": True, "imported": 1, "skipped": 1}
-    assert len(_get_json(client.get("/api/invoices"))) == 2
+    assert len(_list(client)) == 2
 
 
 def test_import_non_numeric_total_returns_400(client: FlaskClient) -> None:
@@ -328,7 +331,7 @@ def test_import_non_numeric_total_returns_400(client: FlaskClient) -> None:
     )
     assert response.status_code == 400
     assert _get_json(response)["error"] == "Field 'total' must be a number"
-    assert _get_json(client.get("/api/invoices")) == []
+    assert _list(client) == []
 
 
 def test_import_non_list_payload_returns_400(client: FlaskClient) -> None:
@@ -339,7 +342,7 @@ def test_import_non_list_payload_returns_400(client: FlaskClient) -> None:
     )
     assert response.status_code == 400
     assert _get_json(response)["error"] == "Expected a list of invoices"
-    assert _get_json(client.get("/api/invoices")) == []
+    assert _list(client) == []
 
 
 # --- PUT /api/invoices/<id> ---------------------------------------------------
@@ -365,7 +368,7 @@ def test_update_invoice_replaces_items(
     )
 
     assert response.status_code == 200
-    invoice = _get_json(client.get("/api/invoices"))[0]
+    invoice = _list(client)[0]
     assert invoice["store"] == "New"
     assert invoice["total"] == 42.0
     assert [item["item_name"] for item in invoice["items"]] == ["new item"]
@@ -393,7 +396,7 @@ def test_update_nonexistent_invoice_reports_success(client: FlaskClient) -> None
     )
     assert response.status_code == 200
     assert _get_json(response) == {"success": True}
-    assert _get_json(client.get("/api/invoices")) == []
+    assert _list(client) == []
 
 
 # --- DELETE /api/invoices/<id> ------------------------------------------------
@@ -405,7 +408,7 @@ def test_delete_invoice_is_soft(client: FlaskClient, seed_invoice: SeedInvoice) 
 
     response = client.delete(f"/api/invoices/{invoice_id}")
     assert response.status_code == 200
-    assert _get_json(client.get("/api/invoices")) == []
+    assert _list(client) == []
 
     conn = db.get_db()
     try:
@@ -435,7 +438,7 @@ def test_bulk_update_store_and_category(
 
     body = _get_json(response)
     assert body == {"success": True, "updated": 2}
-    stores = {invoice["store"] for invoice in _get_json(client.get("/api/invoices"))}
+    stores = {invoice["store"] for invoice in _list(client)}
     assert stores == {"Renamed"}
 
 
@@ -450,7 +453,7 @@ def test_bulk_update_empty_category_clears_it(
         json={"ids": [invoice_id], "category": ""},
     )
 
-    assert _get_json(client.get("/api/invoices"))[0]["category"] is None
+    assert _list(client)[0]["category"] is None
 
 
 def test_bulk_update_missing_ids_returns_400(client: FlaskClient) -> None:
@@ -483,7 +486,7 @@ def test_bulk_delete_soft_deletes_many(
     response = client.post("/api/invoices/bulk-delete", json={"ids": [first, second]})
 
     assert _get_json(response) == {"success": True, "deleted": 2}
-    assert _get_json(client.get("/api/invoices")) == []
+    assert _list(client) == []
 
 
 def test_bulk_delete_missing_ids_returns_400(client: FlaskClient) -> None:
@@ -491,3 +494,76 @@ def test_bulk_delete_missing_ids_returns_400(client: FlaskClient) -> None:
     response = client.post("/api/invoices/bulk-delete", json={"ids": []})
     assert response.status_code == 400
     assert _get_json(response)["error"] == "Missing ids"
+
+
+# --- GET /api/invoices pagination ---------------------------------------------
+
+
+def test_pagination_defaults_and_totals(
+    client: FlaskClient, seed_invoice: SeedInvoice
+) -> None:
+    """The default response reports page 1, the page size and full-set totals."""
+    for number in range(3):
+        seed_invoice(date=f"2024-01-0{number + 1}", store=f"S{number}", total=10.0)
+
+    body = _get_json(client.get("/api/invoices"))
+    assert body["page"] == 1
+    assert body["page_size"] == 50
+    assert body["total_count"] == 3
+    assert body["total_sum"] == 30.0
+    assert len(body["invoices"]) == 3
+
+
+def test_pagination_slices_pages_without_overlap(
+    client: FlaskClient, seed_invoice: SeedInvoice
+) -> None:
+    """Sequential pages return disjoint slices covering the whole filtered set."""
+    for day in range(1, 6):
+        seed_invoice(date=f"2024-01-0{day}", store=f"Store {day}")
+
+    first = _get_json(client.get("/api/invoices?page=1&page_size=2"))
+    second = _get_json(client.get("/api/invoices?page=2&page_size=2"))
+    third = _get_json(client.get("/api/invoices?page=3&page_size=2"))
+
+    assert [invoice["store"] for invoice in first["invoices"]] == ["Store 5", "Store 4"]
+    assert [invoice["store"] for invoice in second["invoices"]] == [
+        "Store 3",
+        "Store 2",
+    ]
+    assert [invoice["store"] for invoice in third["invoices"]] == ["Store 1"]
+    # total_count stays the full filtered set on every page.
+    assert {first["total_count"], second["total_count"], third["total_count"]} == {5}
+
+
+def test_pagination_clamps_page_size_to_maximum(
+    client: FlaskClient, seed_invoice: SeedInvoice
+) -> None:
+    """An over-large page_size is clamped to the configured maximum."""
+    seed_invoice(store="Only")
+    body = _get_json(client.get("/api/invoices?page_size=100000"))
+    assert body["page_size"] == 200
+
+
+def test_pagination_non_numeric_params_fall_back_to_defaults(
+    client: FlaskClient, seed_invoice: SeedInvoice
+) -> None:
+    """Non-numeric page/page_size values fall back to the defaults, not a 500."""
+    seed_invoice(store="Only")
+    body = _get_json(client.get("/api/invoices?page=abc&page_size=xyz"))
+    assert body["page"] == 1
+    assert body["page_size"] == 50
+
+
+def test_pagination_totals_reflect_filters_not_page(
+    client: FlaskClient, seed_invoice: SeedInvoice
+) -> None:
+    """Counts/sums cover the filtered set, and soft-deleted rows are excluded."""
+    for day in range(1, 4):
+        seed_invoice(date=f"2024-01-0{day}", store="Keep", total=5.0)
+    seed_invoice(store="Other", total=99.0)
+    seed_invoice(store="Keep", total=1000.0, deleted=True)
+
+    body = _get_json(client.get("/api/invoices?store=Keep&page_size=1"))
+    assert body["total_count"] == 3
+    assert body["total_sum"] == 15.0
+    assert len(body["invoices"]) == 1

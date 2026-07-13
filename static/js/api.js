@@ -22,7 +22,24 @@ export function refreshAllData() {
   loadCategories();
 }
 
+/**
+ * Load the invoice list, resetting to the first page. Use this for any filter,
+ * search, sort or post-mutation refresh; use `goToPage` for pagination.
+ */
 export async function loadInvoices() {
+  state.page = 1;
+  await fetchInvoices();
+}
+
+/**
+ * Load a specific invoice-list page without touching the active filters.
+ */
+export async function goToPage(page) {
+  state.page = page;
+  await fetchInvoices();
+}
+
+async function fetchInvoices() {
   const { storeFilter, typeFilter, dateFrom, dateTo, sortBy, sortOrder } =
     els();
   const params = new URLSearchParams({
@@ -33,11 +50,17 @@ export async function loadInvoices() {
     date_to: dateTo.value,
     sort_by: sortBy.value,
     sort_order: sortOrder.value,
+    page: state.page,
+    page_size: state.pageSize,
   });
 
   try {
     const response = await fetch(`/api/invoices?${params}`);
-    state.invoices = await response.json();
+    const data = await response.json();
+    state.invoices = data.invoices;
+    state.page = data.page;
+    state.totalCount = data.total_count;
+    state.totalSum = data.total_sum;
     renderInvoices();
 
     // Also refresh stats if in stats view
@@ -47,6 +70,21 @@ export async function loadInvoices() {
   } catch {
     showToast("Failed to load invoices", "error");
   }
+}
+
+/**
+ * Wire the pagination control via event delegation on its stable container.
+ */
+export function setupPaginationListeners() {
+  const container = document.querySelector('[data-el="pagination"]');
+  if (!container) return;
+
+  container.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-action]");
+    if (!button || button.disabled) return;
+    if (button.dataset.action === "page-prev") goToPage(state.page - 1);
+    else if (button.dataset.action === "page-next") goToPage(state.page + 1);
+  });
 }
 
 export async function loadStores() {

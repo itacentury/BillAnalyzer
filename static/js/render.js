@@ -107,19 +107,40 @@ export function renderInvoices() {
       .join("");
   }
 
-  // Calculate total sum of displayed invoices
-  const totalSum = state.invoices.reduce(
-    (sum, invoice) => sum + parseFloat(invoice.total),
-    0,
-  );
-
+  // Summary reflects the whole filtered set (server totals), not just this page
   document.querySelector('[data-el="results-count"]').textContent = `${
-    state.invoices.length
-  } invoice${state.invoices.length !== 1 ? "s" : ""}`;
+    state.totalCount
+  } invoice${state.totalCount !== 1 ? "s" : ""}`;
   document.querySelector('[data-el="results-total"]').textContent =
-    formatCurrency(totalSum);
+    formatCurrency(state.totalSum);
 
+  renderPagination();
   updateBulkActionToolbar();
+}
+
+/**
+ * Render the Prev/Next pagination control. The container is a sibling of the
+ * invoice list (which is fully replaced on each render), so it persists.
+ */
+function renderPagination() {
+  const container = document.querySelector('[data-el="pagination"]');
+  if (!container) return;
+
+  if (state.totalCount === 0) {
+    container.innerHTML = "";
+    return;
+  }
+
+  const totalPages = Math.max(1, Math.ceil(state.totalCount / state.pageSize));
+  container.innerHTML = `
+    <button class="btn btn-secondary btn-sm" data-action="page-prev" ${
+      state.page <= 1 ? "disabled" : ""
+    }>Previous</button>
+    <span class="pagination-info">Page ${state.page} of ${totalPages}</span>
+    <button class="btn btn-secondary btn-sm" data-action="page-next" ${
+      state.page >= totalPages ? "disabled" : ""
+    }>Next</button>
+  `;
 }
 
 export function toggleInvoice(element) {

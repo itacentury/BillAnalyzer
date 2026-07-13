@@ -113,6 +113,26 @@ def init_db() -> None:
         except sqlite3.OperationalError:
             logger.debug("Column 'category' already exists, skipping migration")
 
+    # Indexes for the invoice list access pattern. The invoices indexes are
+    # partial (deleted_at IS NULL) because every read filters out soft-deleted
+    # rows, which keeps them small and aligned with the actual WHERE/ORDER BY.
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_invoice_items_invoice_id "
+        "ON invoice_items (invoice_id)"
+    )
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_invoices_active_date "
+        "ON invoices (date) WHERE deleted_at IS NULL"
+    )
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_invoices_active_store "
+        "ON invoices (store) WHERE deleted_at IS NULL"
+    )
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_invoices_active_category "
+        "ON invoices (category) WHERE deleted_at IS NULL"
+    )
+
     conn.commit()
     conn.close()
     logger.info("Database initialized successfully")

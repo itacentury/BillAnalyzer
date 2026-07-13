@@ -3,8 +3,8 @@
  */
 
 import { state } from "./state.js";
-import { showToast } from "./dom.js";
-import { refreshAllData } from "./api.js";
+import { els, hasOption, showToast } from "./dom.js";
+import { loadCategories, loadInvoices, loadStores } from "./api.js";
 import { closeAddModal, showConfirmModal } from "./modals.js";
 
 export async function saveInvoice() {
@@ -53,7 +53,12 @@ export async function saveInvoice() {
     if (response.ok) {
       showToast(successMessage, "success");
       closeAddModal();
-      refreshAllData();
+
+      // Only reload the lookups when this save introduced a new store/category.
+      const { storeFilter, typeFilter } = els();
+      if (!hasOption(storeFilter, store)) loadStores();
+      if (type && !hasOption(typeFilter, type)) loadCategories();
+      loadInvoices();
     } else {
       showToast("Failed to save", "error");
     }
@@ -72,7 +77,9 @@ export async function deleteInvoice(id) {
     const response = await fetch(`/api/invoices/${id}`, { method: "DELETE" });
     if (response.ok) {
       showToast("Invoice deleted", "success");
-      refreshAllData();
+      // A store/category option lingering after its last invoice is deleted is
+      // cosmetic and self-heals on the next lookup load, so reload the list only.
+      loadInvoices();
     } else {
       showToast("Failed to delete", "error");
     }

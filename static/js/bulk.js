@@ -4,7 +4,7 @@
 
 import { state, selectedInvoices } from "./state.js";
 import { populateDatalist, showToast } from "./dom.js";
-import { refreshAllData } from "./api.js";
+import { loadInvoices, refreshAllData } from "./api.js";
 import { renderInvoices, updateBulkActionToolbar } from "./render.js";
 import { lockScroll, unlockScroll, showConfirmModal } from "./modals.js";
 
@@ -220,7 +220,8 @@ export async function bulkDeleteInvoices() {
     if (result.success) {
       showToast(`${result.deleted} invoice(s) deleted`, "success");
       selectedInvoices.clear();
-      refreshAllData();
+      // Reload the list only; stale lookup options self-heal (see deleteInvoice).
+      loadInvoices();
     } else {
       showToast("Failed to delete", "error");
     }

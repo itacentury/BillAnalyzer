@@ -8,6 +8,10 @@
 
 export const state = {
   invoices: [],
+  page: 1, // Current invoice-list page (1-based)
+  pageSize: 50, // Invoices requested per page
+  totalCount: 0, // Total invoices matching the active filters
+  totalSum: 0, // Sum of totals across all matching invoices
   currentDate: new Date(), // Current date for navigation reference
   editingInvoiceId: null, // Track if we're editing an invoice
   filterMode: "month", // 'week', 'month', 'year', 'all', 'custom'

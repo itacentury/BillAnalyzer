@@ -2,7 +2,7 @@
 
 import logging
 import sqlite3
-from typing import Any
+from typing import Any, Final
 
 from flask import Blueprint, Response, jsonify, request
 
@@ -13,6 +13,7 @@ from summa.helpers import (
     ValidationError,
     error_response,
     escape_like,
+    parse_bounded_int,
     parse_invoice,
     parse_invoice_list,
     strip_text,
@@ -22,10 +23,13 @@ logger: logging.Logger = logging.getLogger(__name__)
 
 invoices_bp: Blueprint = Blueprint("invoices", __name__)
 
+DEFAULT_PAGE_SIZE: Final[int] = 50
+MAX_PAGE_SIZE: Final[int] = 200
+
 
 @invoices_bp.route("/api/invoices", methods=["GET"])
 def get_invoices() -> Response:
-    """Retrieve all invoices with optional filtering and sorting."""
+    """Retrieve a page of invoices with optional filtering and sorting."""
     # Get filter parameters
     filters: dict[str, str] = {
         "search": request.args.get("search", ""),
@@ -37,12 +41,13 @@ def get_invoices() -> Response:
         "sort_order": request.args.get("sort_order", "desc"),
     }
 
-    # Build query - exclude soft-deleted invoices
-    query: str = "SELECT * FROM invoices WHERE deleted_at IS NULL"
+    # Build the WHERE clause - exclude soft-deleted invoices. Kept separate from
+    # ORDER BY/LIMIT so the same clause and params drive the count/sum query.
+    where: str = "WHERE deleted_at IS NULL"
     params: list[str] = []
 
     if filters["search"]:
-        query += (
+        where += (
             " AND (store LIKE ? ESCAPE '\\' OR id IN "
             "(SELECT invoice_id FROM invoice_items WHERE item_name LIKE ? ESCAPE '\\'))"
         )
@@ -50,28 +55,48 @@ def get_invoices() -> Response:
         params.extend([f"%{escaped}%", f"%{escaped}%"])
 
     if filters["store"]:
-        query += " AND store = ?"
+        where += " AND store = ?"
         params.append(filters["store"])
 
     if filters["category"]:
-        query += " AND category = ?"
+        where += " AND category = ?"
         params.append(filters["category"])
 
     if filters["date_from"]:
-        query += " AND date >= ?"
+        where += " AND date >= ?"
         params.append(filters["date_from"])
 
     if filters["date_to"]:
-        query += " AND date <= ?"
+        where += " AND date <= ?"
         params.append(filters["date_to"])
 
     # Sorting
+    order: str = ""
     if filters["sort_by"] in ["date", "store", "total"]:
-        order: str = "DESC" if filters["sort_order"] == "desc" else "ASC"
-        query += f" ORDER BY {filters['sort_by']} {order}"
+        direction: str = "DESC" if filters["sort_order"] == "desc" else "ASC"
+        order = f" ORDER BY {filters['sort_by']} {direction}"
+
+    # Pagination
+    page: int = parse_bounded_int(request.args.get("page"), 1, 1, 1_000_000)
+    page_size: int = parse_bounded_int(
+        request.args.get("page_size"), DEFAULT_PAGE_SIZE, 1, MAX_PAGE_SIZE
+    )
+    offset: int = (page - 1) * page_size
 
     with db_cursor() as cursor:
-        cursor.execute(query, params)
+        cursor.execute(
+            f"SELECT COUNT(*) AS total_count, COALESCE(SUM(total), 0) AS total_sum "
+            f"FROM invoices {where}",
+            params,
+        )
+        totals: sqlite3.Row = cursor.fetchone()
+        total_count: int = totals["total_count"]
+        total_sum: float = totals["total_sum"]
+
+        cursor.execute(
+            f"SELECT * FROM invoices {where}{order} LIMIT ? OFFSET ?",
+            [*params, page_size, offset],
+        )
         invoices: list[sqlite3.Row] = cursor.fetchall()
         items_by_invoice: dict[int, list[dict[str, Any]]] = _fetch_items_by_invoice(
             cursor, [invoice["id"] for invoice in invoices]
@@ -88,7 +113,15 @@ def get_invoices() -> Response:
         }
         for invoice in invoices
     ]
-    return jsonify(result)
+    return jsonify(
+        {
+            "invoices": result,
+            "page": page,
+            "page_size": page_size,
+            "total_count": total_count,
+            "total_sum": total_sum,
+        }
+    )
 
 
 def _fetch_items_by_invoice(

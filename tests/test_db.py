@@ -45,6 +45,25 @@ def test_init_db_creates_tables(temp_db: Path) -> None:
     assert {"id", "invoice_id", "item_name", "item_price"} <= set(item_columns)
 
 
+def test_init_db_creates_indexes(temp_db: Path) -> None:
+    """init_db creates the invoice-list access-pattern indexes."""
+    db.init_db()
+
+    conn = db.get_db()
+    try:
+        cursor = conn.execute("SELECT name FROM sqlite_master WHERE type = 'index'")
+        indexes: set[str] = {row[0] for row in cursor.fetchall()}
+    finally:
+        conn.close()
+
+    assert {
+        "idx_invoice_items_invoice_id",
+        "idx_invoices_active_date",
+        "idx_invoices_active_store",
+        "idx_invoices_active_category",
+    } <= indexes
+
+
 def test_init_db_is_idempotent(temp_db: Path) -> None:
     """Running init_db repeatedly does not raise and keeps the schema stable."""
     db.init_db()
