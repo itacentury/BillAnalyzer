@@ -107,10 +107,9 @@ def get_invoices() -> Response:
             [*params, page_size, offset],
         )
         invoices: list[sqlite3.Row] = cursor.fetchall()
-        items_by_invoice: dict[int, list[dict[str, Any]]] = _fetch_items_by_invoice(
-            cursor, [invoice["id"] for invoice in invoices]
-        )
 
+    # The list is intentionally compact: line items are loaded on demand via
+    # the single-invoice detail endpoint (on first expand / edit), not here.
     result: list[dict[str, Any]] = [
         {
             "id": invoice["id"],
@@ -118,7 +117,6 @@ def get_invoices() -> Response:
             "store": invoice["store"],
             "category": invoice["category"],
             "total": invoice["total"],
-            "items": items_by_invoice.get(invoice["id"], []),
         }
         for invoice in invoices
     ]
@@ -148,21 +146,42 @@ def get_invoice_ids() -> Response:
     return jsonify({"ids": ids})
 
 
-def _fetch_items_by_invoice(
-    cursor: sqlite3.Cursor, invoice_ids: list[int]
-) -> dict[int, list[dict[str, Any]]]:
-    """Fetch all items for the given invoices, grouped by invoice id."""
-    items_by_invoice: dict[int, list[dict[str, Any]]] = {}
-    for chunk in chunked(invoice_ids):
+@invoices_bp.route("/api/invoices/<int:invoice_id>", methods=["GET"])
+def get_invoice(invoice_id: int) -> ApiResponse:
+    """Return a single invoice with its line items.
+
+    Backs the compact list: line items are omitted from `GET /api/invoices` and
+    loaded here on demand (first expand of a row, or opening the edit dialog).
+    Honours the soft-delete convention — deleted invoices are treated as absent.
+    """
+    with db_cursor() as cursor:
         cursor.execute(
-            f"SELECT * FROM invoice_items WHERE invoice_id IN ({placeholders_for(len(chunk))})",
-            chunk,
+            "SELECT * FROM invoices WHERE id = ? AND deleted_at IS NULL",
+            (invoice_id,),
         )
-        for item in cursor.fetchall():
-            items_by_invoice.setdefault(item["invoice_id"], []).append(
-                {"item_name": item["item_name"], "item_price": item["item_price"]}
-            )
-    return items_by_invoice
+        invoice: sqlite3.Row | None = cursor.fetchone()
+        if invoice is None:
+            return error_response("Invoice not found", 404)
+
+        cursor.execute(
+            "SELECT item_name, item_price FROM invoice_items WHERE invoice_id = ?",
+            (invoice_id,),
+        )
+        items: list[dict[str, Any]] = [
+            {"item_name": item["item_name"], "item_price": item["item_price"]}
+            for item in cursor.fetchall()
+        ]
+
+    return jsonify(
+        {
+            "id": invoice["id"],
+            "date": invoice["date"],
+            "store": invoice["store"],
+            "category": invoice["category"],
+            "total": invoice["total"],
+            "items": items,
+        }
+    )
 
 
 @invoices_bp.route("/api/stores", methods=["GET"])

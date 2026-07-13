@@ -1,13 +1,10 @@
 """Integration tests for the invoice CRUD, bulk and lookup endpoints."""
 
-from collections.abc import Iterator
 from typing import Any
 
-import pytest
 from flask.testing import FlaskClient
 
 from summa import db
-from summa.routes import invoices as invoices_routes
 from tests.conftest import SeedInvoice
 
 
@@ -19,6 +16,11 @@ def _get_json(response: Any) -> Any:
 def _list(client: FlaskClient, query: str = "") -> Any:
     """Return the invoices array from a GET /api/invoices response."""
     return _get_json(client.get(f"/api/invoices{query}"))["invoices"]
+
+
+def _detail(client: FlaskClient, invoice_id: int) -> Any:
+    """Return the parsed body of the single-invoice detail endpoint."""
+    return _get_json(client.get(f"/api/invoices/{invoice_id}"))
 
 
 # --- POST /api/invoices -------------------------------------------------------
@@ -48,20 +50,27 @@ def test_add_invoice_creates_invoice_with_items(client: FlaskClient) -> None:
     listed = _list(client)
     assert len(listed) == 1
     assert listed[0]["store"] == "Grocer"
-    assert len(listed[0]["items"]) == 2
+    # The compact list omits items; they are served by the detail endpoint.
+    assert "items" not in listed[0]
+    assert len(_detail(client, body["id"])["items"]) == 2
 
 
-def test_list_invoices_groups_items_per_invoice(
+def test_list_omits_items(client: FlaskClient, seed_invoice: SeedInvoice) -> None:
+    """The list payload never includes line items (loaded on demand instead)."""
+    seed_invoice(items=[{"item_name": "apple", "item_price": 1.0}])
+
+    assert "items" not in _list(client)[0]
+
+
+def test_get_invoice_detail_returns_items(
     client: FlaskClient, seed_invoice: SeedInvoice
 ) -> None:
-    """Each invoice keeps its own items when several invoices are listed at once."""
+    """The detail endpoint returns an invoice with its own line items."""
     seed_invoice(
-        date="2024-01-01",
         store="First",
         items=[{"item_name": "apple", "item_price": 1.0}],
     )
-    seed_invoice(
-        date="2024-01-02",
+    second_id = seed_invoice(
         store="Second",
         items=[
             {"item_name": "bread", "item_price": 2.0},
@@ -69,13 +78,23 @@ def test_list_invoices_groups_items_per_invoice(
         ],
     )
 
-    listed = _list(client)
-    items_by_store = {invoice["store"]: invoice["items"] for invoice in listed}
-    assert [item["item_name"] for item in items_by_store["First"]] == ["apple"]
-    assert [item["item_name"] for item in items_by_store["Second"]] == [
-        "bread",
-        "cheese",
-    ]
+    detail = _detail(client, second_id)
+    assert detail["store"] == "Second"
+    assert [item["item_name"] for item in detail["items"]] == ["bread", "cheese"]
+
+
+def test_get_invoice_detail_unknown_returns_404(client: FlaskClient) -> None:
+    """A detail request for a non-existent id returns 404."""
+    assert client.get("/api/invoices/999").status_code == 404
+
+
+def test_get_invoice_detail_soft_deleted_returns_404(
+    client: FlaskClient, seed_invoice: SeedInvoice
+) -> None:
+    """A soft-deleted invoice is treated as absent by the detail endpoint."""
+    invoice_id = seed_invoice(deleted=True)
+
+    assert client.get(f"/api/invoices/{invoice_id}").status_code == 404
 
 
 def test_add_invoice_strips_whitespace(client: FlaskClient) -> None:
@@ -104,7 +123,7 @@ def test_add_invoice_allows_empty_items(client: FlaskClient) -> None:
         json={"date": "2024-03-01", "store": "NoItems", "total": 3.0},
     )
     assert response.status_code == 200
-    assert _list(client)[0]["items"] == []
+    assert _detail(client, _get_json(response)["id"])["items"] == []
 
 
 def test_add_invoice_null_items_is_accepted(client: FlaskClient) -> None:
@@ -114,7 +133,7 @@ def test_add_invoice_null_items_is_accepted(client: FlaskClient) -> None:
         json={"date": "2024-03-01", "store": "NullItems", "total": 3.0, "items": None},
     )
     assert response.status_code == 200
-    assert _list(client)[0]["items"] == []
+    assert _detail(client, _get_json(response)["id"])["items"] == []
 
 
 def test_add_invoice_missing_field_returns_400(client: FlaskClient) -> None:
@@ -246,33 +265,6 @@ def test_get_invoices_ignores_unknown_sort_column(
     assert len(_get_json(response)["invoices"]) == 2
 
 
-def test_list_invoices_spans_multiple_id_chunks(
-    client: FlaskClient,
-    seed_invoice: SeedInvoice,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Item fetching accumulates and stays correctly grouped across several batches."""
-
-    def tiny_chunks(items: list[int]) -> Iterator[list[int]]:
-        return db.chunked(items, size=2)
-
-    # Force a chunk size far below the number of invoices so the id list is split
-    # into multiple SELECTs, exercising the multi-chunk accumulation path.
-    monkeypatch.setattr(invoices_routes, "chunked", tiny_chunks)
-
-    for number in range(5):
-        seed_invoice(
-            store=f"Store {number}",
-            items=[{"item_name": f"item {number}", "item_price": float(number)}],
-        )
-
-    listed = _list(client)
-    assert len(listed) == 5
-    for invoice in listed:
-        index: str = invoice["store"].removeprefix("Store ")
-        assert [item["item_name"] for item in invoice["items"]] == [f"item {index}"]
-
-
 # --- GET /api/stores and /api/categories --------------------------------------
 
 
@@ -371,7 +363,8 @@ def test_update_invoice_replaces_items(
     invoice = _list(client)[0]
     assert invoice["store"] == "New"
     assert invoice["total"] == 42.0
-    assert [item["item_name"] for item in invoice["items"]] == ["new item"]
+    detail = _detail(client, invoice_id)
+    assert [item["item_name"] for item in detail["items"]] == ["new item"]
 
 
 def test_update_invoice_missing_field_returns_400(

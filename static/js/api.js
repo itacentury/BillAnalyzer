@@ -89,6 +89,18 @@ export async function fetchFilteredIds() {
   return data.ids;
 }
 
+/**
+ * Fetch a single invoice's line items on demand. The compact list endpoint no
+ * longer ships items, so this backs both row expansion and the edit dialog.
+ * Throws on a failed request; callers handle the error.
+ */
+export async function fetchInvoiceItems(id) {
+  const response = await fetch(`/api/invoices/${id}`);
+  if (!response.ok) throw new Error(`Request failed: ${response.status}`);
+  const data = await response.json();
+  return data.items;
+}
+
 async function fetchInvoices() {
   const params = buildFilterParams();
   params.set("page", state.page);

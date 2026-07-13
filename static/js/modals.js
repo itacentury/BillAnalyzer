@@ -6,6 +6,7 @@
 import { state } from "./state.js";
 import { escapeHtml, formatCurrency, showToast } from "./dom.js";
 import { saveInvoice } from "./invoices.js";
+import { fetchInvoiceItems } from "./api.js";
 import { importJson } from "./import.js";
 
 /**
@@ -91,10 +92,19 @@ export async function editInvoice(id) {
   document.querySelector('[data-el="invoice-type"]').value =
     invoice.category || "";
 
+  // The compact list no longer carries items, so load them on demand.
+  let items;
+  try {
+    items = await fetchInvoiceItems(id);
+  } catch {
+    showToast("Failed to load invoice", "error");
+    return;
+  }
+
   const itemsContainer = document.querySelector('[data-el="items-container"]');
   itemsContainer.innerHTML = "";
 
-  invoice.items.forEach((item) => {
+  items.forEach((item) => {
     const row = document.createElement("div");
     row.className = "item-input-row";
     row.innerHTML = itemRowInnerHtml(item);

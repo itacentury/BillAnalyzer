@@ -10,7 +10,27 @@ import { state, selectedInvoices } from "./state.js";
 import { els, escapeHtml, formatCurrency, formatDate } from "./dom.js";
 import { editInvoice } from "./modals.js";
 import { deleteInvoice } from "./invoices.js";
+import { fetchInvoiceItems } from "./api.js";
 import { toggleInvoiceSelection } from "./bulk.js";
+
+/**
+ * Build the line-item rows for an invoice's expanded detail view. Shared by the
+ * empty initial render and the lazy on-expand injection.
+ */
+function itemRowsHtml(items) {
+  return items
+    .map(
+      (item) => `
+            <div class="item-row">
+                <span class="item-name">${escapeHtml(item.item_name)}</span>
+                <span class="item-price">€${formatCurrency(
+                  item.item_price,
+                )}</span>
+            </div>
+        `,
+    )
+    .join("");
+}
 
 export function renderInvoices() {
   const { invoiceList } = els();
@@ -61,22 +81,7 @@ export function renderInvoices() {
                     </div>
                 </div>
                 <div class="invoice-details">
-                    <div class="items-table">
-                        ${invoice.items
-                          .map(
-                            (item) => `
-                            <div class="item-row">
-                                <span class="item-name">${escapeHtml(
-                                  item.item_name,
-                                )}</span>
-                                <span class="item-price">€${formatCurrency(
-                                  item.item_price,
-                                )}</span>
-                            </div>
-                        `,
-                          )
-                          .join("")}
-                    </div>
+                    <div class="items-table"></div>
                     <div class="invoice-actions">
                         <button class="btn btn-secondary btn-sm" data-action="edit" style="margin-right: 0.5rem;">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -139,9 +144,31 @@ function renderPagination() {
   `;
 }
 
-export function toggleInvoice(element) {
+export async function toggleInvoice(element) {
   const item = element.closest(".invoice-item");
-  item.classList.toggle("expanded");
+  const expanded = item.classList.toggle("expanded");
+
+  // Load line items on the first expand only; the compact list omits them.
+  if (expanded && item.dataset.itemsLoaded === undefined) {
+    await loadInvoiceItems(item);
+  }
+}
+
+/**
+ * Fetch and inject an invoice's line items into its expanded detail view,
+ * caching via the `data-items-loaded` marker so re-expanding never refetches.
+ */
+async function loadInvoiceItems(item) {
+  const table = item.querySelector(".items-table");
+  table.innerHTML = '<div class="item-row">Lade …</div>';
+  try {
+    const items = await fetchInvoiceItems(Number(item.dataset.id));
+    table.innerHTML = itemRowsHtml(items);
+    item.dataset.itemsLoaded = "true";
+  } catch {
+    table.innerHTML =
+      '<div class="item-row">Positionen konnten nicht geladen werden</div>';
+  }
 }
 
 /**
