@@ -13,6 +13,11 @@ import {
 import { renderInvoices } from "./render.js";
 import { loadStats } from "./stats.js";
 
+// Cancels the in-flight invoice request when a newer one supersedes it, so a
+// slower earlier response can't render over a newer one (out-of-order results
+// on rapid filter/search/sort/pagination changes).
+let inFlightController = null;
+
 /**
  * Reload the invoice list plus the store and category lookups in one call.
  */
@@ -89,8 +94,14 @@ async function fetchInvoices() {
   params.set("page", state.page);
   params.set("page_size", state.pageSize);
 
+  inFlightController?.abort();
+  const controller = new AbortController();
+  inFlightController = controller;
+
   try {
-    const response = await fetch(`/api/invoices?${params}`);
+    const response = await fetch(`/api/invoices?${params}`, {
+      signal: controller.signal,
+    });
     if (!response.ok) throw new Error(`Request failed: ${response.status}`);
     const data = await response.json();
     state.invoices = data.invoices;
@@ -103,8 +114,11 @@ async function fetchInvoices() {
     if (state.currentView === "stats") {
       loadStats();
     }
-  } catch {
+  } catch (error) {
+    if (error.name === "AbortError") return;
     showToast("Failed to load invoices", "error");
+  } finally {
+    if (inFlightController === controller) inFlightController = null;
   }
 }
 
