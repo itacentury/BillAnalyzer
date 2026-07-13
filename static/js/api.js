@@ -87,6 +87,7 @@ async function fetchInvoices() {
 
   try {
     const response = await fetch(`/api/invoices?${params}`);
+    if (!response.ok) throw new Error(`Request failed: ${response.status}`);
     const data = await response.json();
     state.invoices = data.invoices;
     state.page = data.page;
