@@ -164,8 +164,11 @@ export async function importJson() {
  *
  * :param button: the control that triggered this import; it shows the spinner
  *     while all import triggers are disabled to block a concurrent import.
+ * :param originalIndices: on a re-import, maps each re-sent entry's position back
+ *     to its original upload position, so the re-rendered `#index` stays anchored
+ *     to the source file instead of the 0-based sub-batch. Null on initial import.
  */
-async function sendImport(data, button) {
+async function sendImport(data, button, originalIndices = null) {
   const footerButton = document.querySelector(
     '[data-el="import-modal"] .modal-footer .btn-primary',
   );
@@ -208,7 +211,13 @@ async function sendImport(data, button) {
     refreshAllData();
 
     if (result.failed > 0) {
-      renderImportErrors(result.errors);
+      const errors = originalIndices
+        ? result.errors.map((error) => ({
+            ...error,
+            index: originalIndices[error.index],
+          }))
+        : result.errors;
+      renderImportErrors(errors);
     } else {
       closeImportModal();
     }
@@ -290,6 +299,9 @@ async function reimportCorrected() {
       return;
     }
   }
+  // Built in the same order as `data`, so response position i maps back to the
+  // original upload position via originalIndices[i].
+  const originalIndices = state.importErrors.map((error) => error.index);
   const data = state.importErrors.map((error) =>
     editedByIndex.has(error.index)
       ? editedByIndex.get(error.index)
@@ -299,7 +311,7 @@ async function reimportCorrected() {
   const reimportButton = document.querySelector(
     '[data-action="reimport-corrected"]',
   );
-  await sendImport(data, reimportButton);
+  await sendImport(data, reimportButton, originalIndices);
 }
 
 /**
