@@ -25,8 +25,8 @@ export function showInvoicesView() {
   document.querySelector('[data-el="invoices-view"]').style.display = "";
   document.querySelector('[data-el="stats-view"]').style.display = "none";
 
-  // Update toggle buttons
-  document.querySelectorAll(".view-toggle-btn").forEach((btn) => {
+  // Update sidebar nav items
+  document.querySelectorAll(".nav-item").forEach((btn) => {
     btn.classList.toggle("active", btn.dataset.view === "invoices");
   });
 }
@@ -39,8 +39,8 @@ export function showStatsView() {
   document.querySelector('[data-el="invoices-view"]').style.display = "none";
   document.querySelector('[data-el="stats-view"]').style.display = "";
 
-  // Update toggle buttons
-  document.querySelectorAll(".view-toggle-btn").forEach((btn) => {
+  // Update sidebar nav items
+  document.querySelectorAll(".nav-item").forEach((btn) => {
     btn.classList.toggle("active", btn.dataset.view === "stats");
   });
 
@@ -51,8 +51,8 @@ export function showStatsView() {
  * Wire the invoices/stats view toggle and the mobile advanced-filters toggle.
  */
 export function setupStatsListeners() {
-  document.querySelector(".view-toggle").addEventListener("click", (event) => {
-    const button = event.target.closest(".view-toggle-btn");
+  document.querySelector(".sidebar-nav").addEventListener("click", (event) => {
+    const button = event.target.closest(".nav-item");
     if (!button) return;
     if (button.dataset.view === "stats") showStatsView();
     else showInvoicesView();

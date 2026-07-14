@@ -49,7 +49,7 @@
     />
     <link
       rel="stylesheet"
-      href="{{ url_for('static', filename='css/header.css') }}"
+      href="{{ url_for('static', filename='css/sidebar.css') }}"
     />
     <link
       rel="stylesheet"
@@ -73,13 +73,15 @@
     />
   </head>
   <body>
-    {% include "partials/header.html" %}
+    <div class="app">
+      {% include "partials/sidebar.html" %}
 
-    <main class="container">
-      {% include "partials/filters.html" %}
-      {% include "partials/invoices.html" %}
-      {% include "partials/stats.html" %}
-    </main>
+      <main class="container">
+        {% include "partials/filters.html" %}
+        {% include "partials/invoices.html" %}
+        {% include "partials/stats.html" %}
+      </main>
+    </div>
 
     {% include "partials/modals/add-invoice.html" %}
     {% include "partials/modals/import.html" %}
