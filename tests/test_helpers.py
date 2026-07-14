@@ -7,6 +7,7 @@ import pytest
 from summa.helpers import (
     ValidationError,
     escape_like,
+    parse_invoice,
     parse_invoice_batch,
     strip_text,
 )
@@ -74,6 +75,25 @@ def test_parse_invoice_batch_collects_errors_with_index_and_field() -> None:
     ]
     assert result.errors[1].message == "Field 'total' must be a number"
     assert result.errors[1].value == raw_bad
+
+
+def test_parse_invoice_non_list_items_raises() -> None:
+    """A truthy non-list `items` raises ValidationError instead of a bare TypeError."""
+    with pytest.raises(ValidationError, match="Field 'items' must be a list") as info:
+        parse_invoice({"date": "2024-01-01", "store": "A", "total": 1.0, "items": 5})
+    assert info.value.field == "items"
+
+
+def test_parse_invoice_batch_non_list_items_does_not_abort_batch() -> None:
+    """A bad `items` field is collected per-entry; sibling valid entries still parse."""
+    result = parse_invoice_batch(
+        [
+            {"date": "2024-01-01", "store": "Good", "total": 1.0, "items": []},
+            {"date": "2024-01-02", "store": "Bad", "total": 2.0, "items": 5},
+        ]
+    )
+    assert [invoice.store for invoice in result.invoices] == ["Good"]
+    assert [(error.index, error.field) for error in result.errors] == [(1, "items")]
 
 
 def test_parse_invoice_batch_non_list_raises() -> None:
