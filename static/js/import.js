@@ -151,21 +151,34 @@ export async function importJson() {
     return;
   }
 
-  await sendImport(data);
+  const importButton = document.querySelector(
+    '[data-el="import-modal"] .modal-footer .btn-primary',
+  );
+  await sendImport(data, importButton);
 }
 
 /**
  * POST invoice payloads to the import endpoint and report the outcome. Shared by
  * the initial import and the re-import of corrected entries: on partial success
  * the valid rows land and the failed entries are rendered as editable cards.
+ *
+ * :param button: the control that triggered this import; it shows the spinner
+ *     while all import triggers are disabled to block a concurrent import.
  */
-async function sendImport(data) {
-  const importButton = document.querySelector(
+async function sendImport(data, button) {
+  const footerButton = document.querySelector(
     '[data-el="import-modal"] .modal-footer .btn-primary',
   );
-  const originalContent = importButton.innerHTML;
-  importButton.innerHTML = '<div class="spinner"></div>';
-  importButton.disabled = true;
+  // Null on the initial import — the error cards (and their re-import button)
+  // only exist after a partial failure has been rendered.
+  const reimportButton = document.querySelector(
+    '[data-action="reimport-corrected"]',
+  );
+  const guardedButtons = [footerButton, reimportButton].filter(Boolean);
+
+  const originalContent = button.innerHTML;
+  button.innerHTML = '<div class="spinner"></div>';
+  for (const guarded of guardedButtons) guarded.disabled = true;
 
   try {
     const response = await fetch("/api/invoices/import", {
@@ -202,8 +215,8 @@ async function sendImport(data) {
   } catch {
     showToast("Import failed", "error");
   } finally {
-    importButton.innerHTML = originalContent;
-    importButton.disabled = false;
+    button.innerHTML = originalContent;
+    for (const guarded of guardedButtons) guarded.disabled = false;
   }
 }
 
@@ -283,7 +296,10 @@ async function reimportCorrected() {
       : error.value,
   );
   if (data.length === 0) return;
-  await sendImport(data);
+  const reimportButton = document.querySelector(
+    '[data-action="reimport-corrected"]',
+  );
+  await sendImport(data, reimportButton);
 }
 
 /**
