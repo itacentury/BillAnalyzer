@@ -75,6 +75,16 @@ export function escapeHtml(text) {
   return div.innerHTML;
 }
 
+const CATEGORY_COLOR_SLUGS = {
+  technik: "technik",
+  sport: "sport",
+  lebensmittel: "lebensmittel",
+  bäcker: "baecker",
+  bäckerei: "baecker",
+  restaurant: "baecker",
+  unterkunft: "unterkunft",
+};
+
 /**
  * Return an inline style (background + text color) for a category badge.
  *
@@ -84,17 +94,8 @@ export function escapeHtml(text) {
  * raw category text, so the result is safe to inline into `innerHTML`.
  */
 function categoryColorPair(category) {
-  const known = {
-    technik: "technik",
-    sport: "sport",
-    lebensmittel: "lebensmittel",
-    bäcker: "baecker",
-    bäckerei: "baecker",
-    restaurant: "baecker",
-    unterkunft: "unterkunft",
-  };
   const key = category.trim().toLowerCase();
-  const mapped = known[key];
+  const mapped = CATEGORY_COLOR_SLUGS[key];
   if (mapped) {
     return { bg: `var(--cat-${mapped})`, text: `var(--cat-${mapped}-text)` };
   }
