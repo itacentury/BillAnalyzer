@@ -149,7 +149,13 @@ export async function toggleInvoice(element) {
   const expanded = item.classList.toggle("expanded");
 
   // Load line items on the first expand only; the compact list omits them.
-  if (expanded && item.dataset.itemsLoaded === undefined) {
+  // The itemsLoading guard prevents a duplicate fetch when a row is collapsed
+  // and re-expanded while its first request is still in flight.
+  if (
+    expanded &&
+    item.dataset.itemsLoaded === undefined &&
+    item.dataset.itemsLoading === undefined
+  ) {
     await loadInvoiceItems(item);
   }
 }
@@ -157,16 +163,22 @@ export async function toggleInvoice(element) {
 /**
  * Fetch and inject an invoice's line items into its expanded detail view,
  * caching via the `data-items-loaded` marker so re-expanding never refetches.
+ * The `data-items-loading` marker (set before the await, cleared in `finally`)
+ * blocks a concurrent fetch for the same row while one is in flight, without
+ * blocking a retry after a failure (only success sets `data-items-loaded`).
  */
 async function loadInvoiceItems(item) {
   const table = item.querySelector(".items-table");
   table.innerHTML = '<div class="item-row">Loading …</div>';
+  item.dataset.itemsLoading = "true";
   try {
     const items = await fetchInvoiceItems(Number(item.dataset.id));
     table.innerHTML = itemRowsHtml(items);
     item.dataset.itemsLoaded = "true";
   } catch {
     table.innerHTML = '<div class="item-row">Failed to load items</div>';
+  } finally {
+    delete item.dataset.itemsLoading;
   }
 }
 
