@@ -184,8 +184,12 @@ export function createCombobox(root, { onChange } = {}) {
   textInput.addEventListener("input", () => {
     open = true;
     root.classList.add("is-open");
-    highlighted = 0;
     renderMenu();
+    // Highlight the first real entry (match or create row) when there's a query,
+    // so Enter commits it instead of the empty "None"/"All" row at index 0.
+    const query = textInput.value.trim();
+    highlighted = query && entries.length > 1 ? 1 : 0;
+    applyHighlight();
   });
 
   textInput.addEventListener("keydown", (event) => {
