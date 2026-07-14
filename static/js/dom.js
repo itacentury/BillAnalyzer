@@ -83,7 +83,7 @@ export function escapeHtml(text) {
  * the same color. Pure function — only emits CSS-variable references, never the
  * raw category text, so the result is safe to inline into `innerHTML`.
  */
-export function categoryBadgeStyle(category) {
+function categoryColorPair(category) {
   const known = {
     technik: "technik",
     sport: "sport",
@@ -96,7 +96,7 @@ export function categoryBadgeStyle(category) {
   const key = category.trim().toLowerCase();
   const mapped = known[key];
   if (mapped) {
-    return `background: var(--cat-${mapped}); color: var(--cat-${mapped}-text);`;
+    return { bg: `var(--cat-${mapped})`, text: `var(--cat-${mapped}-text)` };
   }
 
   let hash = 0;
@@ -104,7 +104,21 @@ export function categoryBadgeStyle(category) {
     hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
   }
   const index = (hash % 8) + 1;
-  return `background: var(--chart-${index}); color: var(--text-primary);`;
+  return { bg: `var(--chart-${index})`, text: "var(--text-primary)" };
+}
+
+export function categoryBadgeStyle(category) {
+  const { bg, text } = categoryColorPair(category);
+  return `background: ${bg}; color: ${text};`;
+}
+
+/**
+ * Return just the themed background color reference for a category (the color
+ * dot used by the category combobox). Emits only a `var(--…)` reference, never
+ * the raw category text, so the result is safe to inline.
+ */
+export function categoryColorVar(category) {
+  return categoryColorPair(category).bg;
 }
 
 /**
@@ -131,15 +145,6 @@ export function populateDropdown(select, values, allLabel) {
  */
 export function hasOption(select, value) {
   return [...select.options].some((option) => option.value === value);
-}
-
-/**
- * Fill a <datalist> with option suggestions for the given values.
- */
-export function populateDatalist(datalist, values) {
-  datalist.innerHTML = values
-    .map((value) => `<option value="${escapeHtml(value)}">`)
-    .join("");
 }
 
 /**

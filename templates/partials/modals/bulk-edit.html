@@ -1,4 +1,4 @@
-{% from "partials/_macros.html" import modal_close_button %}
+{% from "partials/_macros.html" import modal_close_button, category_combobox %}
 <!-- Bulk Edit Modal -->
 <div class="modal-overlay" data-el="bulk-edit-modal">
   <div class="modal modal-sm">
@@ -21,15 +21,7 @@
       </div>
       <div class="form-group">
         <label class="form-label">New Category</label>
-        <input
-          type="text"
-          class="form-input"
-          data-el="bulk-edit-category"
-          list="bulk-category-suggestions"
-          placeholder="e.g. Groceries (leave empty to keep unchanged)"
-        />
-        <!-- id required: <input list="…"> associates with a datalist by id, not data-el -->
-        <datalist id="bulk-category-suggestions"></datalist>
+        {{ category_combobox("bulk-edit-category") }}
       </div>
     </div>
     <div class="modal-footer">

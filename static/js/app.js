@@ -7,13 +7,22 @@
  * are exposed on `window` — all interactions are bound via addEventListener.
  */
 
-import { applyFilter, setupFilterListeners } from "./filters.js";
-import { refreshAllData, setupPaginationListeners } from "./api.js";
+import {
+  applyFilter,
+  setupFilterListeners,
+  updateFilterBadge,
+} from "./filters.js";
+import {
+  loadInvoices,
+  refreshAllData,
+  setupPaginationListeners,
+} from "./api.js";
 import { setupModalListeners } from "./modals.js";
 import { setupInvoiceListListeners } from "./render.js";
 import { setupBulkListeners } from "./bulk.js";
 import { setupStatsListeners } from "./stats.js";
 import { setupImportListeners } from "./import.js";
+import { setupComboboxes } from "./combobox.js";
 
 // Register Service Worker for PWA
 if ("serviceWorker" in navigator) {
@@ -30,6 +39,15 @@ if ("serviceWorker" in navigator) {
 }
 
 function init() {
+  // Instantiate the category comboboxes before the first data load, so
+  // loadCategories() has live instances to feed options into.
+  setupComboboxes({
+    "type-filter": () => {
+      updateFilterBadge();
+      loadInvoices();
+    },
+  });
+
   applyFilter("month");
   refreshAllData();
 

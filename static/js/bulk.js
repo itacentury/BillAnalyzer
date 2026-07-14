@@ -3,7 +3,7 @@
  */
 
 import { state, selectedInvoices } from "./state.js";
-import { populateDatalist, showToast } from "./dom.js";
+import { showToast } from "./dom.js";
 import {
   fetchFilteredIds,
   loadCategories,
@@ -12,6 +12,7 @@ import {
 } from "./api.js";
 import { renderInvoices, updateBulkActionToolbar } from "./render.js";
 import { lockScroll, unlockScroll, showConfirmModal } from "./modals.js";
+import { getCombobox } from "./combobox.js";
 
 export function toggleInvoiceSelection(invoiceId, isSelected) {
   if (isSelected) {
@@ -93,22 +94,14 @@ export function openBulkEditModal() {
     storeInput.placeholder = "Leave empty to keep unchanged";
   }
 
-  // Pre-fill with the common category if all selected are visible and share it
-  const categoryInput = document.querySelector(
-    '[data-el="bulk-edit-category"]',
-  );
+  // Pre-fill with the common category only if every selected invoice is visible
+  // and shares it; otherwise leave it empty (keep unchanged).
+  const categoryCombobox = getCombobox("bulk-edit-category");
   if (allVisible && selectedCategories.size === 1) {
-    categoryInput.value = [...selectedCategories][0];
-  } else if (allVisible && selectedCategories.size > 1) {
-    categoryInput.value = "";
-    categoryInput.placeholder = `${selectedCategories.size} different categories`;
+    categoryCombobox.setValue([...selectedCategories][0]);
   } else {
-    categoryInput.value = "";
-    categoryInput.placeholder =
-      "e.g. Groceries (leave empty to keep unchanged)";
+    categoryCombobox.setValue("");
   }
-
-  populateBulkCategorySuggestions();
 
   document.querySelector('[data-el="bulk-edit-count"]').textContent =
     selectedInvoices.size;
@@ -117,24 +110,13 @@ export function openBulkEditModal() {
   storeInput.focus();
 }
 
-async function populateBulkCategorySuggestions() {
-  try {
-    const response = await fetch("/api/categories");
-    const categories = await response.json();
-    const datalist = document.getElementById("bulk-category-suggestions");
-    populateDatalist(datalist, categories);
-  } catch (error) {
-    console.error("Error loading categories:", error);
-  }
-}
-
 export function closeBulkEditModal() {
   document
     .querySelector('[data-el="bulk-edit-modal"]')
     .classList.remove("active");
   unlockScroll();
   document.querySelector('[data-el="bulk-edit-store"]').value = "";
-  document.querySelector('[data-el="bulk-edit-category"]').value = "";
+  getCombobox("bulk-edit-category").setValue("");
 }
 
 export async function saveBulkEdit() {

@@ -8,6 +8,7 @@ import { escapeHtml, formatCurrency, showToast } from "./dom.js";
 import { saveInvoice } from "./invoices.js";
 import { fetchInvoiceItems } from "./api.js";
 import { importJson, setImportCorrectionMode } from "./import.js";
+import { getCombobox } from "./combobox.js";
 
 /**
  * Build the inner markup for one add/edit item row (name, price, remove button).
@@ -91,8 +92,7 @@ export async function editInvoice(id) {
   // Fill in the form
   document.querySelector('[data-el="invoice-date"]').value = invoice.date;
   document.querySelector('[data-el="invoice-store"]').value = invoice.store;
-  document.querySelector('[data-el="invoice-type"]').value =
-    invoice.category || "";
+  getCombobox("invoice-type").setValue(invoice.category || "");
 
   // The compact list no longer carries items, so load them on demand.
   let items;
@@ -128,7 +128,7 @@ export async function editInvoice(id) {
 
 function resetAddForm() {
   document.querySelector('[data-el="add-form"]').reset();
-  document.querySelector('[data-el="invoice-type"]').value = "";
+  getCombobox("invoice-type").setValue("");
   document.querySelector('[data-el="items-container"]').innerHTML =
     `<div class="item-input-row">${itemRowInnerHtml()}</div>`;
   calculateTotal();
@@ -264,13 +264,10 @@ export function setupModalListeners() {
     .querySelector('[data-action="import"]')
     .addEventListener("click", importJson);
 
-  // Confirm-delete modal
+  // Confirm-delete modal (no header/close button — Cancel dismisses it)
   const confirmModal = document.querySelector(
     '[data-el="confirm-delete-modal"]',
   );
-  confirmModal
-    .querySelector(".modal-close")
-    .addEventListener("click", () => closeConfirmModal(false));
   confirmModal
     .querySelector('[data-action="cancel"]')
     .addEventListener("click", () => closeConfirmModal(false));

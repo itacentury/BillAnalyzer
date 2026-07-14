@@ -6,6 +6,7 @@
 import { state } from "./state.js";
 import { els, debounce } from "./dom.js";
 import { loadInvoices } from "./api.js";
+import { getCombobox } from "./combobox.js";
 
 // Apply a specific filter mode
 export function applyFilter(mode) {
@@ -67,11 +68,11 @@ export function resetToCurrent() {
 
 // Reset all filters back to defaults (current month, no search/store/category)
 export function resetAllFilters() {
-  const { searchInput, storeFilter, typeFilter, sortBy, sortOrder } = els();
+  const { searchInput, storeFilter, sortBy, sortOrder } = els();
 
   searchInput.value = "";
   storeFilter.value = "";
-  typeFilter.value = "";
+  getCombobox("type-filter").setValue("");
   sortBy.value = "date";
   sortOrder.value = "desc";
   resetSortPills();
@@ -119,15 +120,12 @@ export function setupFilterListeners() {
     .querySelector('[data-action="reset-filters"]')
     .addEventListener("click", resetAllFilters);
 
-  // Advanced filter inputs
-  const { searchInput, storeFilter, typeFilter, dateFrom, dateTo } = els();
+  // Advanced filter inputs. The category control is a combobox whose selection
+  // callback (wired in app.js) already reloads and updates the badge.
+  const { searchInput, storeFilter, dateFrom, dateTo } = els();
 
   searchInput.addEventListener("input", debounce(loadInvoices, 300));
   storeFilter.addEventListener("change", () => {
-    updateFilterBadge();
-    loadInvoices();
-  });
-  typeFilter.addEventListener("change", () => {
     updateFilterBadge();
     loadInvoices();
   });

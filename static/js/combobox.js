@@ -1,0 +1,273 @@
+/**
+ * Category combobox (design 4b): a searchable, keyboard-navigable dropdown that
+ * replaces the legacy `<input list>`+`<datalist>` / `<select>` category controls.
+ *
+ * Each instance wraps a hidden `<input>` carrying the original `data-el` hook, so
+ * every existing `.value` reader (saveInvoice, saveBulkEdit, buildFilterParams)
+ * keeps working unchanged. Leaf-ish module: imports only from `dom.js`.
+ */
+
+import { escapeHtml, categoryColorVar } from "./dom.js";
+
+// Registry of live instances, keyed by the wrapped hidden input's data-el name,
+// plus a flat list for fanning category options out to every instance at once.
+const registry = new Map();
+const allComboboxes = [];
+
+/**
+ * Escape `text` for innerHTML, wrapping the first case-insensitive occurrence of
+ * `query` in <b>. Matching happens on the raw text; each slice is escaped
+ * independently so the emitted markup can never inject the raw category name.
+ */
+function highlightMatch(text, query) {
+  if (!query) return escapeHtml(text);
+  const index = text.toLowerCase().indexOf(query.toLowerCase());
+  if (index === -1) return escapeHtml(text);
+  const before = text.slice(0, index);
+  const match = text.slice(index, index + query.length);
+  const after = text.slice(index + query.length);
+  return `${escapeHtml(before)}<b>${escapeHtml(match)}</b>${escapeHtml(after)}`;
+}
+
+/**
+ * Create a combobox controller bound to `root` (a `[data-combobox]` element).
+ * `onChange(value)` fires only on user-driven selection, never on setValue().
+ */
+export function createCombobox(root, { onChange } = {}) {
+  const hidden = root.querySelector('input[type="hidden"]');
+  const textInput = root.querySelector(".combobox-input");
+  const menu = root.querySelector(".combobox-menu");
+  const dot = root.querySelector(".combobox-dot");
+
+  const dataEl = hidden.dataset.el;
+  const allowCreate = root.dataset.allowCreate === "true";
+  const emptyLabel = root.dataset.emptyLabel || "None";
+
+  const menuId = `combobox-menu-${dataEl}`;
+  menu.id = menuId;
+  textInput.setAttribute("aria-controls", menuId);
+
+  let options = [];
+  let entries = []; // {value, isCreate} in render order, for keyboard nav
+  let highlighted = -1;
+  let open = false;
+
+  const updateDot = (value) => {
+    if (value) {
+      dot.hidden = false;
+      dot.style.background = categoryColorVar(value);
+    } else {
+      dot.hidden = true;
+      dot.style.background = "";
+    }
+  };
+
+  // Reflect a value into the hidden input and the closed-state display.
+  const applyValue = (value) => {
+    hidden.value = value;
+    textInput.value = value;
+    updateDot(value);
+  };
+
+  const dotMarkup = (value) => {
+    const color = value ? categoryColorVar(value) : "var(--border-color)";
+    return `<span class="combobox-option-dot" style="background: ${color}"></span>`;
+  };
+
+  const renderMenu = () => {
+    const query = textInput.value.trim();
+    const filtered = query
+      ? options.filter((option) =>
+          option.toLowerCase().includes(query.toLowerCase()),
+        )
+      : options;
+
+    entries = [{ value: "", isCreate: false }];
+    const rows = [
+      `<li class="combobox-option${hidden.value ? "" : " is-active"}" role="option" data-index="0">
+        ${dotMarkup("")}<span class="combobox-option-label combobox-option-empty">${escapeHtml(emptyLabel)}</span>
+        ${hidden.value ? "" : '<span class="combobox-check">✓</span>'}
+      </li>`,
+    ];
+
+    filtered.forEach((option) => {
+      const index = entries.length;
+      entries.push({ value: option, isCreate: false });
+      const active = option === hidden.value;
+      rows.push(
+        `<li class="combobox-option${active ? " is-active" : ""}" role="option" data-index="${index}">
+          ${dotMarkup(option)}<span class="combobox-option-label">${highlightMatch(option, query)}</span>
+          ${active ? '<span class="combobox-check">✓</span>' : ""}
+        </li>`,
+      );
+    });
+
+    const exactMatch = options.some(
+      (option) => option.toLowerCase() === query.toLowerCase(),
+    );
+    if (allowCreate && query && !exactMatch) {
+      const index = entries.length;
+      entries.push({ value: query, isCreate: true });
+      rows.push('<li class="combobox-divider" role="presentation"></li>');
+      rows.push(
+        `<li class="combobox-option combobox-option-create" role="option" data-index="${index}">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+          <span class="combobox-option-label">Neue Kategorie „${escapeHtml(query)}“ anlegen</span>
+        </li>`,
+      );
+    }
+
+    menu.innerHTML = rows.join("");
+    applyHighlight();
+  };
+
+  const applyHighlight = () => {
+    menu.querySelectorAll(".combobox-option").forEach((element) => {
+      const isOn = Number(element.dataset.index) === highlighted;
+      element.classList.toggle("is-highlighted", isOn);
+      if (isOn) element.scrollIntoView({ block: "nearest" });
+    });
+  };
+
+  const openMenu = () => {
+    if (open) return;
+    open = true;
+    root.classList.add("is-open");
+    textInput.setAttribute("aria-expanded", "true");
+    renderMenu();
+    // Start the highlight on the current value's row when one is selected.
+    const current = entries.findIndex((entry) => entry.value === hidden.value);
+    highlighted = current >= 0 ? current : 0;
+    applyHighlight();
+  };
+
+  // Close the menu and restore the display to the committed value (a typed but
+  // uncommitted query must not linger in the field).
+  const closeMenu = () => {
+    if (!open) return;
+    open = false;
+    root.classList.remove("is-open");
+    textInput.setAttribute("aria-expanded", "false");
+    highlighted = -1;
+    applyValue(hidden.value);
+  };
+
+  const commit = (value) => {
+    applyValue(value);
+    open = false;
+    root.classList.remove("is-open");
+    textInput.setAttribute("aria-expanded", "false");
+    highlighted = -1;
+    if (onChange) onChange(value);
+  };
+
+  const moveHighlight = (delta) => {
+    if (entries.length === 0) return;
+    const next = highlighted < 0 ? 0 : highlighted + delta;
+    highlighted = Math.max(0, Math.min(entries.length - 1, next));
+    applyHighlight();
+  };
+
+  // Clicking anywhere on the control (icon, dot, chevron) focuses the input.
+  root
+    .querySelector(".combobox-control")
+    .addEventListener("mousedown", (event) => {
+      if (event.target !== textInput) {
+        event.preventDefault();
+        textInput.focus();
+      }
+    });
+
+  textInput.addEventListener("focus", openMenu);
+  textInput.addEventListener("input", () => {
+    open = true;
+    root.classList.add("is-open");
+    highlighted = 0;
+    renderMenu();
+  });
+
+  textInput.addEventListener("keydown", (event) => {
+    switch (event.key) {
+      case "ArrowDown":
+        event.preventDefault();
+        if (!open) openMenu();
+        else moveHighlight(1);
+        break;
+      case "ArrowUp":
+        event.preventDefault();
+        moveHighlight(-1);
+        break;
+      case "Enter": {
+        // Always suppress the implicit form submit while the combobox has focus.
+        event.preventDefault();
+        const entry = entries[highlighted];
+        if (open && entry) commit(entry.value);
+        break;
+      }
+      case "Escape":
+        if (open) {
+          event.preventDefault();
+          closeMenu();
+        }
+        break;
+      case "Tab":
+        closeMenu();
+        break;
+    }
+  });
+
+  menu.addEventListener("mousedown", (event) => {
+    // mousedown (not click) so it fires before the input's blur/focusout.
+    const option = event.target.closest(".combobox-option");
+    if (!option) return;
+    event.preventDefault();
+    const entry = entries[Number(option.dataset.index)];
+    if (entry) commit(entry.value);
+  });
+
+  root.addEventListener("focusout", (event) => {
+    if (!root.contains(event.relatedTarget)) closeMenu();
+  });
+
+  const instance = {
+    root,
+    setOptions(categories) {
+      options = categories;
+      if (open) renderMenu();
+    },
+    setValue(value) {
+      applyValue(value || "");
+    },
+    getValue() {
+      return hidden.value;
+    },
+  };
+
+  registry.set(dataEl, instance);
+  allComboboxes.push(instance);
+  return instance;
+}
+
+/** Look up a live combobox instance by its wrapped hidden input's data-el name. */
+export function getCombobox(dataEl) {
+  return registry.get(dataEl);
+}
+
+/** Feed the category option list to every combobox instance. */
+export function setCategoryOptions(categories) {
+  allComboboxes.forEach((instance) => instance.setOptions(categories));
+}
+
+/**
+ * Instantiate every `[data-combobox]` in the document. `onChangeByEl` maps a
+ * hidden input's data-el name to its selection callback (kept here, in the app
+ * wiring, so this module stays free of feature-module imports).
+ */
+export function setupComboboxes(onChangeByEl = {}) {
+  document.querySelectorAll("[data-combobox]").forEach((root) => {
+    const dataEl = root.querySelector('input[type="hidden"]').dataset.el;
+    createCombobox(root, { onChange: onChangeByEl[dataEl] });
+  });
+}

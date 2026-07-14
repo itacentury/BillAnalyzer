@@ -3,15 +3,10 @@
  */
 
 import { state, selectedInvoices } from "./state.js";
-import {
-  els,
-  getSearchValue,
-  populateDatalist,
-  populateDropdown,
-  showToast,
-} from "./dom.js";
+import { els, getSearchValue, populateDropdown, showToast } from "./dom.js";
 import { renderInvoices } from "./render.js";
 import { loadStats } from "./stats.js";
+import { getCombobox, setCategoryOptions } from "./combobox.js";
 
 // Cancels the in-flight invoice request when a newer one supersedes it, so a
 // slower earlier response can't render over a newer one (out-of-order results
@@ -177,31 +172,19 @@ export async function loadStores() {
 
 export async function loadCategories() {
   try {
-    const typeFilter = document.querySelector('[data-el="type-filter"]');
-    const previousValue = typeFilter ? typeFilter.value : "";
+    const typeFilter = getCombobox("type-filter");
+    const previousValue = typeFilter ? typeFilter.getValue() : "";
 
     const response = await fetch("/api/categories");
     const categories = await response.json();
 
-    // Populate type filter dropdown
-    if (typeFilter) {
-      populateDropdown(typeFilter, categories, "All Categories");
+    // Feed the fresh option list to every category combobox (filter + modals).
+    setCategoryOptions(categories);
 
-      // Restore filter or reset to "All Categories" if category no longer exists
-      if (previousValue) {
-        if (categories.includes(previousValue)) {
-          typeFilter.value = previousValue;
-        } else {
-          typeFilter.value = "";
-          loadInvoices();
-        }
-      }
-    }
-
-    // Populate datalist suggestions for add/edit form
-    const typeSuggestions = document.getElementById("type-suggestions");
-    if (typeSuggestions) {
-      populateDatalist(typeSuggestions, categories);
+    // Clear the filter and reload if its selected category no longer exists.
+    if (typeFilter && previousValue && !categories.includes(previousValue)) {
+      typeFilter.setValue("");
+      loadInvoices();
     }
   } catch (error) {
     console.error("Error loading categories:", error);
