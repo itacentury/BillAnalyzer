@@ -76,6 +76,38 @@ export function escapeHtml(text) {
 }
 
 /**
+ * Return an inline style (background + text color) for a category badge.
+ *
+ * Known categories map to a fixed `--cat-*` pair; anything else is hashed
+ * deterministically onto the `--chart-1…8` palette so a given name always keeps
+ * the same color. Pure function — only emits CSS-variable references, never the
+ * raw category text, so the result is safe to inline into `innerHTML`.
+ */
+export function categoryBadgeStyle(category) {
+  const known = {
+    technik: "technik",
+    sport: "sport",
+    lebensmittel: "lebensmittel",
+    bäcker: "baecker",
+    bäckerei: "baecker",
+    restaurant: "baecker",
+    unterkunft: "unterkunft",
+  };
+  const key = category.trim().toLowerCase();
+  const mapped = known[key];
+  if (mapped) {
+    return `background: var(--cat-${mapped}); color: var(--cat-${mapped}-text);`;
+  }
+
+  let hash = 0;
+  for (const char of key) {
+    hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+  }
+  const index = (hash % 8) + 1;
+  return `background: var(--chart-${index}); color: var(--text-primary);`;
+}
+
+/**
  * Format a numeric amount with exactly two decimals (no currency symbol).
  */
 export function formatCurrency(amount) {

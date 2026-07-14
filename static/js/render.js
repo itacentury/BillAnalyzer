@@ -7,7 +7,13 @@
  */
 
 import { state, selectedInvoices } from "./state.js";
-import { els, escapeHtml, formatCurrency, formatDate } from "./dom.js";
+import {
+  els,
+  escapeHtml,
+  formatCurrency,
+  formatDate,
+  categoryBadgeStyle,
+} from "./dom.js";
 import { editInvoice } from "./modals.js";
 import { deleteInvoice } from "./invoices.js";
 import { fetchInvoiceItems } from "./api.js";
@@ -67,7 +73,7 @@ export function renderInvoices() {
                         <span class="invoice-store">${escapeHtml(
                           invoice.store,
                         )}</span>
-                        ${invoice.category ? `<span class="invoice-type">${escapeHtml(invoice.category)}</span>` : ""}
+                        ${invoice.category ? `<span class="invoice-type" style="${categoryBadgeStyle(invoice.category)}">${escapeHtml(invoice.category)}</span>` : ""}
                     </div>
                     <div class="invoice-meta">
                         <span class="invoice-total">${formatCurrency(

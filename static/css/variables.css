@@ -7,6 +7,8 @@
   --bg-inset: #f7f1e4; /* inputs, inset surfaces */
   --bg-hover: #f9f4e8; /* row hover, expanded row, modal footer */
   --bg-selected: #f0e6d2; /* selected row, active dropdown entry */
+  --bg-toolbar: #322c24; /* dark bulk-action pill */
+  --bg-toolbar-text: #f3ede2; /* text on the dark pill */
 
   /* Lines */
   --border-color: #e2d8c2; /* standard border */
