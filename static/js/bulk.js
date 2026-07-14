@@ -99,8 +99,15 @@ export function openBulkEditModal() {
   const categoryCombobox = getCombobox("bulk-edit-category");
   if (allVisible && selectedCategories.size === 1) {
     categoryCombobox.setValue([...selectedCategories][0]);
+    categoryCombobox.setPlaceholder("");
+  } else if (allVisible && selectedCategories.size > 1) {
+    categoryCombobox.setValue("");
+    categoryCombobox.setPlaceholder(
+      `${selectedCategories.size} different categories`,
+    );
   } else {
     categoryCombobox.setValue("");
+    categoryCombobox.setPlaceholder("Leave empty to keep unchanged");
   }
 
   document.querySelector('[data-el="bulk-edit-count"]').textContent =
@@ -116,7 +123,9 @@ export function closeBulkEditModal() {
     .classList.remove("active");
   unlockScroll();
   document.querySelector('[data-el="bulk-edit-store"]').value = "";
-  getCombobox("bulk-edit-category").setValue("");
+  const categoryCombobox = getCombobox("bulk-edit-category");
+  categoryCombobox.setValue("");
+  categoryCombobox.setPlaceholder("");
 }
 
 export async function saveBulkEdit() {

@@ -40,6 +40,7 @@ export function createCombobox(root, { onChange } = {}) {
   const dot = root.querySelector(".combobox-dot");
 
   const dataEl = hidden.dataset.el;
+  const defaultPlaceholder = textInput.placeholder;
   const allowCreate = root.dataset.allowCreate === "true";
   const emptyLabel = root.dataset.emptyLabel || "None";
 
@@ -246,6 +247,11 @@ export function createCombobox(root, { onChange } = {}) {
     },
     setValue(value) {
       applyValue(value || "");
+    },
+    // Override the placeholder shown while the field is empty; a falsy value
+    // restores the template default. Used to signal a mixed bulk-edit selection.
+    setPlaceholder(text) {
+      textInput.placeholder = text || defaultPlaceholder;
     },
     getValue() {
       return hidden.value;
