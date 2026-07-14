@@ -280,6 +280,11 @@ function renderImportErrors(errors) {
     </div>
   `;
   container.style.display = "block";
+
+  // Correction mode: collapse the fresh-input controls so the only submit path
+  // is "Re-import corrected" (footer Import would re-send the stale full payload).
+  document.querySelector('[data-el="import-input"]').style.display = "none";
+  document.querySelector('[data-action="import"]').style.display = "none";
 }
 
 /**

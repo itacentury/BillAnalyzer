@@ -183,6 +183,10 @@ export function closeImportModal() {
   importErrors.innerHTML = "";
   importErrors.style.display = "none";
   state.importErrors = [];
+
+  // Restore the fresh-input controls hidden while in correction mode.
+  document.querySelector('[data-el="import-input"]').style.display = "";
+  document.querySelector('[data-action="import"]').style.display = "";
 }
 
 export function addItemRow() {
