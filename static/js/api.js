@@ -7,6 +7,7 @@ import { els, getSearchValue, populateDropdown, showToast } from "./dom.js";
 import { renderInvoices } from "./render.js";
 import { loadStats } from "./stats.js";
 import { getCombobox, setCategoryOptions } from "./combobox.js";
+import { updateFilterBadge } from "./filters.js";
 
 // Cancels the in-flight invoice request when a newer one supersedes it, so a
 // slower earlier response can't render over a newer one (out-of-order results
@@ -184,6 +185,7 @@ export async function loadCategories() {
     // Clear the filter and reload if its selected category no longer exists.
     if (typeFilter && previousValue && !categories.includes(previousValue)) {
       typeFilter.setValue("");
+      updateFilterBadge();
       loadInvoices();
     }
   } catch (error) {
