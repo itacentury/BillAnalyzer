@@ -59,7 +59,7 @@ export function formatDate(dateStr) {
     parts.length === 3 && parts.every(Number.isFinite)
       ? new Date(parts[0], parts[1] - 1, parts[2])
       : new Date(dateStr);
-  return date.toLocaleDateString("en-US", {
+  return date.toLocaleDateString("en-GB", {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
