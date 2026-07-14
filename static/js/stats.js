@@ -175,16 +175,16 @@ function renderCategoryChart(data) {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      cutout: "65%",
+      cutout: "55%",
       plugins: {
         legend: {
           display: false,
         },
         tooltip: {
-          backgroundColor: "#1a1a1a",
-          titleColor: "#fafafa",
-          bodyColor: "#a0a0a0",
-          borderColor: "#2a2a2a",
+          backgroundColor: "#fdf9f1",
+          titleColor: "#3a332a",
+          bodyColor: "#6b5f4a",
+          borderColor: "#e2d8c2",
           borderWidth: 1,
           padding: 12,
           callbacks: {
@@ -222,8 +222,8 @@ function renderStoreChart(data) {
           backgroundColor: data.map(
             (_, i) => chartColors[i % chartColors.length],
           ),
-          borderRadius: 4,
-          barThickness: 24,
+          borderRadius: 5,
+          barThickness: 16,
         },
       ],
     },
@@ -236,10 +236,10 @@ function renderStoreChart(data) {
           display: false,
         },
         tooltip: {
-          backgroundColor: "#1a1a1a",
-          titleColor: "#fafafa",
-          bodyColor: "#a0a0a0",
-          borderColor: "#2a2a2a",
+          backgroundColor: "#fdf9f1",
+          titleColor: "#3a332a",
+          bodyColor: "#6b5f4a",
+          borderColor: "#e2d8c2",
           borderWidth: 1,
           padding: 12,
           callbacks: {
@@ -250,11 +250,11 @@ function renderStoreChart(data) {
       scales: {
         x: {
           grid: {
-            color: "#2a2a2a",
+            color: "#efe7d5",
             drawBorder: false,
           },
           ticks: {
-            color: "#666666",
+            color: "#8a7c62",
             callback: (value) => `€${value}`,
           },
         },
@@ -263,7 +263,7 @@ function renderStoreChart(data) {
             display: false,
           },
           ticks: {
-            color: "#a0a0a0",
+            color: "#6b5f4a",
           },
         },
       },

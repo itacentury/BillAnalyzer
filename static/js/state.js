@@ -26,16 +26,14 @@ export const state = {
 // Track selected invoice IDs for bulk operations (mutated, never reassigned).
 export const selectedInvoices = new Set();
 
-// Chart.js color palette matching app theme.
+// Chart.js color palette: warm-sand chart tones (--chart-1…8), donut/bar order.
 export const chartColors = [
-  "#3b82f6", // blue (accent)
-  "#22c55e", // green (success)
-  "#f59e0b", // amber
-  "#ef4444", // red (danger)
-  "#8b5cf6", // violet
-  "#ec4899", // pink
-  "#06b6d4", // cyan
-  "#f97316", // orange
-  "#84cc16", // lime
-  "#6366f1", // indigo
+  "#c9a87c",
+  "#a8bfa0",
+  "#d9a48a",
+  "#b5a184",
+  "#c4b3d6",
+  "#d6bfa0",
+  "#a3c2c2",
+  "#e0cdb0",
 ];
