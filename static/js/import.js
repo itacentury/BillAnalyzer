@@ -282,11 +282,18 @@ function renderImportErrors(errors) {
     </div>
   `;
   container.style.display = "block";
+  setImportCorrectionMode(true);
+}
 
-  // Correction mode: collapse the fresh-input controls so the only submit path
-  // is "Re-import corrected" (footer Import would re-send the stale full payload).
-  document.querySelector('[data-el="import-input"]').style.display = "none";
-  document.querySelector('[data-action="import"]').style.display = "none";
+/**
+ * Toggle import correction mode: hide the fresh-input controls (input wrapper +
+ * footer Import) so the only submit path is "Re-import corrected", or restore
+ * them. The footer Import would re-send the stale full payload, hence hiding it.
+ */
+export function setImportCorrectionMode(on) {
+  const display = on ? "none" : "";
+  document.querySelector('[data-el="import-input"]').style.display = display;
+  document.querySelector('[data-action="import"]').style.display = display;
 }
 
 /**

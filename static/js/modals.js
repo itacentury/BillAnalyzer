@@ -7,7 +7,7 @@ import { state } from "./state.js";
 import { escapeHtml, formatCurrency, showToast } from "./dom.js";
 import { saveInvoice } from "./invoices.js";
 import { fetchInvoiceItems } from "./api.js";
-import { importJson } from "./import.js";
+import { importJson, setImportCorrectionMode } from "./import.js";
 
 /**
  * Build the inner markup for one add/edit item row (name, price, remove button).
@@ -185,8 +185,7 @@ export function closeImportModal() {
   state.importErrors = [];
 
   // Restore the fresh-input controls hidden while in correction mode.
-  document.querySelector('[data-el="import-input"]').style.display = "";
-  document.querySelector('[data-action="import"]').style.display = "";
+  setImportCorrectionMode(false);
 }
 
 export function addItemRow() {
