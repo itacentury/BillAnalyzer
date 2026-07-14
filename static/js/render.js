@@ -160,14 +160,13 @@ export async function toggleInvoice(element) {
  */
 async function loadInvoiceItems(item) {
   const table = item.querySelector(".items-table");
-  table.innerHTML = '<div class="item-row">Lade …</div>';
+  table.innerHTML = '<div class="item-row">Loading …</div>';
   try {
     const items = await fetchInvoiceItems(Number(item.dataset.id));
     table.innerHTML = itemRowsHtml(items);
     item.dataset.itemsLoaded = "true";
   } catch {
-    table.innerHTML =
-      '<div class="item-row">Positionen konnten nicht geladen werden</div>';
+    table.innerHTML = '<div class="item-row">Failed to load items</div>';
   }
 }
 
