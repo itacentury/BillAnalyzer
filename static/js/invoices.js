@@ -11,6 +11,7 @@ import {
   reloadCurrentPage,
 } from "./api.js";
 import { closeAddModal, showConfirmModal } from "./modals.js";
+import { getCombobox } from "./combobox.js";
 
 export async function saveInvoice() {
   const date = document.querySelector('[data-el="invoice-date"]').value;
@@ -63,9 +64,13 @@ export async function saveInvoice() {
       closeAddModal();
 
       // Only reload the lookups when this save introduced a new store/category.
-      const { storeFilter, typeFilter } = els();
+      // The category filter is a combobox (hidden input, no .options), so its
+      // membership check goes through the combobox API rather than hasOption().
+      const { storeFilter } = els();
+      const typeCombobox = getCombobox("type-filter");
       if (!hasOption(storeFilter, store)) loadStores();
-      if (type && !hasOption(typeFilter, type)) loadCategories();
+      if (type && typeCombobox && !typeCombobox.hasOption(type))
+        loadCategories();
       // Editing keeps the user on the current page; a new invoice jumps to
       // page 1 so it is visible at the top of the date-descending sort.
       if (isEdit) reloadCurrentPage();

@@ -237,6 +237,9 @@ export function createCombobox(root, { onChange } = {}) {
       options = categories;
       if (open) renderMenu();
     },
+    hasOption(value) {
+      return options.includes(value);
+    },
     setValue(value) {
       applyValue(value || "");
     },
