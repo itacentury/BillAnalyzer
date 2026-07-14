@@ -87,6 +87,17 @@ export function setupImportListeners() {
       const removeButton = event.target.closest('[data-action="remove-file"]');
       if (removeButton) removeFile(Number(removeButton.dataset.index));
     });
+
+  // Error-card actions are rebuilt at runtime, so delegate from the container.
+  document
+    .querySelector('[data-el="import-errors"]')
+    .addEventListener("click", (event) => {
+      if (event.target.closest('[data-action="reimport-corrected"]')) {
+        reimportCorrected();
+      } else if (event.target.closest('[data-action="download-invalid"]')) {
+        downloadInvalid();
+      }
+    });
 }
 
 async function loadFilesIntoTextarea() {
@@ -118,6 +129,10 @@ async function loadFilesIntoTextarea() {
   );
 }
 
+// Cap the inline editor cards so a huge failure set stays scannable; the rest
+// are reachable via the download, which always exports every invalid entry.
+const MAX_VISIBLE_ERRORS = 20;
+
 export async function importJson() {
   const jsonText = document
     .querySelector('[data-el="json-input"]')
@@ -136,6 +151,15 @@ export async function importJson() {
     return;
   }
 
+  await sendImport(data);
+}
+
+/**
+ * POST invoice payloads to the import endpoint and report the outcome. Shared by
+ * the initial import and the re-import of corrected entries: on partial success
+ * the valid rows land and the failed entries are rendered as editable cards.
+ */
+async function sendImport(data) {
   const importButton = document.querySelector(
     '[data-el="import-modal"] .modal-footer .btn-primary',
   );
@@ -151,16 +175,29 @@ export async function importJson() {
     });
 
     const result = await response.json();
-    if (result.success) {
-      let message = `${result.imported} invoice(s) imported`;
-      if (result.skipped > 0) {
-        message += `, ${result.skipped} duplicate(s) skipped`;
-      }
-      showToast(message, "success");
-      closeImportModal();
-      refreshAllData();
+
+    // A non-array payload (400) or a DB error (500) has no partial semantics.
+    if (!response.ok || !result.success) {
+      showToast(result.error || "Import failed", "error");
+      return;
+    }
+
+    let message = `${result.imported} invoice(s) imported`;
+    if (result.skipped > 0) {
+      message += `, ${result.skipped} duplicate(s) skipped`;
+    }
+    if (result.failed > 0) {
+      message += `, ${result.failed} failed`;
+    }
+    showToast(message, result.failed > 0 ? "error" : "success");
+
+    // Valid entries always landed, so refresh the list regardless of failures.
+    refreshAllData();
+
+    if (result.failed > 0) {
+      renderImportErrors(result.errors);
     } else {
-      showToast("Import failed", "error");
+      closeImportModal();
     }
   } catch {
     showToast("Import failed", "error");
@@ -168,4 +205,94 @@ export async function importJson() {
     importButton.innerHTML = originalContent;
     importButton.disabled = false;
   }
+}
+
+/**
+ * Render the invalid entries as per-entry editor cards. The full set is stashed on
+ * state for download; only the first MAX_VISIBLE_ERRORS are shown as editable
+ * cards, with a "+N more" note pointing at the download for the remainder.
+ */
+function renderImportErrors(errors) {
+  state.importErrors = errors;
+  const container = document.querySelector('[data-el="import-errors"]');
+
+  const visible = errors.slice(0, MAX_VISIBLE_ERRORS);
+  const hiddenCount = errors.length - visible.length;
+
+  const cards = visible
+    .map((error) => {
+      const fieldLabel = error.field ? `${escapeHtml(error.field)}: ` : "";
+      // Entities in the textarea body decode back to the raw JSON on parse, and
+      // escaping prevents a value containing `</textarea>` from breaking out.
+      const rawJson = escapeHtml(JSON.stringify(error.value, null, 2));
+      return `
+        <div class="import-error-card">
+          <div class="import-error-head">
+            <span class="import-error-index">#${error.index}</span>
+            <span class="import-error-message">${fieldLabel}${escapeHtml(
+              error.message,
+            )}</span>
+          </div>
+          <textarea class="form-input error-editor" data-el="error-editor" data-index="${error.index}">${rawJson}</textarea>
+        </div>
+      `;
+    })
+    .join("");
+
+  const moreNote =
+    hiddenCount > 0
+      ? `<div class="import-error-more">+${hiddenCount} more invalid entr${
+          hiddenCount === 1 ? "y" : "ies"
+        } — use Download to get them all</div>`
+      : "";
+
+  container.innerHTML = `
+    <div class="import-error-title">${errors.length} entr${
+      errors.length === 1 ? "y" : "ies"
+    } failed — fix and re-import, or download</div>
+    ${cards}
+    ${moreNote}
+    <div class="import-error-actions">
+      <button type="button" class="btn btn-secondary btn-sm" data-action="download-invalid">Download invalid</button>
+      <button type="button" class="btn btn-primary btn-sm" data-action="reimport-corrected">Re-import corrected</button>
+    </div>
+  `;
+  container.style.display = "block";
+}
+
+/**
+ * Collect the (possibly edited) JSON from every visible error card and re-import
+ * only those entries — never the original full payload.
+ */
+async function reimportCorrected() {
+  const editors = document.querySelectorAll('[data-el="error-editor"]');
+  const data = [];
+  for (const editor of editors) {
+    try {
+      data.push(JSON.parse(editor.value));
+    } catch {
+      showToast(`Entry #${editor.dataset.index}: invalid JSON`, "error");
+      return;
+    }
+  }
+  if (data.length === 0) return;
+  await sendImport(data);
+}
+
+/**
+ * Download every invalid entry (not just the visible cards) as a JSON file.
+ */
+function downloadInvalid() {
+  if (state.importErrors.length === 0) return;
+  const entries = state.importErrors.map((error) => error.value);
+  const blob = new Blob([JSON.stringify(entries, null, 2)], {
+    type: "application/json",
+  });
+  const url = URL.createObjectURL(blob);
+  const today = new Date().toISOString().slice(0, 10);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `invalid-invoices-${today}.json`;
+  link.click();
+  URL.revokeObjectURL(url);
 }

@@ -177,6 +177,12 @@ export function closeImportModal() {
   document.querySelector('[data-el="file-input"]').value = "";
   state.pendingFiles = [];
   document.querySelector('[data-el="selected-files"]').style.display = "none";
+
+  // Clear any staged import errors so reopening never shows stale cards.
+  const importErrors = document.querySelector('[data-el="import-errors"]');
+  importErrors.innerHTML = "";
+  importErrors.style.display = "none";
+  state.importErrors = [];
 }
 
 export function addItemRow() {

@@ -2,6 +2,7 @@
 
 import logging
 import sqlite3
+from dataclasses import asdict
 from typing import Any, Final
 
 from flask import Blueprint, Response, jsonify, request
@@ -9,13 +10,14 @@ from flask import Blueprint, Response, jsonify, request
 from summa.db import chunked, db_cursor, insert_invoice_items, placeholders_for
 from summa.helpers import (
     ApiResponse,
+    ImportValidation,
     Invoice,
     ValidationError,
     error_response,
     escape_like,
     parse_bounded_int,
     parse_invoice,
-    parse_invoice_list,
+    parse_invoice_batch,
     strip_text,
 )
 
@@ -239,11 +241,15 @@ def add_invoice() -> ApiResponse:
 
 @invoices_bp.route("/api/invoices/import", methods=["POST"])
 def import_invoices() -> ApiResponse:
-    """Bulk import invoices, skipping duplicates based on date, store, and total."""
+    """Bulk import invoices with partial success: valid entries are imported even
+    when others are invalid, and per-entry validation errors are returned instead
+    of aborting the whole batch. Duplicates (same date+store+total) are skipped.
+    """
     data: Any = request.json
     try:
-        invoices: list[Invoice] = parse_invoice_list(data)
+        validation: ImportValidation = parse_invoice_batch(data)
     except ValidationError as e:
+        # Only a wholly wrong payload type (not a list) aborts with 400.
         return error_response(str(e), 400)
 
     imported_count: int = 0
@@ -251,7 +257,7 @@ def import_invoices() -> ApiResponse:
 
     try:
         with db_cursor() as cursor:
-            for invoice in invoices:
+            for invoice in validation.invoices:
                 # Duplicate check: same combination of date, store and total amount
                 cursor.execute(
                     "SELECT id FROM invoices WHERE date = ? AND store = ? AND total = ?",
@@ -271,13 +277,20 @@ def import_invoices() -> ApiResponse:
                 imported_count += 1
 
         logger.info(
-            "Import completed: imported=%d, skipped=%d (of %d total)",
+            "Import completed: imported=%d, skipped=%d, failed=%d (of %d total)",
             imported_count,
             skipped_count,
-            len(invoices),
+            len(validation.errors),
+            len(validation.invoices) + len(validation.errors),
         )
         return jsonify(
-            {"success": True, "imported": imported_count, "skipped": skipped_count}
+            {
+                "success": True,
+                "imported": imported_count,
+                "skipped": skipped_count,
+                "failed": len(validation.errors),
+                "errors": [asdict(error) for error in validation.errors],
+            }
         )
     except sqlite3.Error as e:
         logger.error("Import failed: %s", e)

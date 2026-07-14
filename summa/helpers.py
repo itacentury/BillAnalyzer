@@ -17,6 +17,11 @@ def error_response(message: str, status: int) -> tuple[Response, int]:
 class ValidationError(Exception):
     """Raised when client-supplied invoice data is malformed."""
 
+    def __init__(self, message: str, field: str | None = None) -> None:
+        """:param field: the offending field name, if the error is field-specific."""
+        super().__init__(message)
+        self.field: str | None = field
+
 
 @dataclass
 class InvoiceItem:
@@ -63,7 +68,7 @@ def parse_bounded_int(value: Any, default: int, minimum: int, maximum: int) -> i
 def _require(data: dict[str, Any], key: str) -> Any:
     """Return data[key], raising ValidationError if the key is absent."""
     if key not in data:
-        raise ValidationError(f"Missing required field: {key}")
+        raise ValidationError(f"Missing required field: {key}", field=key)
     return data[key]
 
 
@@ -72,7 +77,9 @@ def _parse_float(value: Any, field: str) -> float:
     try:
         return float(value)
     except (TypeError, ValueError):
-        raise ValidationError(f"Field '{field}' must be a number") from None
+        raise ValidationError(
+            f"Field '{field}' must be a number", field=field
+        ) from None
 
 
 def parse_invoice(data: Any) -> Invoice:
@@ -97,8 +104,38 @@ def parse_invoice(data: Any) -> Invoice:
     )
 
 
-def parse_invoice_list(data: Any) -> list[Invoice]:
-    """Validate and parse a list of invoice payloads (for /import)."""
+@dataclass
+class ImportEntryError:
+    """One invalid entry from a batch import: its position, field and reason."""
+
+    index: int
+    field: str | None
+    message: str
+    value: Any  # the raw entry, so the client can prefill an editor
+
+
+@dataclass
+class ImportValidation:
+    """The outcome of validating a batch: the valid invoices plus per-entry errors."""
+
+    invoices: list[Invoice]
+    errors: list[ImportEntryError]
+
+
+def parse_invoice_batch(data: Any) -> ImportValidation:
+    """Validate a list of invoice payloads, collecting per-entry errors (for /import).
+
+    Unlike :func:`parse_invoice`, a single malformed entry does not abort the batch:
+    valid entries are still parsed and each failure is recorded with its array index.
+    """
     if not isinstance(data, list):
         raise ValidationError("Expected a list of invoices")
-    return [parse_invoice(item) for item in data]
+
+    invoices: list[Invoice] = []
+    errors: list[ImportEntryError] = []
+    for index, item in enumerate(data):
+        try:
+            invoices.append(parse_invoice(item))
+        except ValidationError as error:
+            errors.append(ImportEntryError(index, error.field, str(error), item))
+    return ImportValidation(invoices=invoices, errors=errors)

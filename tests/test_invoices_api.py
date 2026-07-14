@@ -311,19 +311,108 @@ def test_import_skips_duplicates(
 
     body = _get_json(response)
     assert response.status_code == 200
-    assert body == {"success": True, "imported": 1, "skipped": 1}
+    assert body["imported"] == 1
+    assert body["skipped"] == 1
+    assert body["failed"] == 0
+    assert body["errors"] == []
     assert len(_list(client)) == 2
 
 
-def test_import_non_numeric_total_returns_400(client: FlaskClient) -> None:
-    """A non-numeric total in any imported invoice is rejected with 400."""
+def test_import_invalid_entry_reports_partial_success(client: FlaskClient) -> None:
+    """A lone invalid entry no longer aborts the batch: 200 with an indexed error."""
     response = client.post(
         "/api/invoices/import",
         json=[{"date": "2024-01-01", "store": "Bad", "total": "abc"}],
     )
-    assert response.status_code == 400
-    assert _get_json(response)["error"] == "Field 'total' must be a number"
+    assert response.status_code == 200
+    body = _get_json(response)
+    assert body["imported"] == 0
+    assert body["failed"] == 1
+    assert body["errors"][0]["index"] == 0
+    assert body["errors"][0]["field"] == "total"
+    assert body["errors"][0]["message"] == "Field 'total' must be a number"
     assert _list(client) == []
+
+
+def test_import_mixed_entries_imports_only_valid(client: FlaskClient) -> None:
+    """A mix of valid and invalid entries imports the valid ones and reports the rest."""
+    response = client.post(
+        "/api/invoices/import",
+        json=[
+            {"date": "2024-01-01", "store": "Good", "total": 5.0, "items": []},
+            {"store": "NoDate", "total": 1.0},
+            {"date": "2024-01-03", "store": "AlsoGood", "total": 7.0, "items": []},
+        ],
+    )
+    assert response.status_code == 200
+    body = _get_json(response)
+    assert body["imported"] == 2
+    assert body["failed"] == 1
+    assert body["errors"][0]["index"] == 1
+    assert body["errors"][0]["field"] == "date"
+    stores = {invoice["store"] for invoice in _list(client)}
+    assert stores == {"Good", "AlsoGood"}
+
+
+def test_import_collects_multiple_indexed_errors(client: FlaskClient) -> None:
+    """Every invalid entry is reported with its own array index."""
+    response = client.post(
+        "/api/invoices/import",
+        json=[
+            {"date": "2024-01-01", "store": "Bad", "total": "abc"},
+            {"date": "2024-01-02", "store": "Good", "total": 5.0, "items": []},
+            {"store": "NoDate", "total": 1.0},
+        ],
+    )
+    body = _get_json(response)
+    assert body["imported"] == 1
+    assert body["failed"] == 2
+    assert [error["index"] for error in body["errors"]] == [0, 2]
+
+
+def test_import_counts_skipped_imported_and_failed_together(
+    client: FlaskClient, seed_invoice: SeedInvoice
+) -> None:
+    """A duplicate, a valid and an invalid entry are counted independently."""
+    seed_invoice(date="2024-01-01", store="Dup", total=10.0)
+
+    response = client.post(
+        "/api/invoices/import",
+        json=[
+            {"date": "2024-01-01", "store": "Dup", "total": 10.0, "items": []},
+            {"date": "2024-01-02", "store": "New", "total": 5.0, "items": []},
+            {"date": "2024-01-03", "store": "Bad", "total": "abc"},
+        ],
+    )
+    body = _get_json(response)
+    assert body["imported"] == 1
+    assert body["skipped"] == 1
+    assert body["failed"] == 1
+
+
+def test_import_reimporting_corrected_entries_leaves_others_untouched(
+    client: FlaskClient,
+) -> None:
+    """Re-importing only the corrected entries adds them without duplicating imports."""
+    first = client.post(
+        "/api/invoices/import",
+        json=[
+            {"date": "2024-01-01", "store": "Good", "total": 5.0, "items": []},
+            {"date": "2024-01-02", "store": "Bad", "total": "abc"},
+        ],
+    )
+    assert _get_json(first)["imported"] == 1
+
+    # The client corrects the invalid entry and re-sends only that one.
+    second = client.post(
+        "/api/invoices/import",
+        json=[{"date": "2024-01-02", "store": "Bad", "total": 3.0, "items": []}],
+    )
+    body = _get_json(second)
+    assert body["imported"] == 1
+    assert body["failed"] == 0
+    stores = sorted(invoice["store"] for invoice in _list(client))
+    assert stores == ["Bad", "Good"]
 
 
 def test_import_non_list_payload_returns_400(client: FlaskClient) -> None:
