@@ -8,7 +8,7 @@
  */
 
 import { applyFilter, setupFilterListeners } from "./filters.js";
-import { refreshAllData } from "./api.js";
+import { refreshAllData, setupPaginationListeners } from "./api.js";
 import { setupModalListeners } from "./modals.js";
 import { setupInvoiceListListeners } from "./render.js";
 import { setupBulkListeners } from "./bulk.js";
@@ -36,6 +36,7 @@ function init() {
   setupFilterListeners();
   setupModalListeners();
   setupInvoiceListListeners();
+  setupPaginationListeners();
   setupBulkListeners();
   setupStatsListeners();
   setupImportListeners();

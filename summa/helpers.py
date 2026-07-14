@@ -51,6 +51,15 @@ def escape_like(value: str) -> str:
     return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
+def parse_bounded_int(value: Any, default: int, minimum: int, maximum: int) -> int:
+    """Parse value to an int clamped to [minimum, maximum], falling back to default."""
+    try:
+        parsed: int = int(value)
+    except (TypeError, ValueError):
+        return default
+    return max(minimum, min(parsed, maximum))
+
+
 def _require(data: dict[str, Any], key: str) -> Any:
     """Return data[key], raising ValidationError if the key is absent."""
     if key not in data:

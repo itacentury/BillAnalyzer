@@ -44,6 +44,23 @@
   overflow-y: auto;
 }
 
+.pagination {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.pagination:empty {
+  display: none;
+}
+
+.pagination-info {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
 .invoice-item {
   border-bottom: 1px solid var(--border-subtle);
   transition: all var(--transition);

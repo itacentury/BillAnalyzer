@@ -86,6 +86,13 @@ export function populateDropdown(select, values, allLabel) {
 }
 
 /**
+ * Return whether a <select> already contains an option with the given value.
+ */
+export function hasOption(select, value) {
+  return [...select.options].some((option) => option.value === value);
+}
+
+/**
  * Fill a <datalist> with option suggestions for the given values.
  */
 export function populateDatalist(datalist, values) {

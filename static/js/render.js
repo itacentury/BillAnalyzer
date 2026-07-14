@@ -10,17 +10,33 @@ import { state, selectedInvoices } from "./state.js";
 import { els, escapeHtml, formatCurrency, formatDate } from "./dom.js";
 import { editInvoice } from "./modals.js";
 import { deleteInvoice } from "./invoices.js";
+import { fetchInvoiceItems } from "./api.js";
 import { toggleInvoiceSelection } from "./bulk.js";
+
+/**
+ * Build the line-item rows for an invoice's expanded detail view. Shared by the
+ * empty initial render and the lazy on-expand injection.
+ */
+function itemRowsHtml(items) {
+  return items
+    .map(
+      (item) => `
+            <div class="item-row">
+                <span class="item-name">${escapeHtml(item.item_name)}</span>
+                <span class="item-price">€${formatCurrency(
+                  item.item_price,
+                )}</span>
+            </div>
+        `,
+    )
+    .join("");
+}
 
 export function renderInvoices() {
   const { invoiceList } = els();
-  // Clear selection for invoices that are no longer in the list
-  const currentIds = new Set(state.invoices.map((inv) => inv.id));
-  selectedInvoices.forEach((id) => {
-    if (!currentIds.has(id)) {
-      selectedInvoices.delete(id);
-    }
-  });
+  // Selection is intentionally not pruned to the current page: it spans the
+  // whole filtered set (see "select all"), so ids on other pages must survive
+  // a re-render or page change.
 
   if (state.invoices.length === 0) {
     invoiceList.innerHTML = `
@@ -65,22 +81,7 @@ export function renderInvoices() {
                     </div>
                 </div>
                 <div class="invoice-details">
-                    <div class="items-table">
-                        ${invoice.items
-                          .map(
-                            (item) => `
-                            <div class="item-row">
-                                <span class="item-name">${escapeHtml(
-                                  item.item_name,
-                                )}</span>
-                                <span class="item-price">€${formatCurrency(
-                                  item.item_price,
-                                )}</span>
-                            </div>
-                        `,
-                          )
-                          .join("")}
-                    </div>
+                    <div class="items-table"></div>
                     <div class="invoice-actions">
                         <button class="btn btn-secondary btn-sm" data-action="edit" style="margin-right: 0.5rem;">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -107,24 +108,78 @@ export function renderInvoices() {
       .join("");
   }
 
-  // Calculate total sum of displayed invoices
-  const totalSum = state.invoices.reduce(
-    (sum, invoice) => sum + parseFloat(invoice.total),
-    0,
-  );
-
+  // Summary reflects the whole filtered set (server totals), not just this page
   document.querySelector('[data-el="results-count"]').textContent = `${
-    state.invoices.length
-  } invoice${state.invoices.length !== 1 ? "s" : ""}`;
+    state.totalCount
+  } invoice${state.totalCount !== 1 ? "s" : ""}`;
   document.querySelector('[data-el="results-total"]').textContent =
-    formatCurrency(totalSum);
+    formatCurrency(state.totalSum);
 
+  renderPagination();
   updateBulkActionToolbar();
 }
 
-export function toggleInvoice(element) {
+/**
+ * Render the Prev/Next pagination control. The container is a sibling of the
+ * invoice list (which is fully replaced on each render), so it persists.
+ */
+function renderPagination() {
+  const container = document.querySelector('[data-el="pagination"]');
+  if (!container) return;
+
+  if (state.totalCount === 0) {
+    container.innerHTML = "";
+    return;
+  }
+
+  const totalPages = Math.max(1, Math.ceil(state.totalCount / state.pageSize));
+  container.innerHTML = `
+    <button class="btn btn-secondary btn-sm" data-action="page-prev" ${
+      state.page <= 1 ? "disabled" : ""
+    }>Previous</button>
+    <span class="pagination-info">Page ${state.page} of ${totalPages}</span>
+    <button class="btn btn-secondary btn-sm" data-action="page-next" ${
+      state.page >= totalPages ? "disabled" : ""
+    }>Next</button>
+  `;
+}
+
+export async function toggleInvoice(element) {
   const item = element.closest(".invoice-item");
-  item.classList.toggle("expanded");
+  const expanded = item.classList.toggle("expanded");
+
+  // Load line items on the first expand only; the compact list omits them.
+  // The itemsLoading guard prevents a duplicate fetch when a row is collapsed
+  // and re-expanded while its first request is still in flight.
+  if (
+    expanded &&
+    item.dataset.itemsLoaded === undefined &&
+    item.dataset.itemsLoading === undefined
+  ) {
+    await loadInvoiceItems(item);
+  }
+}
+
+/**
+ * Fetch and inject an invoice's line items into its expanded detail view,
+ * caching via the `data-items-loaded` marker so re-expanding never refetches.
+ * The `data-items-loading` marker (set before the await, cleared in `finally`)
+ * blocks a concurrent fetch for the same row while one is in flight, without
+ * blocking a retry after a failure (only success sets `data-items-loaded`).
+ */
+async function loadInvoiceItems(item) {
+  const table = item.querySelector(".items-table");
+  table.innerHTML = '<div class="item-row">Loading …</div>';
+  item.dataset.itemsLoading = "true";
+  try {
+    const items = await fetchInvoiceItems(Number(item.dataset.id));
+    table.innerHTML = itemRowsHtml(items);
+    item.dataset.itemsLoaded = "true";
+  } catch {
+    table.innerHTML = '<div class="item-row">Failed to load items</div>';
+  } finally {
+    delete item.dataset.itemsLoading;
+  }
 }
 
 /**
@@ -170,20 +225,14 @@ export function updateBulkActionToolbar() {
     toolbar.classList.remove("visible");
   }
 
-  // Update "select all" checkbox state
+  // Update "select all" checkbox state against the full filtered set (all
+  // pages), not just the visible page.
   const selectAllCheckbox = document.querySelector(
     '[data-el="select-all-checkbox"] input',
   );
-  if (selectAllCheckbox && state.invoices.length > 0) {
-    const allSelected = state.invoices.every((inv) =>
-      selectedInvoices.has(inv.id),
-    );
-    const someSelected = state.invoices.some((inv) =>
-      selectedInvoices.has(inv.id),
-    );
-
-    selectAllCheckbox.checked = allSelected;
-    selectAllCheckbox.indeterminate = someSelected && !allSelected;
+  if (selectAllCheckbox && state.totalCount > 0) {
+    selectAllCheckbox.checked = count >= state.totalCount;
+    selectAllCheckbox.indeterminate = count > 0 && count < state.totalCount;
   } else if (selectAllCheckbox) {
     selectAllCheckbox.checked = false;
     selectAllCheckbox.indeterminate = false;
