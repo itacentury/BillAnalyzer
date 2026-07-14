@@ -97,9 +97,15 @@ export async function editInvoice(id) {
   try {
     items = await fetchInvoiceItems(id);
   } catch {
+    // A newer editInvoice() superseded this one; that call owns the error surface.
+    if (state.editingInvoiceId !== id) return;
     showToast("Failed to load invoice", "error");
     return;
   }
+
+  // A newer editInvoice() superseded this one while items were loading; its
+  // header and editingInvoiceId now own the modal, so don't inject stale items.
+  if (state.editingInvoiceId !== id) return;
 
   const itemsContainer = document.querySelector('[data-el="items-container"]');
   itemsContainer.innerHTML = "";
