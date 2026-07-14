@@ -49,10 +49,16 @@ export function debounce(func, wait) {
  * Format an ISO date string as DD/MM/YYYY.
  */
 export function formatDate(dateStr) {
-  // Date-only ISO strings parse as UTC midnight; split the parts so the Date
-  // is built in local time and the rendered day can't shift by one.
-  const [year, month, day] = dateStr.split("-").map(Number);
-  const date = new Date(year, month - 1, day);
+  if (!dateStr) return "";
+  // Date-only ISO strings parse as UTC midnight; split the parts so the Date is
+  // built in local time and the rendered day can't shift by one. Anything that
+  // isn't a bare YYYY-MM-DD (e.g. an imported datetime) falls back to the
+  // permissive Date parser.
+  const parts = dateStr.split("-").map(Number);
+  const date =
+    parts.length === 3 && parts.every(Number.isFinite)
+      ? new Date(parts[0], parts[1] - 1, parts[2])
+      : new Date(dateStr);
   return date.toLocaleDateString("en-US", {
     day: "2-digit",
     month: "2-digit",
