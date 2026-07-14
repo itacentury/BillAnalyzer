@@ -151,10 +151,7 @@ export async function importJson() {
     return;
   }
 
-  const importButton = document.querySelector(
-    '[data-el="import-modal"] .modal-footer .btn-primary',
-  );
-  await sendImport(data, importButton);
+  await sendImport(data);
 }
 
 /**
@@ -162,13 +159,14 @@ export async function importJson() {
  * the initial import and the re-import of corrected entries: on partial success
  * the valid rows land and the failed entries are rendered as editable cards.
  *
- * :param button: the control that triggered this import; it shows the spinner
- *     while all import triggers are disabled to block a concurrent import.
  * :param originalIndices: on a re-import, maps each re-sent entry's position back
  *     to its original upload position, so the re-rendered `#index` stays anchored
  *     to the source file instead of the 0-based sub-batch. Null on initial import.
+ *     It also selects the spinner target: the footer Import button on the initial
+ *     import, the "Re-import corrected" button on a re-import. All import triggers
+ *     are disabled during the request to block a concurrent import.
  */
-async function sendImport(data, button, originalIndices = null) {
+async function sendImport(data, originalIndices = null) {
   const footerButton = document.querySelector(
     '[data-el="import-modal"] .modal-footer .btn-primary',
   );
@@ -179,8 +177,12 @@ async function sendImport(data, button, originalIndices = null) {
   );
   const guardedButtons = [footerButton, reimportButton].filter(Boolean);
 
-  const originalContent = button.innerHTML;
-  button.innerHTML = '<div class="spinner"></div>';
+  // Initial import spins the footer Import button; a re-import spins the
+  // "Re-import corrected" button. originalIndices distinguishes the two.
+  const spinnerTarget = originalIndices ? reimportButton : footerButton;
+
+  const originalContent = spinnerTarget.innerHTML;
+  spinnerTarget.innerHTML = '<div class="spinner"></div>';
   for (const guarded of guardedButtons) guarded.disabled = true;
 
   try {
@@ -224,7 +226,7 @@ async function sendImport(data, button, originalIndices = null) {
   } catch {
     showToast("Import failed", "error");
   } finally {
-    button.innerHTML = originalContent;
+    spinnerTarget.innerHTML = originalContent;
     for (const guarded of guardedButtons) guarded.disabled = false;
   }
 }
@@ -313,10 +315,7 @@ async function reimportCorrected() {
       : error.value,
   );
   if (data.length === 0) return;
-  const reimportButton = document.querySelector(
-    '[data-action="reimport-corrected"]',
-  );
-  await sendImport(data, reimportButton, originalIndices);
+  await sendImport(data, originalIndices);
 }
 
 /**
