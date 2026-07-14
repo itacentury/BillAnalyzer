@@ -261,20 +261,27 @@ function renderImportErrors(errors) {
 }
 
 /**
- * Collect the (possibly edited) JSON from every visible error card and re-import
- * only those entries — never the original full payload.
+ * Re-import the full current failure set, applying the edits from the visible
+ * error cards. Hidden overflow entries (beyond MAX_VISIBLE_ERRORS) are re-sent
+ * unchanged so they survive in state.importErrors instead of being clobbered by
+ * the response. This is the current failure set, not the original full payload:
+ * already-imported valid rows are not in state.importErrors.
  */
 async function reimportCorrected() {
-  const editors = document.querySelectorAll('[data-el="error-editor"]');
-  const data = [];
-  for (const editor of editors) {
+  const editedByIndex = new Map();
+  for (const editor of document.querySelectorAll('[data-el="error-editor"]')) {
     try {
-      data.push(JSON.parse(editor.value));
+      editedByIndex.set(Number(editor.dataset.index), JSON.parse(editor.value));
     } catch {
       showToast(`Entry #${editor.dataset.index}: invalid JSON`, "error");
       return;
     }
   }
+  const data = state.importErrors.map((error) =>
+    editedByIndex.has(error.index)
+      ? editedByIndex.get(error.index)
+      : error.value,
+  );
   if (data.length === 0) return;
   await sendImport(data);
 }
