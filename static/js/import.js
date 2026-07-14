@@ -339,7 +339,7 @@ function downloadInvalid() {
     type: "application/json",
   });
   const url = URL.createObjectURL(blob);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = new Date().toLocaleString("sv").split(" ")[0];
   const link = document.createElement("a");
   link.href = url;
   link.download = `invalid-invoices-${today}.json`;

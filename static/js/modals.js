@@ -61,7 +61,9 @@ export function openAddModal() {
     .classList.add("active");
   lockScroll();
   resetAddForm();
-  document.querySelector('[data-el="invoice-date"]').valueAsDate = new Date();
+  document.querySelector('[data-el="invoice-date"]').value = new Date()
+    .toLocaleString("sv")
+    .split(" ")[0];
 }
 
 export function closeAddModal() {
