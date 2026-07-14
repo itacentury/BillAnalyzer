@@ -22,6 +22,7 @@ export function toggleAdvancedFilters() {
  */
 export function showInvoicesView() {
   state.currentView = "invoices";
+  document.body.classList.remove("stats-mode");
   document.querySelector('[data-el="invoices-view"]').style.display = "";
   document.querySelector('[data-el="stats-view"]').style.display = "none";
 
@@ -36,6 +37,7 @@ export function showInvoicesView() {
  */
 export function showStatsView() {
   state.currentView = "stats";
+  document.body.classList.add("stats-mode");
   document.querySelector('[data-el="invoices-view"]').style.display = "none";
   document.querySelector('[data-el="stats-view"]').style.display = "";
 

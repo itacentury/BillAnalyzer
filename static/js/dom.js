@@ -126,15 +126,8 @@ export function showToast(message, type = "success") {
 }
 
 /**
- * Get the current search value from either mobile or desktop input.
+ * Get the current search value from the search input.
  */
 export function getSearchValue() {
-  const mobileSearch = document.querySelector('[data-el="search"]');
-  const desktopSearch = document.querySelector('[data-el="search-desktop"]');
-
-  // Return whichever has a value, prioritizing the visible one based on screen size
-  if (window.innerWidth <= 640) {
-    return mobileSearch?.value || "";
-  }
-  return desktopSearch?.value || mobileSearch?.value || "";
+  return document.querySelector('[data-el="search"]')?.value || "";
 }

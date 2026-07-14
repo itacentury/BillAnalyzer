@@ -14,6 +14,7 @@ export function applyFilter(mode) {
   updateFilterDisplay();
   setDateFiltersForMode();
   updateQuickFilterButtons();
+  updateFilterBadge();
 }
 
 // Navigate to previous period based on filter mode
@@ -66,23 +67,27 @@ export function resetToCurrent() {
 
 // Reset all filters back to defaults (current month, no search/store/category)
 export function resetAllFilters() {
-  const { storeFilter, typeFilter, sortBy, sortOrder } = els();
+  const { searchInput, storeFilter, typeFilter, sortBy, sortOrder } = els();
 
-  // Clear search fields
-  const mobileSearch = document.querySelector('[data-el="search"]');
-  const desktopSearch = document.querySelector('[data-el="search-desktop"]');
-  if (mobileSearch) mobileSearch.value = "";
-  if (desktopSearch) desktopSearch.value = "";
-
-  // Reset dropdowns
+  searchInput.value = "";
   storeFilter.value = "";
   typeFilter.value = "";
   sortBy.value = "date";
   sortOrder.value = "desc";
+  resetSortPills();
 
-  // Reset to current month
+  // Reset to current month (also recomputes the filter badge)
   applyFilter("month");
   loadInvoices();
+}
+
+// Restore the sort/order pill groups to their default active pills.
+function resetSortPills() {
+  document.querySelectorAll(".pill-group .pill").forEach((pill) => {
+    const isDefault =
+      pill.dataset.sort === "date" || pill.dataset.order === "desc";
+    pill.classList.toggle("active", isDefault);
+  });
 }
 
 /**
@@ -115,26 +120,60 @@ export function setupFilterListeners() {
     .addEventListener("click", resetAllFilters);
 
   // Advanced filter inputs
-  const {
-    searchInput,
-    storeFilter,
-    typeFilter,
-    dateFrom,
-    dateTo,
-    sortBy,
-    sortOrder,
-  } = els();
+  const { searchInput, storeFilter, typeFilter, dateFrom, dateTo } = els();
 
   searchInput.addEventListener("input", debounce(loadInvoices, 300));
-  storeFilter.addEventListener("change", loadInvoices);
-  typeFilter.addEventListener("change", loadInvoices);
+  storeFilter.addEventListener("change", () => {
+    updateFilterBadge();
+    loadInvoices();
+  });
+  typeFilter.addEventListener("change", () => {
+    updateFilterBadge();
+    loadInvoices();
+  });
   // Manually changing a date filter switches to custom mode
   dateFrom.addEventListener("change", switchToCustomMode);
   dateTo.addEventListener("change", switchToCustomMode);
-  sortBy.addEventListener("change", loadInvoices);
-  sortOrder.addEventListener("change", loadInvoices);
 
-  syncSearchInputs();
+  setupSortPills();
+  updateFilterBadge();
+}
+
+// Sort/order are rendered as pill groups backed by hidden inputs (data-el
+// sort-by / sort-order) so the shared buildFilterParams reader is unchanged.
+function setupSortPills() {
+  document.querySelectorAll(".pill-group").forEach((group) => {
+    group.addEventListener("click", (event) => {
+      const pill = event.target.closest(".pill");
+      if (!pill) return;
+
+      const { sortBy, sortOrder } = els();
+      if (pill.dataset.sort) sortBy.value = pill.dataset.sort;
+      if (pill.dataset.order) sortOrder.value = pill.dataset.order;
+
+      group
+        .querySelectorAll(".pill")
+        .forEach((p) => p.classList.toggle("active", p === pill));
+      loadInvoices();
+    });
+  });
+}
+
+/**
+ * Update the Filter button badge with the count of active non-default filters
+ * (store, category, and a custom date range).
+ */
+export function updateFilterBadge() {
+  const { storeFilter, typeFilter } = els();
+  let count = 0;
+  if (storeFilter.value) count += 1;
+  if (typeFilter.value) count += 1;
+  if (state.filterMode === "custom") count += 1;
+
+  const badge = document.querySelector('[data-el="filter-badge"]');
+  if (!badge) return;
+  badge.textContent = count;
+  badge.hidden = count === 0;
 }
 
 // Switch to custom filter mode when a date input is edited directly
@@ -143,28 +182,9 @@ function switchToCustomMode() {
     state.filterMode = "custom";
     updateFilterDisplay();
     updateQuickFilterButtons();
+    updateFilterBadge();
   }
   loadInvoices();
-}
-
-// Keep the mobile and desktop search fields in sync
-function syncSearchInputs() {
-  const mobileSearch = document.querySelector('[data-el="search"]');
-  const desktopSearch = document.querySelector('[data-el="search-desktop"]');
-
-  if (!mobileSearch || !desktopSearch) return;
-
-  mobileSearch.addEventListener("input", () => {
-    desktopSearch.value = mobileSearch.value;
-  });
-
-  desktopSearch.addEventListener(
-    "input",
-    debounce(() => {
-      mobileSearch.value = desktopSearch.value;
-      loadInvoices();
-    }, 300),
-  );
 }
 
 // Update the navigation display based on filter mode
