@@ -7,7 +7,7 @@ import { state } from "./state.js";
 import { escapeHtml, formatCurrency, showToast } from "./dom.js";
 import { saveInvoice } from "./invoices.js";
 import { fetchInvoiceItems } from "./api.js";
-import { importJson } from "./import.js";
+import { importJson, setImportCorrectionMode } from "./import.js";
 
 /**
  * Build the inner markup for one add/edit item row (name, price, remove button).
@@ -61,7 +61,9 @@ export function openAddModal() {
     .classList.add("active");
   lockScroll();
   resetAddForm();
-  document.querySelector('[data-el="invoice-date"]').valueAsDate = new Date();
+  document.querySelector('[data-el="invoice-date"]').value = new Date()
+    .toLocaleString("sv")
+    .split(" ")[0];
 }
 
 export function closeAddModal() {
@@ -177,6 +179,15 @@ export function closeImportModal() {
   document.querySelector('[data-el="file-input"]').value = "";
   state.pendingFiles = [];
   document.querySelector('[data-el="selected-files"]').style.display = "none";
+
+  // Clear any staged import errors so reopening never shows stale cards.
+  const importErrors = document.querySelector('[data-el="import-errors"]');
+  importErrors.innerHTML = "";
+  importErrors.style.display = "none";
+  state.importErrors = [];
+
+  // Restore the fresh-input controls hidden while in correction mode.
+  setImportCorrectionMode(false);
 }
 
 export function addItemRow() {

@@ -7,34 +7,41 @@
       {{ modal_close_button() }}
     </div>
     <div class="modal-body">
-      <div class="dropzone" data-el="dropzone">
-        <div class="dropzone-icon">📁</div>
-        <div class="dropzone-text">
-          Drag JSON files here or click to select<br /><small
-            style="color: var(--text-muted)"
-            >Multiple files supported</small
-          >
+      <div data-el="import-input">
+        <div class="dropzone" data-el="dropzone">
+          <div class="dropzone-icon">📁</div>
+          <div class="dropzone-text">
+            Drag JSON files here or click to select<br /><small
+              style="color: var(--text-muted)"
+              >Multiple files supported</small
+            >
+          </div>
+          <input
+            type="file"
+            data-el="file-input"
+            accept=".json"
+            multiple
+            style="display: none"
+          />
         </div>
-        <input
-          type="file"
-          data-el="file-input"
-          accept=".json"
-          multiple
-          style="display: none"
-        />
+        <div
+          data-el="selected-files"
+          style="display: none; margin-bottom: 1rem"
+        ></div>
+        <div class="form-group">
+          <label class="form-label">Or paste JSON directly</label>
+          <textarea
+            class="form-input json-textarea"
+            data-el="json-input"
+            placeholder='[{"date": "2024-01-01", "store": "...", "total": "...", "items": [...]}]'
+          ></textarea>
+        </div>
       </div>
       <div
-        data-el="selected-files"
-        style="display: none; margin-bottom: 1rem"
+        class="import-errors"
+        data-el="import-errors"
+        style="display: none"
       ></div>
-      <div class="form-group">
-        <label class="form-label">Or paste JSON directly</label>
-        <textarea
-          class="form-input json-textarea"
-          data-el="json-input"
-          placeholder='[{"date": "2024-01-01", "store": "...", "total": "...", "items": [...]}]'
-        ></textarea>
-      </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" data-action="cancel">Cancel</button>

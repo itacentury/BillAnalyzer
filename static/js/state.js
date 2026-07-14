@@ -19,6 +19,7 @@ export const state = {
   categoryChart: null, // Chart.js instance for category doughnut
   storeChart: null, // Chart.js instance for store bar chart
   pendingFiles: [], // Staged JSON files for import
+  importErrors: [], // Invalid entries from the last import (index/field/message/value)
   confirmModalResolve: null, // Promise resolver for the confirm modal
 };
 
