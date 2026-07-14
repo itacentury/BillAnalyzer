@@ -160,8 +160,9 @@ export async function importJson() {
  * the valid rows land and the failed entries are rendered as editable cards.
  *
  * :param originalIndices: on a re-import, maps each re-sent entry's position back
- *     to its original upload position, so the re-rendered `#index` stays anchored
- *     to the source file instead of the 0-based sub-batch. Null on initial import.
+ *     to its original position in the merged upload (all selected files
+ *     concatenated), so the re-rendered `#index` badge keeps that upload number
+ *     instead of resetting to the 0-based sub-batch. Null on initial import.
  *     It also selects the spinner target: the footer Import button on the initial
  *     import, the "Re-import corrected" button on a re-import. All import triggers
  *     are disabled during the request to block a concurrent import.
@@ -252,7 +253,7 @@ function renderImportErrors(errors) {
       return `
         <div class="import-error-card">
           <div class="import-error-head">
-            <span class="import-error-index">#${error.index}</span>
+            <span class="import-error-index">#${error.index + 1}</span>
             <span class="import-error-message">${fieldLabel}${escapeHtml(
               error.message,
             )}</span>
@@ -309,7 +310,10 @@ async function reimportCorrected() {
     try {
       editedByIndex.set(Number(editor.dataset.index), JSON.parse(editor.value));
     } catch {
-      showToast(`Entry #${editor.dataset.index}: invalid JSON`, "error");
+      showToast(
+        `Entry #${Number(editor.dataset.index) + 1}: invalid JSON`,
+        "error",
+      );
       return;
     }
   }
