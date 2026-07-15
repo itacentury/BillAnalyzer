@@ -56,7 +56,9 @@ function animateProgress(el, ms) {
 }
 
 // Module-private toast state
-let toastTimeout = null;
+let swapTimeout = null;
+let countdownTimeout = null;
+let isInSwap = false;
 let toastUndoCallback = null;
 // Called when the undo window closes without an undo (timeout, dismiss, being
 // replaced by a newer toast, or page unload). Used to finalize a deferred
@@ -114,10 +116,15 @@ function presentToast(message, undoCallback, commitCallback, windowMs) {
   // A new toast replaces any pending one — finalize the outgoing action first
   // so it is never left unresolved.
   commitPendingToast();
-  if (toastTimeout) {
-    clearTimeout(toastTimeout);
-    toastTimeout = null;
+  if (swapTimeout) {
+    clearTimeout(swapTimeout);
+    swapTimeout = null;
   }
+  if (countdownTimeout) {
+    clearTimeout(countdownTimeout);
+    countdownTimeout = null;
+  }
+  isInSwap = false;
 
   const { undoToast, toastMessage, toastUndo, toastProgress } = toastEls();
   toastUndoCallback = undoCallback;
@@ -128,8 +135,9 @@ function presentToast(message, undoCallback, commitCallback, windowMs) {
   const isVisible = undoToast.classList.contains("visible");
 
   const startCountdown = () => {
+    isInSwap = false;
     animateProgress(toastProgress, currentWindowMs);
-    toastTimeout = setTimeout(() => {
+    countdownTimeout = setTimeout(() => {
       commitPendingToast();
       hideUndoToast();
     }, currentWindowMs);
@@ -137,7 +145,8 @@ function presentToast(message, undoCallback, commitCallback, windowMs) {
 
   if (isVisible) {
     toastMessage.classList.add("swapping");
-    toastTimeout = setTimeout(() => {
+    isInSwap = true;
+    swapTimeout = setTimeout(() => {
       toastMessage.textContent = message;
       toastMessage.classList.remove("swapping");
       startCountdown();
@@ -158,10 +167,15 @@ function presentToast(message, undoCallback, commitCallback, windowMs) {
  * callback — callers that mean "keep the action" call commitPendingToast() first.
  */
 export function hideUndoToast() {
-  if (toastTimeout) {
-    clearTimeout(toastTimeout);
-    toastTimeout = null;
+  if (swapTimeout) {
+    clearTimeout(swapTimeout);
+    swapTimeout = null;
   }
+  if (countdownTimeout) {
+    clearTimeout(countdownTimeout);
+    countdownTimeout = null;
+  }
+  isInSwap = false;
   toastUndoCallback = null;
   toastCommitCallback = null;
   toastEls().undoToast.classList.remove("visible");
@@ -169,9 +183,10 @@ export function hideUndoToast() {
 
 /** Pause the toast countdown (e.g. on hover). */
 function pauseToast() {
-  if (toastTimeout) {
-    clearTimeout(toastTimeout);
-    toastTimeout = null;
+  // Only pause the countdown; the swap timer is allowed to complete during hover
+  if (countdownTimeout) {
+    clearTimeout(countdownTimeout);
+    countdownTimeout = null;
   }
   toastEls().toastProgress.style.opacity = "0";
 }
@@ -180,8 +195,10 @@ function pauseToast() {
 function resumeToast() {
   const { undoToast, toastProgress } = toastEls();
   if (!undoToast.classList.contains("visible")) return;
+  // If a swap is still in progress, don't resume countdown yet; let swap complete
+  if (isInSwap) return;
   animateProgress(toastProgress, currentWindowMs);
-  toastTimeout = setTimeout(() => {
+  countdownTimeout = setTimeout(() => {
     commitPendingToast();
     hideUndoToast();
   }, currentWindowMs);
