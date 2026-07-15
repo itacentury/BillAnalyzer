@@ -82,26 +82,6 @@
   text-align: center;
 }
 
-/* Current-period reset: only shown in the stats view. */
-.month-reset-btn {
-  display: none;
-  padding: 8px 14px;
-  font: inherit;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  cursor: pointer;
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  transition: all var(--transition);
-}
-
-.month-reset-btn:hover {
-  color: var(--text-primary);
-  background: var(--bg-hover);
-}
-
 /* Search */
 .filter-search {
   display: flex;
@@ -258,15 +238,6 @@
 body.stats-mode .filter-search,
 body.stats-mode .filter-button,
 body.stats-mode .filters-collapsible {
-  display: none;
-}
-
-body.stats-mode .month-reset-btn {
-  display: block;
-}
-
-/* Stats view has its own text reset button; hide the icon to avoid duplication. */
-body.stats-mode .month-today-btn {
   display: none;
 }
 

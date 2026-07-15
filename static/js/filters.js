@@ -114,9 +114,6 @@ export function setupFilterListeners() {
     .querySelector('[data-action="nav-next"]')
     .addEventListener("click", navigateToNext);
   document
-    .querySelector('[data-action="nav-reset"]')
-    .addEventListener("click", resetToCurrent);
-  document
     .querySelector('[data-action="nav-today"]')
     .addEventListener("click", resetToCurrent);
   document
@@ -207,7 +204,6 @@ export function updateFilterDisplay() {
   ];
 
   const navButtons = document.querySelectorAll(".month-nav-btn");
-  const resetBtn = document.querySelector(".month-reset-btn");
   const todayBtn = document.querySelector('[data-action="nav-today"]');
 
   switch (state.filterMode) {
@@ -216,8 +212,6 @@ export function updateFilterDisplay() {
       const weekYear = getISOWeekYear(state.currentDate);
       monthDisplay.textContent = `W${weekNum} / ${weekYear}`;
       navButtons.forEach((btn) => (btn.style.visibility = "visible"));
-      resetBtn.textContent = "Current Week";
-      resetBtn.style.display = "";
       break;
     }
     case "month": {
@@ -225,25 +219,19 @@ export function updateFilterDisplay() {
       const year = state.currentDate.getFullYear();
       monthDisplay.textContent = `${monthName} ${year}`;
       navButtons.forEach((btn) => (btn.style.visibility = "visible"));
-      resetBtn.textContent = "Current Month";
-      resetBtn.style.display = "";
       break;
     }
     case "year":
       monthDisplay.textContent = `${state.currentDate.getFullYear()}`;
       navButtons.forEach((btn) => (btn.style.visibility = "visible"));
-      resetBtn.textContent = "Current Year";
-      resetBtn.style.display = "";
       break;
     case "all":
       monthDisplay.textContent = "All Invoices";
       navButtons.forEach((btn) => (btn.style.visibility = "hidden"));
-      resetBtn.style.display = "none";
       break;
     case "custom":
       monthDisplay.textContent = "Custom";
       navButtons.forEach((btn) => (btn.style.visibility = "hidden"));
-      resetBtn.style.display = "none";
       break;
   }
 
