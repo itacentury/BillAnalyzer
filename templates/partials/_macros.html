@@ -1,7 +1,12 @@
 {# Reusable markup snippets shared across the modal partials. #}
 
 {% macro modal_close_button() -%}
-  <button class="modal-close">
+  <button
+    type="button"
+    class="modal-close"
+    aria-label="Close"
+    title="Close (Esc)"
+  >
     <svg
       width="20"
       height="20"

@@ -75,6 +75,12 @@
   background: var(--bg-hover);
 }
 
+/* Keyboard focus ring for the roving-tabindex row navigation. */
+.invoice-item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
 .invoice-header {
   display: flex;
   align-items: center;

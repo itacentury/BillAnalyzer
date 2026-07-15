@@ -1,0 +1,56 @@
+{% from "partials/_macros.html" import modal_close_button %}
+<!-- Keyboard Shortcuts Help Modal -->
+<div class="modal-overlay" data-el="shortcuts-help">
+  <div
+    class="modal modal-sm"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="shortcuts-help-title"
+  >
+    <div class="modal-header">
+      <h3 class="modal-title" id="shortcuts-help-title">Keyboard Shortcuts</h3>
+      {{ modal_close_button() }}
+    </div>
+    <div class="modal-body">
+      <dl class="shortcut-list">
+        <div class="shortcut-row">
+          <dt><kbd>N</kbd></dt>
+          <dd>New invoice</dd>
+        </div>
+        <div class="shortcut-row">
+          <dt><kbd>I</kbd></dt>
+          <dd>Import invoices</dd>
+        </div>
+        <div class="shortcut-row">
+          <dt><kbd>/</kbd></dt>
+          <dd>Focus search</dd>
+        </div>
+        <div class="shortcut-row">
+          <dt><kbd>?</kbd></dt>
+          <dd>Toggle this help</dd>
+        </div>
+        <div class="shortcut-row">
+          <dt>
+            <kbd>&uarr;</kbd> <span class="shortcut-sep">/</span>
+            <kbd>&darr;</kbd>
+          </dt>
+          <dd>Move between invoices</dd>
+        </div>
+        <div class="shortcut-row">
+          <dt><kbd>Enter</kbd></dt>
+          <dd>Expand focused invoice</dd>
+        </div>
+        <div class="shortcut-row">
+          <dt><kbd>Esc</kbd></dt>
+          <dd>Close / cancel a dialog</dd>
+        </div>
+        <div class="shortcut-row">
+          <dt>
+            <kbd>Ctrl</kbd> <span class="shortcut-sep">+</span> <kbd>Enter</kbd>
+          </dt>
+          <dd>Save / import in a dialog</dd>
+        </div>
+      </dl>
+    </div>
+  </div>
+</div>

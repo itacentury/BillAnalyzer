@@ -1,9 +1,14 @@
 {% from "partials/_macros.html" import modal_close_button, category_combobox %}
 <!-- Add Invoice Modal -->
 <div class="modal-overlay" data-el="add-invoice-modal">
-  <div class="modal">
+  <div
+    class="modal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="add-invoice-title"
+  >
     <div class="modal-header">
-      <h3 class="modal-title">New Invoice</h3>
+      <h3 class="modal-title" id="add-invoice-title">New Invoice</h3>
       {{ modal_close_button() }}
     </div>
     <div class="modal-body">
@@ -15,6 +20,7 @@
               type="date"
               class="form-input"
               data-el="invoice-date"
+              data-autofocus
               required
             />
           </div>
@@ -104,8 +110,20 @@
       </form>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" data-action="cancel">Cancel</button>
-      <button class="btn btn-primary" data-action="save">Save</button>
+      <button
+        class="btn btn-secondary"
+        data-action="cancel"
+        title="Cancel (Esc)"
+      >
+        Cancel
+      </button>
+      <button
+        class="btn btn-primary"
+        data-action="save"
+        title="Save (Ctrl+Enter)"
+      >
+        Save
+      </button>
     </div>
   </div>
 </div>

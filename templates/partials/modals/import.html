@@ -1,9 +1,14 @@
 {% from "partials/_macros.html" import modal_close_button %}
 <!-- Import Modal -->
 <div class="modal-overlay" data-el="import-modal">
-  <div class="modal">
+  <div
+    class="modal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="import-title"
+  >
     <div class="modal-header">
-      <h3 class="modal-title">JSON Import</h3>
+      <h3 class="modal-title" id="import-title">JSON Import</h3>
       {{ modal_close_button() }}
     </div>
     <div class="modal-body">
@@ -46,6 +51,7 @@
           <textarea
             class="form-input json-textarea"
             data-el="json-input"
+            data-autofocus
             placeholder='[{"date": "2024-01-01", "store": "...", "total": "...", "items": [...]}]'
           ></textarea>
         </div>
@@ -57,8 +63,20 @@
       ></div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" data-action="cancel">Cancel</button>
-      <button class="btn btn-primary" data-action="import">Import</button>
+      <button
+        class="btn btn-secondary"
+        data-action="cancel"
+        title="Cancel (Esc)"
+      >
+        Cancel
+      </button>
+      <button
+        class="btn btn-primary"
+        data-action="import"
+        title="Import (Ctrl+Enter)"
+      >
+        Import
+      </button>
     </div>
   </div>
 </div>

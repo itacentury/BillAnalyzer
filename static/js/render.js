@@ -90,6 +90,15 @@ export function renderInvoices() {
   // whole filtered set (see "select all"), so ids on other pages must survive
   // a re-render or page change.
 
+  // Capture the roving tab stop before innerHTML is rebuilt so keyboard
+  // navigation survives a full re-render (pagination, filters, undo reconcile).
+  // Focus is only restored when the row itself held it, so a re-render that no
+  // row was focused for never steals focus from the filter input etc.
+  const activeRow = invoiceList.querySelector('.invoice-item[tabindex="0"]');
+  const activeId = activeRow ? activeRow.dataset.id : null;
+  const hadRowFocus =
+    activeRow !== null && activeRow === document.activeElement;
+
   if (state.invoices.length === 0) {
     invoiceList.innerHTML = `
             <div class="empty-state">
@@ -101,10 +110,10 @@ export function renderInvoices() {
   } else {
     invoiceList.innerHTML = state.invoices
       .map(
-        (invoice) => `
+        (invoice, index) => `
             <div class="invoice-item ${
               selectedInvoices.has(invoice.id) ? "selected" : ""
-            }" data-id="${invoice.id}">
+            }" data-id="${invoice.id}" tabindex="${index === 0 ? 0 : -1}">
                 <div class="invoice-header">
                     <label class="invoice-checkbox">
                         <input type="checkbox" ${
@@ -158,6 +167,18 @@ export function renderInvoices() {
         `,
       )
       .join("");
+
+    // Re-apply the roving tab stop to the previously active row if it survived
+    // the render; otherwise the template default (first row) stands.
+    const restored = activeId
+      ? invoiceList.querySelector(`.invoice-item[data-id="${activeId}"]`)
+      : null;
+    if (restored) {
+      const first = invoiceList.querySelector('.invoice-item[tabindex="0"]');
+      if (first && first !== restored) first.tabIndex = -1;
+      restored.tabIndex = 0;
+      if (hadRowFocus) restored.focus();
+    }
   }
 
   // Summary reflects the whole filtered set (server totals), not just this page
@@ -264,6 +285,56 @@ export function setupInvoiceListListeners() {
     const id = Number(checkbox.closest(".invoice-item").dataset.id);
     toggleInvoiceSelection(id, checkbox.checked);
   });
+
+  invoiceList.addEventListener("keydown", handleListKeydown);
+}
+
+/**
+ * Move the roving tab stop to `row` and focus it. Rows carry `tabindex="-1"`
+ * except the current one (`0`), so the list is a single Tab stop that Arrow
+ * keys navigate within.
+ */
+function focusRow(row) {
+  if (!row || !row.classList.contains("invoice-item")) return;
+  const list = row.parentElement;
+  const current = list.querySelector('.invoice-item[tabindex="0"]');
+  if (current) current.tabIndex = -1;
+  row.tabIndex = 0;
+  row.focus();
+}
+
+/**
+ * Arrow/Home/End move focus between invoice rows; Enter expands the focused row.
+ * Enter is ignored when focus sits on a control inside the row (edit/delete),
+ * which handle their own activation.
+ */
+function handleListKeydown(event) {
+  const row = event.target.closest(".invoice-item");
+  if (!row) return;
+
+  switch (event.key) {
+    case "ArrowDown":
+      event.preventDefault();
+      focusRow(row.nextElementSibling);
+      break;
+    case "ArrowUp":
+      event.preventDefault();
+      focusRow(row.previousElementSibling);
+      break;
+    case "Home":
+      event.preventDefault();
+      focusRow(row.parentElement.firstElementChild);
+      break;
+    case "End":
+      event.preventDefault();
+      focusRow(row.parentElement.lastElementChild);
+      break;
+    case "Enter":
+      if (event.target !== row) return;
+      event.preventDefault();
+      toggleInvoice(row.querySelector(".invoice-header"));
+      break;
+  }
 }
 
 export function updateBulkActionToolbar() {
