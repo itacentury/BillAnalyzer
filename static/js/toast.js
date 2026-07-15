@@ -128,7 +128,7 @@ function presentToast(message, undoCallback, commitCallback, windowMs) {
 
   if (isVisible) {
     toastMessage.classList.add("swapping");
-    setTimeout(() => {
+    toastTimeout = setTimeout(() => {
       toastMessage.textContent = message;
       toastMessage.classList.remove("swapping");
       startCountdown();
