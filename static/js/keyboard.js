@@ -236,4 +236,8 @@ function setupModalFocusManagement() {
 export function setupKeyboardListeners() {
   document.addEventListener("keydown", handleGlobalKeydown);
   setupModalFocusManagement();
+
+  document
+    .querySelector('[data-el="shortcuts-help"] .modal-close')
+    ?.addEventListener("click", toggleShortcutHelp);
 }
