@@ -8,8 +8,8 @@
   display: flex;
   gap: 8px;
   align-items: center;
-  padding: 9px 13px;
-  font-size: 0.8125rem;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.875rem;
   color: var(--text-primary);
   cursor: text;
   background: var(--bg-inset);

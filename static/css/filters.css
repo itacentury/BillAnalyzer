@@ -212,6 +212,12 @@
   box-shadow: var(--shadow-dropdown);
 }
 
+/* Native select/date controls carry an intrinsic min-height (42px) the custom
+   combobox lacks; pin it to match so all four filter fields align. */
+.filters-panel .combobox-control {
+  height: 42px;
+}
+
 .filter-reset-row {
   display: flex;
   justify-content: flex-end;
