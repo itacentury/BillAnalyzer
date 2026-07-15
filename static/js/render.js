@@ -90,6 +90,15 @@ export function renderInvoices() {
   // whole filtered set (see "select all"), so ids on other pages must survive
   // a re-render or page change.
 
+  // Capture the roving tab stop before innerHTML is rebuilt so keyboard
+  // navigation survives a full re-render (pagination, filters, undo reconcile).
+  // Focus is only restored when the row itself held it, so a re-render that no
+  // row was focused for never steals focus from the filter input etc.
+  const activeRow = invoiceList.querySelector('.invoice-item[tabindex="0"]');
+  const activeId = activeRow ? activeRow.dataset.id : null;
+  const hadRowFocus =
+    activeRow !== null && activeRow === document.activeElement;
+
   if (state.invoices.length === 0) {
     invoiceList.innerHTML = `
             <div class="empty-state">
@@ -158,6 +167,18 @@ export function renderInvoices() {
         `,
       )
       .join("");
+
+    // Re-apply the roving tab stop to the previously active row if it survived
+    // the render; otherwise the template default (first row) stands.
+    const restored = activeId
+      ? invoiceList.querySelector(`.invoice-item[data-id="${activeId}"]`)
+      : null;
+    if (restored) {
+      const first = invoiceList.querySelector('.invoice-item[tabindex="0"]');
+      if (first && first !== restored) first.tabIndex = -1;
+      restored.tabIndex = 0;
+      if (hadRowFocus) restored.focus();
+    }
   }
 
   // Summary reflects the whole filtered set (server totals), not just this page
