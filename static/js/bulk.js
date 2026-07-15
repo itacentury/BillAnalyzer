@@ -3,15 +3,22 @@
  */
 
 import { state, selectedInvoices } from "./state.js";
-import { populateDatalist, showToast } from "./dom.js";
 import {
   fetchFilteredIds,
   loadCategories,
   loadStores,
   reloadCurrentPage,
 } from "./api.js";
-import { renderInvoices, updateBulkActionToolbar } from "./render.js";
-import { lockScroll, unlockScroll, showConfirmModal } from "./modals.js";
+import {
+  renderInvoices,
+  updateBulkActionToolbar,
+  captureRows,
+  reinsertRows,
+  restoreRows,
+} from "./render.js";
+import { lockScroll, unlockScroll } from "./modals.js";
+import { getCombobox } from "./combobox.js";
+import { showUndoToast, showErrorToast, hasPendingToast } from "./toast.js";
 
 export function toggleInvoiceSelection(invoiceId, isSelected) {
   if (isSelected) {
@@ -49,7 +56,7 @@ export async function selectAllInvoices() {
     const ids = await fetchFilteredIds();
     ids.forEach((id) => selectedInvoices.add(id));
   } catch {
-    showToast("Failed to select all invoices", "error");
+    showErrorToast("Failed to select all invoices");
     renderInvoices();
     return;
   }
@@ -93,22 +100,21 @@ export function openBulkEditModal() {
     storeInput.placeholder = "Leave empty to keep unchanged";
   }
 
-  // Pre-fill with the common category if all selected are visible and share it
-  const categoryInput = document.querySelector(
-    '[data-el="bulk-edit-category"]',
-  );
+  // Pre-fill with the common category only if every selected invoice is visible
+  // and shares it; otherwise leave it empty (keep unchanged).
+  const categoryCombobox = getCombobox("bulk-edit-category");
   if (allVisible && selectedCategories.size === 1) {
-    categoryInput.value = [...selectedCategories][0];
+    categoryCombobox.setValue([...selectedCategories][0]);
+    categoryCombobox.setPlaceholder("");
   } else if (allVisible && selectedCategories.size > 1) {
-    categoryInput.value = "";
-    categoryInput.placeholder = `${selectedCategories.size} different categories`;
+    categoryCombobox.setValue("");
+    categoryCombobox.setPlaceholder(
+      `${selectedCategories.size} different categories`,
+    );
   } else {
-    categoryInput.value = "";
-    categoryInput.placeholder =
-      "e.g. Groceries (leave empty to keep unchanged)";
+    categoryCombobox.setValue("");
+    categoryCombobox.setPlaceholder("Leave empty to keep unchanged");
   }
-
-  populateBulkCategorySuggestions();
 
   document.querySelector('[data-el="bulk-edit-count"]').textContent =
     selectedInvoices.size;
@@ -117,27 +123,18 @@ export function openBulkEditModal() {
   storeInput.focus();
 }
 
-async function populateBulkCategorySuggestions() {
-  try {
-    const response = await fetch("/api/categories");
-    const categories = await response.json();
-    const datalist = document.getElementById("bulk-category-suggestions");
-    populateDatalist(datalist, categories);
-  } catch (error) {
-    console.error("Error loading categories:", error);
-  }
-}
-
 export function closeBulkEditModal() {
   document
     .querySelector('[data-el="bulk-edit-modal"]')
     .classList.remove("active");
   unlockScroll();
   document.querySelector('[data-el="bulk-edit-store"]').value = "";
-  document.querySelector('[data-el="bulk-edit-category"]').value = "";
+  const categoryCombobox = getCombobox("bulk-edit-category");
+  categoryCombobox.setValue("");
+  categoryCombobox.setPlaceholder("");
 }
 
-export async function saveBulkEdit() {
+export function saveBulkEdit() {
   const newStore = document
     .querySelector('[data-el="bulk-edit-store"]')
     .value.trim();
@@ -146,11 +143,12 @@ export async function saveBulkEdit() {
     .value.trim();
 
   if (!newStore && !newCategory) {
-    showToast("Please fill in at least one field", "error");
+    showErrorToast("Please fill in at least one field");
     return;
   }
 
   const ids = [...selectedInvoices];
+  const idSet = new Set(ids);
   const payload = { ids };
 
   if (newStore) {
@@ -161,29 +159,62 @@ export async function saveBulkEdit() {
     payload.category = newCategory;
   }
 
-  try {
-    const response = await fetch("/api/invoices/bulk-update", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+  // Apply optimistically to the visible selected rows (replace, don't mutate, so
+  // the snapshot keeps the old values). Off-page selected rows are updated on
+  // the server at commit time; the deferred PUT carries every selected id.
+  const previous = state.invoices.filter((invoice) => idSet.has(invoice.id));
+  state.invoices = state.invoices.map((invoice) => {
+    if (!idSet.has(invoice.id)) return invoice;
+    const updated = { ...invoice };
+    if (newStore) updated.store = newStore;
+    if (newCategory) updated.category = newCategory;
+    return updated;
+  });
+  closeBulkEditModal();
+  selectedInvoices.clear();
+  renderInvoices();
 
-    const result = await response.json();
-    if (result.success) {
-      showToast(`${result.updated} invoice(s) updated`, "success");
-      closeBulkEditModal();
-      selectedInvoices.clear();
-      // Preserve the current page. A bulk edit can rename stores / add or
-      // remove categories, so the lookup dropdowns still need refreshing.
-      reloadCurrentPage();
+  const count = ids.length;
+  const revert = () => {
+    ids.forEach((id) => selectedInvoices.add(id));
+    restoreRows(previous);
+  };
+
+  const commit = async () => {
+    try {
+      const response = await fetch("/api/invoices/bulk-update", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        // Survive page unload: a beforeunload-triggered commit must reach the
+        // server even as the document tears down.
+        keepalive: true,
+      });
+      const result = await response.json();
+      if (!result.success) {
+        showErrorToast("Failed to update");
+        revert();
+        return;
+      }
+      // A bulk edit can rename stores / add or remove categories, so the lookup
+      // dropdowns always need refreshing — no superseding action reconciles
+      // THIS edit's values. Only the invoice-list reconcile is skipped while a
+      // newer deferred action is still pending (it reconciles on its own
+      // commit), so this earlier commit's reload can't cut short the newer
+      // action's undo window or flicker its rows back in.
       loadStores();
       loadCategories();
-    } else {
-      showToast("Failed to update", "error");
+      if (!hasPendingToast()) reloadCurrentPage();
+    } catch {
+      showErrorToast("Failed to update");
+      revert();
     }
-  } catch {
-    showToast("Failed to update", "error");
-  }
+  };
+
+  showUndoToast(`${count} invoice${count !== 1 ? "s" : ""} updated`, {
+    onUndo: revert,
+    onCommit: commit,
+  });
 }
 
 /**
@@ -223,37 +254,63 @@ export function setupBulkListeners() {
   });
 }
 
-export async function bulkDeleteInvoices() {
+export function bulkDeleteInvoices() {
   const count = selectedInvoices.size;
   if (count === 0) return;
 
-  const confirmed = await showConfirmModal(
-    `Are you sure you want to permanently delete ${count} invoice${
-      count !== 1 ? "s" : ""
-    }?`,
-  );
-
-  if (!confirmed) return;
-
   const ids = [...selectedInvoices];
+  const idSet = new Set(ids);
 
-  try {
-    const response = await fetch("/api/invoices/bulk-delete", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ids }),
-    });
+  // Optimistically drop the selected rows. totalCount reflects the full
+  // selection (may span pages); totalSum can only subtract the visible rows'
+  // totals — reloadCurrentPage on commit reconciles both with the server.
+  const removed = captureRows(idSet);
+  state.invoices = state.invoices.filter((invoice) => !idSet.has(invoice.id));
+  state.totalCount -= ids.length;
+  state.totalSum -= removed.reduce(
+    (sum, { invoice }) => sum + Number(invoice.total),
+    0,
+  );
+  selectedInvoices.clear();
+  renderInvoices();
 
-    const result = await response.json();
-    if (result.success) {
-      showToast(`${result.deleted} invoice(s) deleted`, "success");
-      selectedInvoices.clear();
+  // Selected rows on other pages aren't in `removed`; restore their count
+  // separately (their sum was never subtracted above).
+  const extraCount = ids.length - removed.length;
+  const revert = () => {
+    ids.forEach((id) => selectedInvoices.add(id));
+    reinsertRows(removed, extraCount);
+  };
+
+  const commit = async () => {
+    try {
+      const response = await fetch("/api/invoices/bulk-delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids }),
+        // Survive page unload: a beforeunload-triggered commit must reach the
+        // server even as the document tears down.
+        keepalive: true,
+      });
+      const result = await response.json();
+      if (!result.success) {
+        showErrorToast("Failed to delete");
+        revert();
+        return;
+      }
       // Reload the list only; stale lookup options self-heal (see deleteInvoice).
-      reloadCurrentPage();
-    } else {
-      showToast("Failed to delete", "error");
+      // Skip the reconcile if a newer deferred action is still pending — it
+      // reconciles on its own commit. Prevents this earlier commit's reload from
+      // cutting short the newer action's undo window (and flickering its rows back in).
+      if (!hasPendingToast()) reloadCurrentPage();
+    } catch {
+      showErrorToast("Failed to delete");
+      revert();
     }
-  } catch {
-    showToast("Failed to delete", "error");
-  }
+  };
+
+  showUndoToast(`${count} invoice${count !== 1 ? "s" : ""} deleted`, {
+    onUndo: revert,
+    onCommit: commit,
+  });
 }

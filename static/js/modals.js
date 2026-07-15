@@ -1,13 +1,15 @@
 /**
- * Modal lifecycle (scroll lock, open/close) for the add/edit, import and
- * confirm dialogs, plus the dynamic item rows of the add/edit form.
+ * Modal lifecycle (scroll lock, open/close) for the add/edit and import dialogs,
+ * plus the dynamic item rows of the add/edit form.
  */
 
 import { state } from "./state.js";
-import { escapeHtml, formatCurrency, showToast } from "./dom.js";
+import { escapeHtml, formatCurrency } from "./dom.js";
+import { showErrorToast } from "./toast.js";
 import { saveInvoice } from "./invoices.js";
 import { fetchInvoiceItems } from "./api.js";
 import { importJson, setImportCorrectionMode } from "./import.js";
+import { getCombobox } from "./combobox.js";
 
 /**
  * Build the inner markup for one add/edit item row (name, price, remove button).
@@ -80,7 +82,7 @@ export async function editInvoice(id) {
   const invoice = state.invoices.find((inv) => inv.id === id);
 
   if (!invoice) {
-    showToast("Invoice not found", "error");
+    showErrorToast("Invoice not found");
     return;
   }
 
@@ -91,8 +93,7 @@ export async function editInvoice(id) {
   // Fill in the form
   document.querySelector('[data-el="invoice-date"]').value = invoice.date;
   document.querySelector('[data-el="invoice-store"]').value = invoice.store;
-  document.querySelector('[data-el="invoice-type"]').value =
-    invoice.category || "";
+  getCombobox("invoice-type").setValue(invoice.category || "");
 
   // The compact list no longer carries items, so load them on demand.
   let items;
@@ -101,7 +102,7 @@ export async function editInvoice(id) {
   } catch {
     // A newer editInvoice() superseded this one; that call owns the error surface.
     if (state.editingInvoiceId !== id) return;
-    showToast("Failed to load invoice", "error");
+    showErrorToast("Failed to load invoice");
     return;
   }
 
@@ -128,7 +129,7 @@ export async function editInvoice(id) {
 
 function resetAddForm() {
   document.querySelector('[data-el="add-form"]').reset();
-  document.querySelector('[data-el="invoice-type"]').value = "";
+  getCombobox("invoice-type").setValue("");
   document.querySelector('[data-el="items-container"]').innerHTML =
     `<div class="item-input-row">${itemRowInnerHtml()}</div>`;
   calculateTotal();
@@ -137,39 +138,6 @@ function resetAddForm() {
 export function openImportModal() {
   document.querySelector('[data-el="import-modal"]').classList.add("active");
   lockScroll();
-}
-
-/**
- * Show a custom confirmation modal that matches the app design.
- */
-export function showConfirmModal(message, title = "Confirm Deletion") {
-  document.querySelector('[data-el="confirm-delete-modal-title"]').textContent =
-    title;
-  document.querySelector(
-    '[data-el="confirm-delete-modal-message"]',
-  ).textContent = message;
-  document
-    .querySelector('[data-el="confirm-delete-modal"]')
-    .classList.add("active");
-  lockScroll();
-
-  return new Promise((resolve) => {
-    state.confirmModalResolve = resolve;
-  });
-}
-
-/**
- * Close the confirmation modal and resolve with the user's choice.
- */
-export function closeConfirmModal(confirmed) {
-  document
-    .querySelector('[data-el="confirm-delete-modal"]')
-    .classList.remove("active");
-  unlockScroll();
-  if (state.confirmModalResolve) {
-    state.confirmModalResolve(confirmed);
-    state.confirmModalResolve = null;
-  }
 }
 
 export function closeImportModal() {
@@ -263,18 +231,4 @@ export function setupModalListeners() {
   importModal
     .querySelector('[data-action="import"]')
     .addEventListener("click", importJson);
-
-  // Confirm-delete modal
-  const confirmModal = document.querySelector(
-    '[data-el="confirm-delete-modal"]',
-  );
-  confirmModal
-    .querySelector(".modal-close")
-    .addEventListener("click", () => closeConfirmModal(false));
-  confirmModal
-    .querySelector('[data-action="cancel"]')
-    .addEventListener("click", () => closeConfirmModal(false));
-  confirmModal
-    .querySelector('[data-action="confirm"]')
-    .addEventListener("click", () => closeConfirmModal(true));
 }

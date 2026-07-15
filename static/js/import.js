@@ -4,7 +4,8 @@
  */
 
 import { state } from "./state.js";
-import { escapeHtml, showToast } from "./dom.js";
+import { escapeHtml } from "./dom.js";
+import { showNoticeToast, showErrorToast } from "./toast.js";
 import { refreshAllData } from "./api.js";
 import { closeImportModal } from "./modals.js";
 
@@ -118,7 +119,7 @@ async function loadFilesIntoTextarea() {
         allData.push(parsed);
       }
     } catch {
-      showToast(`Failed to read ${file.name}`, "error");
+      showErrorToast(`Failed to read ${file.name}`);
     }
   }
 
@@ -138,7 +139,7 @@ export async function importJson() {
     .querySelector('[data-el="json-input"]')
     .value.trim();
   if (!jsonText) {
-    showToast("Please enter JSON data", "error");
+    showErrorToast("Please enter JSON data");
     return;
   }
 
@@ -147,7 +148,7 @@ export async function importJson() {
     data = JSON.parse(jsonText);
     if (!Array.isArray(data)) data = [data];
   } catch {
-    showToast("Invalid JSON format", "error");
+    showErrorToast("Invalid JSON format");
     return;
   }
 
@@ -197,7 +198,7 @@ async function sendImport(data, originalIndices = null) {
 
     // A non-array payload (400) or a DB error (500) has no partial semantics.
     if (!response.ok || !result.success) {
-      showToast(result.error || "Import failed", "error");
+      showErrorToast(result.error || "Import failed");
       return;
     }
 
@@ -208,7 +209,8 @@ async function sendImport(data, originalIndices = null) {
     if (result.failed > 0) {
       message += `, ${result.failed} failed`;
     }
-    showToast(message, result.failed > 0 ? "error" : "success");
+    if (result.failed > 0) showErrorToast(message);
+    else showNoticeToast(message);
 
     // Valid entries always landed, so refresh the list regardless of failures.
     refreshAllData();
@@ -225,7 +227,7 @@ async function sendImport(data, originalIndices = null) {
       closeImportModal();
     }
   } catch {
-    showToast("Import failed", "error");
+    showErrorToast("Import failed");
   } finally {
     spinnerTarget.innerHTML = originalContent;
     for (const guarded of guardedButtons) guarded.disabled = false;
@@ -310,9 +312,8 @@ async function reimportCorrected() {
     try {
       editedByIndex.set(Number(editor.dataset.index), JSON.parse(editor.value));
     } catch {
-      showToast(
+      showErrorToast(
         `Entry #${Number(editor.dataset.index) + 1}: invalid JSON`,
-        "error",
       );
       return;
     }

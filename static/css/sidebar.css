@@ -1,0 +1,259 @@
+/* App shell + left sidebar navigation (bottom tab bar on mobile). */
+.app {
+  display: flex;
+  min-height: 100vh;
+}
+
+.app .container {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+
+.sidebar {
+  position: sticky;
+  top: 0;
+
+  /* box model */
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 20px;
+  align-self: flex-start;
+  width: 232px;
+  height: 100vh;
+  padding: 22px 16px;
+
+  /* visual */
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border-strong);
+}
+
+/* Logo */
+.sidebar-logo {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 0 4px;
+}
+
+.logo-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--accent-text-on);
+  background: var(--accent);
+  border-radius: 10px;
+}
+
+.sidebar-title {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* Navigation */
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.nav-item {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 9px 11px;
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-align: left;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  transition: background var(--transition);
+}
+
+.nav-item svg {
+  flex: none;
+  width: 15px;
+  height: 15px;
+}
+
+.nav-item:hover {
+  background: rgb(253 249 241 / 50%);
+}
+
+.nav-item.active {
+  font-weight: 600;
+  color: var(--text-primary);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-sm);
+}
+
+.nav-item.active svg {
+  color: var(--accent);
+}
+
+/* Bottom actions */
+.sidebar-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: auto;
+}
+
+.sidebar-action-btn {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  justify-content: center;
+  padding: 9px;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  transition: background var(--transition);
+}
+
+.sidebar-action-btn svg {
+  width: 13px;
+  height: 13px;
+}
+
+.sidebar-action-btn:hover {
+  background: var(--bg-hover);
+}
+
+.sidebar-action-primary {
+  padding: 10px;
+  font-size: 13px;
+  color: var(--accent-text-on);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.sidebar-action-primary:hover {
+  background: var(--accent-hover);
+}
+
+/* Mobile floating action cluster (hidden on desktop). */
+.fab-cluster {
+  display: none;
+}
+
+.fab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: none;
+  box-shadow: var(--shadow-dropdown);
+}
+
+.fab-primary {
+  width: 52px;
+  height: 52px;
+  color: var(--accent-text-on);
+  background: var(--accent);
+  border-radius: 16px;
+}
+
+.fab-secondary {
+  width: 42px;
+  height: 42px;
+  color: var(--text-secondary);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+}
+
+/* Sidebar becomes a bottom tab bar; actions move to the floating cluster. */
+@media (width <= 640px) {
+  .app {
+    display: block;
+  }
+
+  .sidebar {
+    position: fixed;
+    inset: auto 0 0;
+    z-index: 600;
+    flex-direction: row;
+    gap: 0;
+    width: auto;
+    height: auto;
+    padding: 0;
+    background: var(--bg-sidebar);
+    border-top: 1px solid var(--border-strong);
+    border-right: none;
+  }
+
+  .sidebar-logo,
+  .sidebar-actions {
+    display: none;
+  }
+
+  .sidebar-nav {
+    flex: 1;
+    flex-direction: row;
+    gap: 0;
+  }
+
+  .nav-item {
+    flex: 1;
+    flex-direction: column;
+    gap: 0.25rem;
+    justify-content: center;
+    padding: 0.625rem 0;
+    padding-bottom: calc(0.625rem + env(safe-area-inset-bottom));
+    font-size: 0.625rem;
+    border-radius: 0;
+  }
+
+  .nav-item svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .nav-item.active {
+    color: var(--accent);
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .fab-cluster {
+    position: fixed;
+    right: 1rem;
+    bottom: calc(3.5rem + env(safe-area-inset-bottom) + 1rem);
+    z-index: 550;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .fab svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .fab-secondary svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  body {
+    padding-bottom: calc(3.5rem + env(safe-area-inset-bottom));
+  }
+}

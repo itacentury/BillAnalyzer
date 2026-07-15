@@ -7,7 +7,13 @@
  */
 
 import { state, selectedInvoices } from "./state.js";
-import { els, escapeHtml, formatCurrency, formatDate } from "./dom.js";
+import {
+  els,
+  escapeHtml,
+  formatCurrency,
+  formatDate,
+  categoryBadgeStyle,
+} from "./dom.js";
 import { editInvoice } from "./modals.js";
 import { deleteInvoice } from "./invoices.js";
 import { fetchInvoiceItems } from "./api.js";
@@ -30,6 +36,52 @@ function itemRowsHtml(items) {
         `,
     )
     .join("");
+}
+
+/**
+ * Capture rows about to be removed together with their positions, so a deferred
+ * delete can splice them back at the same spots on undo/failure.
+ * @param idSet ids of the rows being removed
+ */
+export function captureRows(idSet) {
+  const rows = [];
+  state.invoices.forEach((invoice, index) => {
+    if (idSet.has(invoice.id)) rows.push({ invoice, index });
+  });
+  return rows;
+}
+
+/**
+ * Re-insert previously removed rows into the current list at their captured
+ * positions and restore each row's count/sum contribution. An id already
+ * present is skipped (a concurrent action kept it), so this composes with
+ * another in-flight action instead of clobbering the whole list.
+ * @param removed rows captured by `captureRows`
+ * @param extraCount removed selected rows not visible on the page (bulk,
+ *     off-page) whose sum was never subtracted — only their count is restored
+ */
+export function reinsertRows(removed, extraCount = 0) {
+  removed.forEach(({ invoice, index }) => {
+    if (state.invoices.some((existing) => existing.id === invoice.id)) return;
+    state.invoices.splice(Math.min(index, state.invoices.length), 0, invoice);
+    state.totalCount += 1;
+    state.totalSum += Number(invoice.total);
+  });
+  state.totalCount += extraCount;
+  renderInvoices();
+}
+
+/**
+ * Restore the pre-edit version of each row still present in the current list.
+ * A row a concurrent action has since removed is left gone, never resurrected.
+ * @param previous old invoice objects captured before the optimistic edit
+ */
+export function restoreRows(previous) {
+  previous.forEach((invoice) => {
+    const index = state.invoices.findIndex((row) => row.id === invoice.id);
+    if (index !== -1) state.invoices[index] = invoice;
+  });
+  renderInvoices();
 }
 
 export function renderInvoices() {
@@ -67,7 +119,7 @@ export function renderInvoices() {
                         <span class="invoice-store">${escapeHtml(
                           invoice.store,
                         )}</span>
-                        ${invoice.category ? `<span class="invoice-type">${escapeHtml(invoice.category)}</span>` : ""}
+                        ${invoice.category ? `<span class="invoice-type" style="${categoryBadgeStyle(invoice.category)}">${escapeHtml(invoice.category)}</span>` : ""}
                     </div>
                     <div class="invoice-meta">
                         <span class="invoice-total">${formatCurrency(

@@ -1,26 +1,83 @@
-/* Design tokens: colors, radii, shadows, transitions. */
+/* Design tokens: "Warm Sand" light theme — colors, radii, shadows, transitions. */
 :root {
-  --bg-primary: #0a0a0a;
-  --bg-secondary: #141414;
-  --bg-tertiary: #1a1a1a;
-  --bg-card: #111;
-  --border-color: #2a2a2a;
-  --border-subtle: #1f1f1f;
-  --text-primary: #fafafa;
-  --text-secondary: #a0a0a0;
-  --text-muted: #666;
-  --accent: #3b82f6;
-  --accent-hover: #2563eb;
-  --accent-subtle: rgb(59 130 246 / 10%);
-  --success: #22c55e;
-  --success-subtle: rgb(34 197 94 / 10%);
-  --danger: #ef4444;
-  --danger-subtle: rgb(239 68 68 / 10%);
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
-  --shadow-sm: 0 1px 2px rgb(0 0 0 / 40%);
-  --shadow-md: 0 4px 12px rgb(0 0 0 / 50%);
-  --shadow-lg: 0 8px 24px rgb(0 0 0 / 60%);
+  /* Surfaces */
+  --bg-primary: #f3ede2; /* page background */
+  --bg-sidebar: #ebe2d0; /* sidebar */
+  --bg-card: #fdf9f1; /* cards, lists, modals */
+  --bg-inset: #f7f1e4; /* inputs, inset surfaces */
+  --bg-hover: #f9f4e8; /* row hover, expanded row, modal footer */
+  --bg-selected: #f0e6d2; /* selected row, active dropdown entry */
+  --bg-toolbar: #322c24; /* dark bulk-action pill */
+  --bg-toolbar-text: #f3ede2; /* text on the dark pill */
+
+  /* Lines */
+  --border-color: #e2d8c2; /* standard border */
+  --border-strong: #ddd2ba; /* sidebar separation */
+  --border-subtle: #efe7d5; /* row dividers */
+  --border-dashed: #cdbfa3; /* checkboxes, dropzone */
+
+  /* Text */
+  --text-primary: #3a332a;
+  --text-secondary: #6b5f4a;
+  --text-muted: #8a7c62; /* labels, inactive nav */
+  --text-faint: #a3947a; /* placeholders, dates */
+
+  /* Accents */
+  --accent: #c98d6b; /* terracotta: active pills, primary buttons */
+  --accent-text-on: #fdf9f1;
+  --amount: #7c6b3f; /* monetary amounts (instead of green) */
+  --danger-subtle-bg: #eed9d3;
+  --danger-subtle-text: #9c5b4a;
+  --danger-solid: #b3573f; /* destructive primary button */
+
+  /* Categories (badge bg / badge text) */
+  --cat-technik: #e3d5ee;
+  --cat-technik-text: #6f5691;
+  --cat-sport: #d7e4d2;
+  --cat-sport-text: #54744a;
+  --cat-lebensmittel: #dee7cf;
+  --cat-lebensmittel-text: #647a41;
+  --cat-baecker: #f0ddc8; /* also restaurant */
+  --cat-baecker-text: #93683a;
+  --cat-unterkunft: #eed9d3;
+  --cat-unterkunft-text: #9c5b4a;
+
+  /* Chart palette (order for donut/bars) */
+  --chart-1: #c9a87c;
+  --chart-2: #a8bfa0;
+  --chart-3: #d9a48a;
+  --chart-4: #b5a184;
+  --chart-5: #c4b3d6;
+  --chart-6: #d6bfa0;
+  --chart-7: #a3c2c2;
+  --chart-8: #e0cdb0;
+
+  /* Radii */
+  --radius-sm: 8px; /* pill inners, dropdown entries */
+  --radius-md: 10px; /* buttons, inputs, nav items */
+  --radius-lg: 14px; /* list card, stat cards */
+  --radius-xl: 18px; /* modals */
+
+  /* Shadows */
+  --shadow-sm: 0 1px 3px rgb(90 70 40 / 8%);
+  --shadow-md: 0 2px 8px rgb(90 70 40 / 6%);
+  --shadow-dropdown: 0 10px 28px rgb(90 70 40 / 16%);
+  --shadow-modal: 0 24px 60px rgb(58 51 42 / 35%);
+  --shadow-toolbar: 0 10px 28px rgb(58 51 42 / 35%);
   --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-fast: 0.15s;
+  --transition-normal: 0.25s;
+
+  /* Legacy compatibility shim — remapped to warm equivalents so component
+     stylesheets keep rendering until each is restyled in its own milestone.
+     Pruned in the final polish milestone once no rule references them. */
+  --bg-secondary: #ebe2d0;
+  --bg-tertiary: #f7f1e4;
+  --accent-hover: #b87d5c;
+  --accent-subtle: rgb(201 141 107 / 15%);
+  --success: #54744a;
+  --success-subtle: #d7e4d2;
+  --danger: #b3573f;
+  --danger-subtle: #eed9d3;
+  --shadow-lg: 0 10px 28px rgb(90 70 40 / 16%);
 }

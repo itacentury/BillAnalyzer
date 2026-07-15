@@ -9,9 +9,9 @@ from PIL import Image, ImageDraw, ImageFont
 SIZES: list[int] = [72, 96, 128, 144, 152, 192, 384, 512]
 MASKABLE_SIZES: list[int] = [192, 512]
 
-# Colors matching the app theme
-GRADIENT_START: tuple[int, int, int] = (59, 130, 246)  # #3b82f6
-GRADIENT_END: tuple[int, int, int] = (139, 92, 246)  # #8b5cf6
+# Colors matching the app theme (flat terracotta accent)
+GRADIENT_START: tuple[int, int, int] = (201, 141, 107)  # #c98d6b
+GRADIENT_END: tuple[int, int, int] = (201, 141, 107)  # #c98d6b
 
 OUTPUT_DIR: Path = Path("static/icons")
 

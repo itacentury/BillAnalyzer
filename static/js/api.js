@@ -3,15 +3,12 @@
  */
 
 import { state, selectedInvoices } from "./state.js";
-import {
-  els,
-  getSearchValue,
-  populateDatalist,
-  populateDropdown,
-  showToast,
-} from "./dom.js";
+import { els, getSearchValue, populateDropdown } from "./dom.js";
+import { showErrorToast, commitPendingToast, hideUndoToast } from "./toast.js";
 import { renderInvoices } from "./render.js";
 import { loadStats } from "./stats.js";
+import { getCombobox, setCategoryOptions } from "./combobox.js";
+import { updateFilterBadge } from "./filters.js";
 
 // Cancels the in-flight invoice request when a newer one supersedes it, so a
 // slower earlier response can't render over a newer one (out-of-order results
@@ -102,6 +99,15 @@ export async function fetchInvoiceItems(id) {
 }
 
 async function fetchInvoices() {
+  // Finalize any deferred delete/edit before reloading from the server, so a
+  // pending row (still present server-side until commit) can't reappear in the
+  // fresh list. commitPendingToast() nulls its callback first, so the reload it
+  // triggers re-enters here harmlessly. When this reload was triggered by
+  // something other than the action's own commit (a filter change, or an
+  // overlapping action's commit), the toast is now stale — hide it so its Undo
+  // can't restore a snapshot that no longer matches the view or the server.
+  if (commitPendingToast()) hideUndoToast();
+
   const params = buildFilterParams();
   params.set("page", state.page);
   params.set("page_size", state.pageSize);
@@ -128,7 +134,7 @@ async function fetchInvoices() {
     }
   } catch (error) {
     if (error.name === "AbortError") return;
-    showToast("Failed to load invoices", "error");
+    showErrorToast("Failed to load invoices");
   } finally {
     if (inFlightController === controller) inFlightController = null;
   }
@@ -177,31 +183,20 @@ export async function loadStores() {
 
 export async function loadCategories() {
   try {
-    const typeFilter = document.querySelector('[data-el="type-filter"]');
-    const previousValue = typeFilter ? typeFilter.value : "";
+    const typeFilter = getCombobox("type-filter");
+    const previousValue = typeFilter ? typeFilter.getValue() : "";
 
     const response = await fetch("/api/categories");
     const categories = await response.json();
 
-    // Populate type filter dropdown
-    if (typeFilter) {
-      populateDropdown(typeFilter, categories, "All Categories");
+    // Feed the fresh option list to every category combobox (filter + modals).
+    setCategoryOptions(categories);
 
-      // Restore filter or reset to "All Categories" if category no longer exists
-      if (previousValue) {
-        if (categories.includes(previousValue)) {
-          typeFilter.value = previousValue;
-        } else {
-          typeFilter.value = "";
-          loadInvoices();
-        }
-      }
-    }
-
-    // Populate datalist suggestions for add/edit form
-    const typeSuggestions = document.getElementById("type-suggestions");
-    if (typeSuggestions) {
-      populateDatalist(typeSuggestions, categories);
+    // Clear the filter and reload if its selected category no longer exists.
+    if (typeFilter && previousValue && !categories.includes(previousValue)) {
+      typeFilter.setValue("");
+      updateFilterBadge();
+      loadInvoices();
     }
   } catch (error) {
     console.error("Error loading categories:", error);

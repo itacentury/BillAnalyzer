@@ -10,7 +10,7 @@
       name="description"
       content="Manage and analyze your invoices and expenses"
     />
-    <meta name="theme-color" content="#3b82f6" />
+    <meta name="theme-color" content="#c98d6b" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta
       name="apple-mobile-web-app-status-bar-style"
@@ -35,7 +35,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=JetBrains+Mono:wght@400;500&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
     <!-- CSS is split per component; link order matters for the cascade. -->
@@ -49,11 +49,15 @@
     />
     <link
       rel="stylesheet"
-      href="{{ url_for('static', filename='css/header.css') }}"
+      href="{{ url_for('static', filename='css/sidebar.css') }}"
     />
     <link
       rel="stylesheet"
       href="{{ url_for('static', filename='css/filters.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/combobox.css') }}"
     />
     <link
       rel="stylesheet"
@@ -69,26 +73,32 @@
     />
     <link
       rel="stylesheet"
+      href="{{ url_for('static', filename='css/toast.css') }}"
+    />
+    <link
+      rel="stylesheet"
       href="{{ url_for('static', filename='css/stats.css') }}"
     />
   </head>
   <body>
-    {% include "partials/header.html" %}
+    <div class="app">
+      {% include "partials/sidebar.html" %}
 
-    <main class="container">
-      {% include "partials/filters.html" %}
-      {% include "partials/invoices.html" %}
-      {% include "partials/stats.html" %}
-    </main>
+      <main class="container">
+        {% include "partials/filters.html" %}
+        {% include "partials/invoices.html" %}
+        {% include "partials/stats.html" %}
+      </main>
+    </div>
 
     {% include "partials/modals/add-invoice.html" %}
     {% include "partials/modals/import.html" %}
     {% include "partials/modals/bulk-edit.html" %}
     {% include "partials/bulk-toolbar.html" %}
-    {% include "partials/modals/confirm-delete.html" %}
 
-    <!-- Toast Container -->
-    <div class="toast-container" data-el="toast-container"></div>
+    <!-- Toasts must follow the bulk-action toolbar in the DOM so toast.css can
+         lift them above it via the general-sibling combinator. -->
+    {% include "partials/toasts.html" %}
 
     <script
       src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"

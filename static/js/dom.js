@@ -75,6 +75,53 @@ export function escapeHtml(text) {
   return div.innerHTML;
 }
 
+const CATEGORY_COLOR_SLUGS = {
+  technik: "technik",
+  sport: "sport",
+  lebensmittel: "lebensmittel",
+  bäcker: "baecker",
+  bäckerei: "baecker",
+  restaurant: "baecker",
+  unterkunft: "unterkunft",
+};
+
+/**
+ * Return an inline style (background + text color) for a category badge.
+ *
+ * Known categories map to a fixed `--cat-*` pair; anything else is hashed
+ * deterministically onto the `--chart-1…8` palette so a given name always keeps
+ * the same color. Pure function — only emits CSS-variable references, never the
+ * raw category text, so the result is safe to inline into `innerHTML`.
+ */
+function categoryColorPair(category) {
+  const key = category.trim().toLowerCase();
+  const mapped = CATEGORY_COLOR_SLUGS[key];
+  if (mapped) {
+    return { bg: `var(--cat-${mapped})`, text: `var(--cat-${mapped}-text)` };
+  }
+
+  let hash = 0;
+  for (const char of key) {
+    hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+  }
+  const index = (hash % 8) + 1;
+  return { bg: `var(--chart-${index})`, text: "var(--text-primary)" };
+}
+
+export function categoryBadgeStyle(category) {
+  const { bg, text } = categoryColorPair(category);
+  return `background: ${bg}; color: ${text};`;
+}
+
+/**
+ * Return just the themed background color reference for a category (the color
+ * dot used by the category combobox). Emits only a `var(--…)` reference, never
+ * the raw category text, so the result is safe to inline.
+ */
+export function categoryColorVar(category) {
+  return categoryColorPair(category).bg;
+}
+
 /**
  * Format a numeric amount with exactly two decimals (no currency symbol).
  */
@@ -102,39 +149,8 @@ export function hasOption(select, value) {
 }
 
 /**
- * Fill a <datalist> with option suggestions for the given values.
- */
-export function populateDatalist(datalist, values) {
-  datalist.innerHTML = values
-    .map((value) => `<option value="${escapeHtml(value)}">`)
-    .join("");
-}
-
-/**
- * Show a transient toast notification.
- */
-export function showToast(message, type = "success") {
-  const container = document.querySelector('[data-el="toast-container"]');
-  const toast = document.createElement("div");
-  toast.className = `toast ${type}`;
-  toast.innerHTML = `
-        <span>${type === "success" ? "✓" : "✕"}</span>
-        <span>${message}</span>
-    `;
-  container.appendChild(toast);
-  setTimeout(() => toast.remove(), 3000);
-}
-
-/**
- * Get the current search value from either mobile or desktop input.
+ * Get the current search value from the search input.
  */
 export function getSearchValue() {
-  const mobileSearch = document.querySelector('[data-el="search"]');
-  const desktopSearch = document.querySelector('[data-el="search-desktop"]');
-
-  // Return whichever has a value, prioritizing the visible one based on screen size
-  if (window.innerWidth <= 640) {
-    return mobileSearch?.value || "";
-  }
-  return desktopSearch?.value || mobileSearch?.value || "";
+  return document.querySelector('[data-el="search"]')?.value || "";
 }

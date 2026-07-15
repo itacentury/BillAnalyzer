@@ -15,3 +15,58 @@
     </svg>
   </button>
 {%- endmacro %}
+
+{% macro category_combobox(data_el, variant="modal") -%}
+  {% if variant == "filter" %}
+    {% set placeholder = "All Categories" %}
+    {% set empty_label = "All Categories" %}
+    {% set allow_create = false %}
+  {% else %}
+    {% set placeholder = "Select or type a category…" %}
+    {% set empty_label = "No Category" %}
+    {% set allow_create = true %}
+  {% endif %}
+  <div
+    class="combobox"
+    data-combobox
+    data-empty-label="{{ empty_label }}"
+    data-allow-create="{{ 'true' if allow_create else 'false' }}"
+  >
+    <input type="hidden" data-el="{{ data_el }}" />
+    <div class="combobox-control">
+      <svg
+        class="combobox-search"
+        width="12"
+        height="12"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+      >
+        <circle cx="11" cy="11" r="8" />
+        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+      </svg>
+      <span class="combobox-dot" hidden></span>
+      <input
+        type="text"
+        class="combobox-input"
+        placeholder="{{ placeholder }}"
+        role="combobox"
+        aria-expanded="false"
+        autocomplete="off"
+      />
+      <svg
+        class="combobox-chevron"
+        width="12"
+        height="12"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+      >
+        <polyline points="6 9 12 15 18 9" />
+      </svg>
+    </div>
+    <ul class="combobox-menu" role="listbox"></ul>
+  </div>
+{%- endmacro %}

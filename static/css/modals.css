@@ -7,8 +7,7 @@
   align-items: center;
   justify-content: center;
   padding: 2rem;
-  background: rgb(0 0 0 / 80%);
-  backdrop-filter: blur(4px);
+  background: rgb(58 51 42 / 50%);
 }
 
 .modal-overlay.active {
@@ -17,19 +16,18 @@
 
 .modal {
   width: 100%;
-  max-width: 600px;
+  max-width: 500px;
   max-height: 85vh;
   overflow-y: auto;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
+  background: var(--bg-card);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-modal);
   animation: modal-in 0.2s ease;
 }
 
 /* Narrower variant for compact dialogs (bulk edit, confirm delete) */
 .modal-sm {
-  max-width: 400px;
+  max-width: 360px;
 }
 
 @keyframes modal-in {
@@ -48,44 +46,45 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid var(--border-color);
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .modal-title {
-  font-size: 1.125rem;
-  font-weight: 600;
+  font-size: 1rem;
+  font-weight: 700;
 }
 
 .modal-close {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  color: var(--text-muted);
+  width: 28px;
+  height: 28px;
+  color: var(--text-faint);
   cursor: pointer;
-  background: transparent;
+  background: var(--bg-primary);
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: 9px;
   transition: all var(--transition);
 }
 
 .modal-close:hover {
   color: var(--text-primary);
-  background: var(--bg-tertiary);
+  background: var(--border-color);
 }
 
 .modal-body {
-  padding: 1.5rem;
+  padding: 22px 24px;
 }
 
 .modal-footer {
   display: flex;
   gap: 0.75rem;
   justify-content: flex-end;
-  padding: 1rem 1.5rem;
-  border-top: 1px solid var(--border-color);
+  padding: 14px 24px;
+  background: var(--bg-hover);
+  border-top: 1px solid var(--border-subtle);
 }
 
 /* Tabs */
@@ -140,7 +139,7 @@
 .items-input-section {
   padding-top: 1.5rem;
   margin-top: 1.5rem;
-  border-top: 1px solid var(--border-color);
+  border-top: 1px solid var(--border-subtle);
 }
 
 .items-header {
@@ -181,22 +180,23 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.75rem 1rem;
+  padding: 11px 16px;
   margin-top: 1rem;
-  background: var(--success-subtle);
-  border-radius: var(--radius-sm);
+  background: var(--cat-sport);
+  border-radius: var(--radius-md);
 }
 
 .calculated-total-label {
-  font-size: 0.875rem;
-  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #40593a;
 }
 
 .calculated-total-value {
   font-family: "JetBrains Mono", monospace;
-  font-size: 1.125rem;
+  font-size: 0.9375rem;
   font-weight: 600;
-  color: var(--success);
+  color: #40593a;
 }
 
 /* JSON Import */
@@ -209,28 +209,30 @@
 }
 
 .dropzone {
-  padding: 2rem;
+  padding: 30px;
   margin-bottom: 1rem;
   text-align: center;
   cursor: pointer;
-  border: 2px dashed var(--border-color);
-  border-radius: var(--radius-md);
+  background: var(--bg-hover);
+  border: 2px dashed var(--border-dashed);
+  border-radius: var(--radius-lg);
   transition: all var(--transition);
 }
 
 .dropzone:hover,
 .dropzone.dragover {
-  background: var(--accent-subtle);
+  background: var(--bg-selected);
   border-color: var(--accent);
 }
 
 .dropzone-icon {
   margin-bottom: 0.5rem;
-  font-size: 2rem;
+  color: #b5a184;
 }
 
 .dropzone-text {
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
   color: var(--text-secondary);
 }
 

@@ -4,7 +4,8 @@
  */
 
 import { state, chartColors } from "./state.js";
-import { els, escapeHtml, formatCurrency, showToast } from "./dom.js";
+import { els, escapeHtml, formatCurrency } from "./dom.js";
+import { showErrorToast } from "./toast.js";
 
 /**
  * Toggle the visibility of advanced filters on mobile.
@@ -22,11 +23,12 @@ export function toggleAdvancedFilters() {
  */
 export function showInvoicesView() {
   state.currentView = "invoices";
+  document.body.classList.remove("stats-mode");
   document.querySelector('[data-el="invoices-view"]').style.display = "";
   document.querySelector('[data-el="stats-view"]').style.display = "none";
 
-  // Update toggle buttons
-  document.querySelectorAll(".view-toggle-btn").forEach((btn) => {
+  // Update sidebar nav items
+  document.querySelectorAll(".nav-item").forEach((btn) => {
     btn.classList.toggle("active", btn.dataset.view === "invoices");
   });
 }
@@ -36,11 +38,12 @@ export function showInvoicesView() {
  */
 export function showStatsView() {
   state.currentView = "stats";
+  document.body.classList.add("stats-mode");
   document.querySelector('[data-el="invoices-view"]').style.display = "none";
   document.querySelector('[data-el="stats-view"]').style.display = "";
 
-  // Update toggle buttons
-  document.querySelectorAll(".view-toggle-btn").forEach((btn) => {
+  // Update sidebar nav items
+  document.querySelectorAll(".nav-item").forEach((btn) => {
     btn.classList.toggle("active", btn.dataset.view === "stats");
   });
 
@@ -51,8 +54,8 @@ export function showStatsView() {
  * Wire the invoices/stats view toggle and the mobile advanced-filters toggle.
  */
 export function setupStatsListeners() {
-  document.querySelector(".view-toggle").addEventListener("click", (event) => {
-    const button = event.target.closest(".view-toggle-btn");
+  document.querySelector(".sidebar-nav").addEventListener("click", (event) => {
+    const button = event.target.closest(".nav-item");
     if (!button) return;
     if (button.dataset.view === "stats") showStatsView();
     else showInvoicesView();
@@ -78,7 +81,7 @@ export async function loadStats() {
     const data = await response.json();
     renderStats(data);
   } catch {
-    showToast("Failed to load statistics", "error");
+    showErrorToast("Failed to load statistics");
   }
 }
 
@@ -173,16 +176,16 @@ function renderCategoryChart(data) {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      cutout: "65%",
+      cutout: "55%",
       plugins: {
         legend: {
           display: false,
         },
         tooltip: {
-          backgroundColor: "#1a1a1a",
-          titleColor: "#fafafa",
-          bodyColor: "#a0a0a0",
-          borderColor: "#2a2a2a",
+          backgroundColor: "#fdf9f1",
+          titleColor: "#3a332a",
+          bodyColor: "#6b5f4a",
+          borderColor: "#e2d8c2",
           borderWidth: 1,
           padding: 12,
           callbacks: {
@@ -220,8 +223,8 @@ function renderStoreChart(data) {
           backgroundColor: data.map(
             (_, i) => chartColors[i % chartColors.length],
           ),
-          borderRadius: 4,
-          barThickness: 24,
+          borderRadius: 5,
+          barThickness: 16,
         },
       ],
     },
@@ -234,10 +237,10 @@ function renderStoreChart(data) {
           display: false,
         },
         tooltip: {
-          backgroundColor: "#1a1a1a",
-          titleColor: "#fafafa",
-          bodyColor: "#a0a0a0",
-          borderColor: "#2a2a2a",
+          backgroundColor: "#fdf9f1",
+          titleColor: "#3a332a",
+          bodyColor: "#6b5f4a",
+          borderColor: "#e2d8c2",
           borderWidth: 1,
           padding: 12,
           callbacks: {
@@ -248,11 +251,11 @@ function renderStoreChart(data) {
       scales: {
         x: {
           grid: {
-            color: "#2a2a2a",
+            color: "#efe7d5",
             drawBorder: false,
           },
           ticks: {
-            color: "#666666",
+            color: "#8a7c62",
             callback: (value) => `€${value}`,
           },
         },
@@ -261,7 +264,7 @@ function renderStoreChart(data) {
             display: false,
           },
           ticks: {
-            color: "#a0a0a0",
+            color: "#6b5f4a",
           },
         },
       },

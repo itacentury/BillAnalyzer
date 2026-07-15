@@ -110,38 +110,66 @@
 }
 
 .stats-view .stat-card {
-  padding: 1.25rem;
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  transition: all var(--transition);
+  padding: 1.25rem 1.375rem;
+  border-radius: var(--radius-lg);
 }
 
-.stats-view .stat-card:hover {
-  border-color: var(--accent);
-  transform: translateY(-2px);
+/* Per-card tints (Design 3b) */
+.stat-card-total {
+  background: #e8dcc6;
+}
+
+.stat-card-total .stat-label {
+  color: var(--text-muted);
+}
+
+.stat-card-total .stat-value {
+  color: #5c4d2e;
+}
+
+.stat-card-count {
+  background: var(--cat-technik);
+}
+
+.stat-card-count .stat-label {
+  color: #8d7fae;
+}
+
+.stat-card-count .stat-value {
+  color: #584687;
+}
+
+.stat-card-average {
+  background: var(--cat-sport);
+}
+
+.stat-card-average .stat-label {
+  color: #7a9070;
+}
+
+.stat-card-average .stat-value {
+  color: #40593a;
 }
 
 .stats-view .stat-label {
   margin-bottom: 0.5rem;
-  font-size: 0.75rem;
-  color: var(--text-muted);
+  font-size: 0.6563rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
 }
 
 .stats-view .stat-value {
   font-family: "JetBrains Mono", monospace;
-  font-size: 1.75rem;
+  font-size: 1.6875rem;
   font-weight: 600;
-  color: var(--text-primary);
   letter-spacing: -0.02em;
 }
 
 .stats-view .stat-value.currency::before {
   margin-right: 0.25rem;
   font-size: 1.25rem;
-  color: var(--text-secondary);
+  color: inherit;
   content: "€";
 }
 
@@ -155,23 +183,23 @@
 
 .change-indicator {
   padding: 0.25rem 0.5rem;
-  font-size: 0.8125rem;
-  font-weight: 600;
+  font-size: 0.6875rem;
+  font-weight: 700;
   border-radius: var(--radius-sm);
 }
 
 .change-indicator.positive {
-  color: var(--success);
-  background: var(--success-subtle);
+  color: var(--cat-sport-text);
+  background: var(--cat-sport);
 }
 
 .change-indicator.negative {
-  color: var(--danger);
-  background: var(--danger-subtle);
+  color: var(--danger-subtle-text);
+  background: var(--danger-subtle-bg);
 }
 
 .change-label {
-  font-size: 0.75rem;
+  font-size: 0.6875rem;
   color: var(--text-muted);
 }
 
@@ -186,18 +214,18 @@
   overflow: hidden;
   background: var(--bg-card);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
 }
 
 .chart-header {
-  padding: 1rem 1.25rem;
-  border-bottom: 1px solid var(--border-color);
+  padding: 0.875rem 1.25rem;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .chart-title {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--text-primary);
 }
 
 .chart-container {
@@ -227,8 +255,8 @@
 
 .legend-color {
   flex-shrink: 0;
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
   border-radius: 3px;
 }
 
@@ -237,6 +265,7 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  font-size: 0.75rem;
   color: var(--text-secondary);
   white-space: nowrap;
 }
@@ -248,10 +277,10 @@
 }
 
 .legend-percent {
-  width: 45px;
+  width: 42px;
   font-family: "JetBrains Mono", monospace;
   font-size: 0.75rem;
-  color: var(--text-muted);
+  color: var(--text-faint);
   text-align: right;
 }
 
@@ -295,45 +324,7 @@
     height: 280px;
   }
 
-  /* View toggle - bottom tab bar on mobile */
-  .view-toggle {
-    position: fixed;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    z-index: 600;
-    gap: 0;
-    padding: 0;
-    background: var(--bg-secondary);
-    border-top: 1px solid var(--border-color);
-    border-radius: 0;
-  }
-
-  .view-toggle-btn {
-    flex: 1;
-    flex-direction: column;
-    gap: 0.25rem;
-    justify-content: center;
-    padding: 0.625rem 0;
-    padding-bottom: calc(0.625rem + env(safe-area-inset-bottom));
-    font-size: 0.625rem;
-    border-radius: 0;
-  }
-
-  .view-toggle-btn svg {
-    width: 20px;
-    height: 20px;
-  }
-
-  .view-toggle-btn.active {
-    color: var(--accent);
-    background: transparent;
-  }
-
-  body {
-    padding-bottom: calc(3.5rem + env(safe-area-inset-bottom));
-  }
-
+  /* Bulk toolbar sits above the mobile bottom tab bar (see sidebar.css). */
   .bulk-action-toolbar.visible {
     bottom: calc(3.5rem + env(safe-area-inset-bottom) + 0.5rem);
   }
