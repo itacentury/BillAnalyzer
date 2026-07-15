@@ -185,6 +185,9 @@ export function saveBulkEdit() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
+        // Survive page unload: a beforeunload-triggered commit must reach the
+        // server even as the document tears down.
+        keepalive: true,
       });
       const result = await response.json();
       if (!result.success) {
@@ -280,6 +283,9 @@ export function bulkDeleteInvoices() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ids }),
+        // Survive page unload: a beforeunload-triggered commit must reach the
+        // server even as the document tears down.
+        keepalive: true,
       });
       const result = await response.json();
       if (!result.success) {

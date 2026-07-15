@@ -105,6 +105,9 @@ function deferInvoiceUpdate(id, payload) {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
+        // Survive page unload: a beforeunload-triggered commit must reach the
+        // server even as the document tears down.
+        keepalive: true,
       });
       if (!response.ok) {
         showErrorToast("Failed to update");
@@ -159,7 +162,11 @@ export function deleteInvoice(id) {
 
   const commit = async () => {
     try {
-      const response = await fetch(`/api/invoices/${id}`, { method: "DELETE" });
+      // keepalive: finalize the delete even if this commit fires during unload.
+      const response = await fetch(`/api/invoices/${id}`, {
+        method: "DELETE",
+        keepalive: true,
+      });
       if (!response.ok) {
         showErrorToast("Failed to delete");
         restoreList(snapshot);
