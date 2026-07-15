@@ -1,0 +1,43 @@
+/* Keyboard-shortcut help overlay */
+.shortcut-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.shortcut-row {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 4px;
+}
+
+.shortcut-row + .shortcut-row {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.shortcut-row dt {
+  display: flex;
+  gap: 4px;
+}
+
+.shortcut-row dd {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  text-align: right;
+}
+
+kbd {
+  min-width: 1.5rem;
+  padding: 2px 6px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.75rem;
+  color: var(--text-primary);
+  text-align: center;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+}

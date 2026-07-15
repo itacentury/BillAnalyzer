@@ -1,9 +1,14 @@
 {% from "partials/_macros.html" import modal_close_button %}
 <!-- Import Modal -->
 <div class="modal-overlay" data-el="import-modal">
-  <div class="modal">
+  <div
+    class="modal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="import-title"
+  >
     <div class="modal-header">
-      <h3 class="modal-title">JSON Import</h3>
+      <h3 class="modal-title" id="import-title">JSON Import</h3>
       {{ modal_close_button() }}
     </div>
     <div class="modal-body">

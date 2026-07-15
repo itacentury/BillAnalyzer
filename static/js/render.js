@@ -101,10 +101,10 @@ export function renderInvoices() {
   } else {
     invoiceList.innerHTML = state.invoices
       .map(
-        (invoice) => `
+        (invoice, index) => `
             <div class="invoice-item ${
               selectedInvoices.has(invoice.id) ? "selected" : ""
-            }" data-id="${invoice.id}">
+            }" data-id="${invoice.id}" tabindex="${index === 0 ? 0 : -1}">
                 <div class="invoice-header">
                     <label class="invoice-checkbox">
                         <input type="checkbox" ${
@@ -264,6 +264,56 @@ export function setupInvoiceListListeners() {
     const id = Number(checkbox.closest(".invoice-item").dataset.id);
     toggleInvoiceSelection(id, checkbox.checked);
   });
+
+  invoiceList.addEventListener("keydown", handleListKeydown);
+}
+
+/**
+ * Move the roving tab stop to `row` and focus it. Rows carry `tabindex="-1"`
+ * except the current one (`0`), so the list is a single Tab stop that Arrow
+ * keys navigate within.
+ */
+function focusRow(row) {
+  if (!row || !row.classList.contains("invoice-item")) return;
+  const list = row.parentElement;
+  const current = list.querySelector('.invoice-item[tabindex="0"]');
+  if (current) current.tabIndex = -1;
+  row.tabIndex = 0;
+  row.focus();
+}
+
+/**
+ * Arrow/Home/End move focus between invoice rows; Enter expands the focused row.
+ * Enter is ignored when focus sits on a control inside the row (edit/delete),
+ * which handle their own activation.
+ */
+function handleListKeydown(event) {
+  const row = event.target.closest(".invoice-item");
+  if (!row) return;
+
+  switch (event.key) {
+    case "ArrowDown":
+      event.preventDefault();
+      focusRow(row.nextElementSibling);
+      break;
+    case "ArrowUp":
+      event.preventDefault();
+      focusRow(row.previousElementSibling);
+      break;
+    case "Home":
+      event.preventDefault();
+      focusRow(row.parentElement.firstElementChild);
+      break;
+    case "End":
+      event.preventDefault();
+      focusRow(row.parentElement.lastElementChild);
+      break;
+    case "Enter":
+      if (event.target !== row) return;
+      event.preventDefault();
+      toggleInvoice(row.querySelector(".invoice-header"));
+      break;
+  }
 }
 
 export function updateBulkActionToolbar() {

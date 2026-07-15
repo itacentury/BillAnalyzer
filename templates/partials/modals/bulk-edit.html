@@ -1,9 +1,14 @@
 {% from "partials/_macros.html" import modal_close_button, category_combobox %}
 <!-- Bulk Edit Modal -->
 <div class="modal-overlay" data-el="bulk-edit-modal">
-  <div class="modal modal-sm">
+  <div
+    class="modal modal-sm"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="bulk-edit-title"
+  >
     <div class="modal-header">
-      <h3 class="modal-title">Bulk Edit</h3>
+      <h3 class="modal-title" id="bulk-edit-title">Bulk Edit</h3>
       {{ modal_close_button() }}
     </div>
     <div class="modal-body">
