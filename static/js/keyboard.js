@@ -171,7 +171,9 @@ function setupModalFocusManagement() {
     for (const mutation of mutations) {
       const overlay = mutation.target;
       const isActive = overlay.classList.contains("active");
-      const wasActive = (mutation.oldValue || "").includes("active");
+      const wasActive = (mutation.oldValue || "")
+        .split(/\s+/)
+        .includes("active");
       if (isActive && !wasActive) onModalOpen(overlay);
       else if (!isActive && wasActive) onModalClose();
     }
