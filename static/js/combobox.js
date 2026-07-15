@@ -85,7 +85,7 @@ export function createCombobox(root, { onChange } = {}) {
 
     entries = [{ value: "", isCreate: false }];
     const rows = [
-      `<li class="combobox-option${hidden.value ? "" : " is-active"}" role="option" data-index="0">
+      `<li class="combobox-option${hidden.value ? "" : " is-active"}" role="option" id="${menuId}-option-0" data-index="0">
         ${dotMarkup("")}<span class="combobox-option-label combobox-option-empty">${escapeHtml(emptyLabel)}</span>
         ${hidden.value ? "" : '<span class="combobox-check">✓</span>'}
       </li>`,
@@ -96,7 +96,7 @@ export function createCombobox(root, { onChange } = {}) {
       entries.push({ value: option, isCreate: false });
       const active = option === hidden.value;
       rows.push(
-        `<li class="combobox-option${active ? " is-active" : ""}" role="option" data-index="${index}">
+        `<li class="combobox-option${active ? " is-active" : ""}" role="option" id="${menuId}-option-${index}" data-index="${index}">
           ${dotMarkup(option)}<span class="combobox-option-label">${highlightMatch(option, query)}</span>
           ${active ? '<span class="combobox-check">✓</span>' : ""}
         </li>`,
@@ -111,7 +111,7 @@ export function createCombobox(root, { onChange } = {}) {
       entries.push({ value: query, isCreate: true });
       rows.push('<li class="combobox-divider" role="presentation"></li>');
       rows.push(
-        `<li class="combobox-option combobox-option-create" role="option" data-index="${index}">
+        `<li class="combobox-option combobox-option-create" role="option" id="${menuId}-option-${index}" data-index="${index}">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
           </svg>
@@ -125,11 +125,18 @@ export function createCombobox(root, { onChange } = {}) {
   };
 
   const applyHighlight = () => {
+    let activeId = "";
     menu.querySelectorAll(".combobox-option").forEach((element) => {
       const isOn = Number(element.dataset.index) === highlighted;
       element.classList.toggle("is-highlighted", isOn);
-      if (isOn) element.scrollIntoView({ block: "nearest" });
+      element.setAttribute("aria-selected", isOn ? "true" : "false");
+      if (isOn) {
+        activeId = element.id;
+        element.scrollIntoView({ block: "nearest" });
+      }
     });
+    if (activeId) textInput.setAttribute("aria-activedescendant", activeId);
+    else textInput.removeAttribute("aria-activedescendant");
   };
 
   const openMenu = () => {
@@ -151,6 +158,7 @@ export function createCombobox(root, { onChange } = {}) {
     open = false;
     root.classList.remove("is-open");
     textInput.setAttribute("aria-expanded", "false");
+    textInput.removeAttribute("aria-activedescendant");
     highlighted = -1;
     applyValue(hidden.value);
   };
@@ -160,6 +168,7 @@ export function createCombobox(root, { onChange } = {}) {
     open = false;
     root.classList.remove("is-open");
     textInput.setAttribute("aria-expanded", "false");
+    textInput.removeAttribute("aria-activedescendant");
     highlighted = -1;
     if (onChange) onChange(value);
   };
