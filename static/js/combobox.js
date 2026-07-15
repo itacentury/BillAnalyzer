@@ -186,8 +186,11 @@ export function createCombobox(root, { onChange } = {}) {
   root
     .querySelector(".combobox-control")
     .addEventListener("mousedown", (event) => {
-      // A second click on the open control closes it, keeping the input focused.
+      // While open, a click elsewhere on the control (chevron, dot, icon) closes
+      // it; a click inside the input just repositions the caret in the typed
+      // query, so let it through untouched and keep the menu open.
       if (open) {
+        if (event.target === textInput) return;
         event.preventDefault();
         closeMenu();
         return;
