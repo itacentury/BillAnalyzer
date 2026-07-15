@@ -17,37 +17,28 @@ import { els } from "./dom.js";
 const FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
-// The element focused before the current modal opened, so focus can return
-// there on close. Only one modal is ever active at a time, so a single ref
-// suffices.
-let lastTriggerElement = null;
-
-// Background elements marked `inert` while a modal is open, tracked so they can
-// be restored exactly on close.
-let inertedBackground = [];
+// Open modals, innermost last. Each frame remembers its overlay (to derive
+// background inert-ness) and the element focused before it opened (to restore
+// focus on close). A stack, not a single ref, so nested modals unwind LIFO.
+const modalStack = []; // Array<{ overlay: Element, trigger: Element | null }>
 
 /**
- * Pull the page background out of the accessibility tree (and focus/hit-testing)
- * while a modal is open, so an AT virtual cursor can't wander behind the dialog.
- * Leaves the active overlay and the toast live regions alone — the toasts keep
- * announcing (e.g. a save error) even while a modal is open.
+ * Pull every element behind the topmost open modal out of the accessibility
+ * tree (and focus/hit-testing), so an AT virtual cursor can't wander behind the
+ * dialog. Leaves that overlay, the toast live regions and scripts alone — the
+ * toasts keep announcing (e.g. a save error) even while a modal is open.
+ * Recomputed from the stack on every open/close, so a lower modal stays inert
+ * while a higher one is open and is revealed again when the higher closes.
  */
-function setBackgroundInert(activeOverlay) {
-  inertedBackground = [...document.body.children].filter(
-    (child) =>
-      child !== activeOverlay &&
-      !child.classList.contains("toast") &&
-      child.tagName !== "SCRIPT",
-  );
-  inertedBackground.forEach((element) => (element.inert = true));
-}
-
-/**
- * Restore every background element inerted on open.
- */
-function clearBackgroundInert() {
-  inertedBackground.forEach((element) => (element.inert = false));
-  inertedBackground = [];
+function refreshInert() {
+  const top = modalStack.length
+    ? modalStack[modalStack.length - 1].overlay
+    : null;
+  for (const child of document.body.children) {
+    if (child.classList.contains("toast") || child.tagName === "SCRIPT")
+      continue;
+    child.inert = top !== null && child !== top;
+  }
 }
 
 /**
@@ -190,17 +181,22 @@ function initialFocusTarget(overlay) {
 }
 
 function onModalOpen(overlay) {
-  lastTriggerElement = document.activeElement;
-  setBackgroundInert(overlay);
+  modalStack.push({ overlay, trigger: document.activeElement });
+  refreshInert();
   initialFocusTarget(overlay)?.focus();
 }
 
-function onModalClose() {
+function onModalClose(overlay) {
+  const index = modalStack.findIndex((frame) => frame.overlay === overlay);
+  if (index === -1) return;
+  const wasTop = index === modalStack.length - 1;
+  const [frame] = modalStack.splice(index, 1);
   // Un-inert before restoring focus: focusing an element still inside an inert
-  // subtree (e.g. the bulk-edit trigger in the bulk toolbar) is a no-op.
-  clearBackgroundInert();
-  if (lastTriggerElement instanceof HTMLElement) lastTriggerElement.focus();
-  lastTriggerElement = null;
+  // subtree (e.g. the bulk-edit trigger in the bulk toolbar) is a no-op. Only
+  // the topmost modal's close restores focus, so an out-of-order close never
+  // steals it from a still-open modal.
+  refreshInert();
+  if (wasTop && frame.trigger instanceof HTMLElement) frame.trigger.focus();
 }
 
 /**
@@ -217,7 +213,7 @@ function setupModalFocusManagement() {
         .split(/\s+/)
         .includes("active");
       if (isActive && !wasActive) onModalOpen(overlay);
-      else if (!isActive && wasActive) onModalClose();
+      else if (!isActive && wasActive) onModalClose(overlay);
     }
   });
 
