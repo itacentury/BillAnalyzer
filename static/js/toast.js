@@ -63,7 +63,6 @@ let toastUndoCallback = null;
 // action. Cleared once run so it never fires twice.
 let toastCommitCallback = null;
 let currentWindowMs = UNDO_WINDOW_MS;
-let toastRemainingTime = UNDO_WINDOW_MS;
 
 /**
  * Run the pending commit callback exactly once, if any. Invoked whenever the
@@ -115,17 +114,16 @@ function presentToast(message, undoCallback, commitCallback, windowMs) {
   toastUndoCallback = undoCallback;
   toastCommitCallback = commitCallback;
   currentWindowMs = windowMs;
-  toastRemainingTime = windowMs;
   // Only offer the Undo button when there is something to undo.
   toastUndo.hidden = !undoCallback;
   const isVisible = undoToast.classList.contains("visible");
 
   const startCountdown = () => {
-    animateProgress(toastProgress, toastRemainingTime);
+    animateProgress(toastProgress, currentWindowMs);
     toastTimeout = setTimeout(() => {
       commitPendingToast();
       hideUndoToast();
-    }, toastRemainingTime);
+    }, currentWindowMs);
   };
 
   if (isVisible) {
@@ -173,7 +171,6 @@ function pauseToast() {
 function resumeToast() {
   const { undoToast, toastProgress } = toastEls();
   if (!undoToast.classList.contains("visible")) return;
-  toastRemainingTime = currentWindowMs;
   animateProgress(toastProgress, currentWindowMs);
   toastTimeout = setTimeout(() => {
     commitPendingToast();
