@@ -22,7 +22,7 @@ import {
   showErrorToast,
   hasPendingToast,
 } from "./toast.js";
-import { snapshotList, restoreList, renderInvoices } from "./render.js";
+import { reinsertRows, restoreRows, renderInvoices } from "./render.js";
 
 export async function saveInvoice() {
   const date = document.querySelector('[data-el="invoice-date"]').value;
@@ -90,8 +90,8 @@ async function createInvoice(payload) {
  * visible row is replaced (not mutated) so the snapshot keeps the old values.
  */
 function deferInvoiceUpdate(id, payload) {
-  const snapshot = snapshotList();
   const index = state.invoices.findIndex((invoice) => invoice.id === id);
+  const previous = index !== -1 ? state.invoices[index] : null;
   if (index !== -1) {
     state.invoices[index] = {
       ...state.invoices[index],
@@ -103,6 +103,10 @@ function deferInvoiceUpdate(id, payload) {
   }
   renderInvoices();
   closeAddModal();
+
+  const restore = () => {
+    if (previous) restoreRows([previous]);
+  };
 
   const commit = async () => {
     try {
@@ -116,7 +120,7 @@ function deferInvoiceUpdate(id, payload) {
       });
       if (!response.ok) {
         showErrorToast("Failed to update");
-        restoreList(snapshot);
+        restore();
         return;
       }
       refreshLookupsFor(payload.store, payload.category);
@@ -126,12 +130,12 @@ function deferInvoiceUpdate(id, payload) {
       if (!hasPendingToast()) reloadCurrentPage();
     } catch {
       showErrorToast("Failed to update");
-      restoreList(snapshot);
+      restore();
     }
   };
 
   showUndoToast("Invoice updated", {
-    onUndo: () => restoreList(snapshot),
+    onUndo: restore,
     onCommit: commit,
   });
 }
@@ -156,17 +160,18 @@ function refreshLookupsFor(store, category) {
  * undo just restores the local snapshot.
  */
 export function deleteInvoice(id) {
-  const snapshot = snapshotList();
-  const removed = state.invoices.find((invoice) => invoice.id === id);
+  const index = state.invoices.findIndex((invoice) => invoice.id === id);
+  if (index === -1) return;
+  const removed = state.invoices[index];
   const wasSelected = selectedInvoices.has(id);
 
   state.invoices = state.invoices.filter((invoice) => invoice.id !== id);
   selectedInvoices.delete(id);
-  if (removed) {
-    state.totalCount -= 1;
-    state.totalSum -= Number(removed.total);
-  }
+  state.totalCount -= 1;
+  state.totalSum -= Number(removed.total);
   renderInvoices();
+
+  const restore = () => reinsertRows([{ invoice: removed, index }]);
 
   const commit = async () => {
     try {
@@ -177,7 +182,7 @@ export function deleteInvoice(id) {
       });
       if (!response.ok) {
         showErrorToast("Failed to delete");
-        restoreList(snapshot);
+        restore();
         return;
       }
       // A store/category option lingering after its last invoice is deleted is
@@ -188,13 +193,13 @@ export function deleteInvoice(id) {
       if (!hasPendingToast()) reloadCurrentPage();
     } catch {
       showErrorToast("Failed to delete");
-      restoreList(snapshot);
+      restore();
     }
   };
 
   const undo = () => {
     if (wasSelected) selectedInvoices.add(id);
-    restoreList(snapshot);
+    restore();
   };
 
   showUndoToast("Invoice deleted", { onUndo: undo, onCommit: commit });

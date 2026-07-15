@@ -12,8 +12,9 @@ import {
 import {
   renderInvoices,
   updateBulkActionToolbar,
-  snapshotList,
-  restoreList,
+  captureRows,
+  reinsertRows,
+  restoreRows,
 } from "./render.js";
 import { lockScroll, unlockScroll } from "./modals.js";
 import { getCombobox } from "./combobox.js";
@@ -161,7 +162,7 @@ export function saveBulkEdit() {
   // Apply optimistically to the visible selected rows (replace, don't mutate, so
   // the snapshot keeps the old values). Off-page selected rows are updated on
   // the server at commit time; the deferred PUT carries every selected id.
-  const snapshot = snapshotList();
+  const previous = state.invoices.filter((invoice) => idSet.has(invoice.id));
   state.invoices = state.invoices.map((invoice) => {
     if (!idSet.has(invoice.id)) return invoice;
     const updated = { ...invoice };
@@ -176,7 +177,7 @@ export function saveBulkEdit() {
   const count = ids.length;
   const revert = () => {
     ids.forEach((id) => selectedInvoices.add(id));
-    restoreList(snapshot);
+    restoreRows(previous);
   };
 
   const commit = async () => {
@@ -264,22 +265,22 @@ export function bulkDeleteInvoices() {
   // Optimistically drop the selected rows. totalCount reflects the full
   // selection (may span pages); totalSum can only subtract the visible rows'
   // totals — reloadCurrentPage on commit reconciles both with the server.
-  const snapshot = snapshotList();
-  const removedVisible = state.invoices.filter((invoice) =>
-    idSet.has(invoice.id),
-  );
+  const removed = captureRows(idSet);
   state.invoices = state.invoices.filter((invoice) => !idSet.has(invoice.id));
   state.totalCount -= ids.length;
-  state.totalSum -= removedVisible.reduce(
-    (sum, invoice) => sum + Number(invoice.total),
+  state.totalSum -= removed.reduce(
+    (sum, { invoice }) => sum + Number(invoice.total),
     0,
   );
   selectedInvoices.clear();
   renderInvoices();
 
+  // Selected rows on other pages aren't in `removed`; restore their count
+  // separately (their sum was never subtracted above).
+  const extraCount = ids.length - removed.length;
   const revert = () => {
     ids.forEach((id) => selectedInvoices.add(id));
-    restoreList(snapshot);
+    reinsertRows(removed, extraCount);
   };
 
   const commit = async () => {
