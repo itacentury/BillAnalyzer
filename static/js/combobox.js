@@ -180,14 +180,24 @@ export function createCombobox(root, { onChange } = {}) {
     applyHighlight();
   };
 
-  // Clicking anywhere on the control (icon, dot, chevron) focuses the input.
+  // Clicking anywhere on the control (input, icon, dot, chevron) toggles the
+  // menu, mirroring a native <select>. focus alone can't do this: it only fires
+  // on a focus change, so a click on the already-focused field would be ignored.
   root
     .querySelector(".combobox-control")
     .addEventListener("mousedown", (event) => {
-      if (event.target !== textInput) {
+      // A second click on the open control closes it, keeping the input focused.
+      if (open) {
         event.preventDefault();
-        textInput.focus();
+        closeMenu();
+        return;
       }
+      // Menu closed: route the click to the input. If it isn't focused yet,
+      // focusing it opens the menu via the focus handler; if it's already
+      // focused (e.g. after Escape), focus won't refire, so open explicitly.
+      if (event.target !== textInput) event.preventDefault();
+      if (document.activeElement === textInput) openMenu();
+      else textInput.focus();
     });
 
   textInput.addEventListener("focus", openMenu);
