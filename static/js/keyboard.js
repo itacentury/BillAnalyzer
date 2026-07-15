@@ -30,10 +30,12 @@ const modalStack = []; // Array<{ overlay: Element, trigger: Element | null }>
  * Recomputed from the stack on every open/close, so a lower modal stays inert
  * while a higher one is open and is revealed again when the higher closes.
  */
+function topModalOverlay() {
+  return modalStack.length ? modalStack[modalStack.length - 1].overlay : null;
+}
+
 function refreshInert() {
-  const top = modalStack.length
-    ? modalStack[modalStack.length - 1].overlay
-    : null;
+  const top = topModalOverlay();
   for (const child of document.body.children) {
     if (child.classList.contains("toast") || child.tagName === "SCRIPT")
       continue;
@@ -56,7 +58,7 @@ function isTypingContext(target) {
 }
 
 function activeModal() {
-  return document.querySelector(".modal-overlay.active");
+  return topModalOverlay();
 }
 
 /**
