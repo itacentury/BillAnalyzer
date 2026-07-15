@@ -41,7 +41,8 @@
 }
 
 .invoice-list {
-  max-height: 600px;
+  min-height: 150px;
+  max-height: min(600px, calc(100vh - 260px));
   overflow-y: auto;
 }
 

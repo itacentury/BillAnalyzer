@@ -230,12 +230,12 @@
 
 .chart-container {
   position: relative;
-  height: 250px;
+  height: min(250px, calc(100vh - 320px));
   padding: 1.25rem;
 }
 
 .chart-container-bar {
-  height: 300px;
+  height: min(300px, calc(100vh - 300px));
 }
 
 /* Category Legend */
