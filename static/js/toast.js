@@ -59,6 +59,7 @@ function animateProgress(el, ms) {
 let swapTimeout = null;
 let countdownTimeout = null;
 let isInSwap = false;
+let isHovering = false;
 let toastUndoCallback = null;
 // Called when the undo window closes without an undo (timeout, dismiss, being
 // replaced by a newer toast, or page unload). Used to finalize a deferred
@@ -136,6 +137,9 @@ function presentToast(message, undoCallback, commitCallback, windowMs) {
 
   const startCountdown = () => {
     isInSwap = false;
+    // A swap can complete while the pointer is over the toast; honor pause-on-
+    // hover and defer the countdown to mouseleave (resumeToast) instead.
+    if (isHovering) return;
     animateProgress(toastProgress, currentWindowMs);
     countdownTimeout = setTimeout(() => {
       commitPendingToast();
@@ -183,6 +187,7 @@ export function hideUndoToast() {
 
 /** Pause the toast countdown (e.g. on hover). */
 function pauseToast() {
+  isHovering = true;
   // Only pause the countdown; the swap timer is allowed to complete during hover
   if (countdownTimeout) {
     clearTimeout(countdownTimeout);
@@ -193,6 +198,7 @@ function pauseToast() {
 
 /** Resume the toast countdown after a pause. */
 function resumeToast() {
+  isHovering = false;
   const { undoToast, toastProgress } = toastEls();
   if (!undoToast.classList.contains("visible")) return;
   // If a swap is still in progress, don't resume countdown yet; let swap complete
