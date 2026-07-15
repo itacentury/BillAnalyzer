@@ -22,6 +22,34 @@ const FOCUSABLE_SELECTOR =
 // suffices.
 let lastTriggerElement = null;
 
+// Background elements marked `inert` while a modal is open, tracked so they can
+// be restored exactly on close.
+let inertedBackground = [];
+
+/**
+ * Pull the page background out of the accessibility tree (and focus/hit-testing)
+ * while a modal is open, so an AT virtual cursor can't wander behind the dialog.
+ * Leaves the active overlay and the toast live regions alone — the toasts keep
+ * announcing (e.g. a save error) even while a modal is open.
+ */
+function setBackgroundInert(activeOverlay) {
+  inertedBackground = [...document.body.children].filter(
+    (child) =>
+      child !== activeOverlay &&
+      !child.classList.contains("toast") &&
+      child.tagName !== "SCRIPT",
+  );
+  inertedBackground.forEach((element) => (element.inert = true));
+}
+
+/**
+ * Restore every background element inerted on open.
+ */
+function clearBackgroundInert() {
+  inertedBackground.forEach((element) => (element.inert = false));
+  inertedBackground = [];
+}
+
 /**
  * Whether the event target is a field where single-key shortcuts must not fire.
  */
@@ -150,6 +178,7 @@ function handleGlobalKeydown(event) {
 
 function onModalOpen(overlay) {
   lastTriggerElement = document.activeElement;
+  setBackgroundInert(overlay);
   // Prefer the first field in the body over the header's close button.
   const body = overlay.querySelector(".modal-body");
   const target = (body && getFocusable(body)[0]) || getFocusable(overlay)[0];
@@ -157,6 +186,9 @@ function onModalOpen(overlay) {
 }
 
 function onModalClose() {
+  // Un-inert before restoring focus: focusing an element still inside an inert
+  // subtree (e.g. the bulk-edit trigger in the bulk toolbar) is a no-op.
+  clearBackgroundInert();
   if (lastTriggerElement instanceof HTMLElement) lastTriggerElement.focus();
   lastTriggerElement = null;
 }
