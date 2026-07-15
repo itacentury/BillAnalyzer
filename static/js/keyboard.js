@@ -115,7 +115,13 @@ function handleGlobalKeydown(event) {
       closeActiveModal(modal);
     } else if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
       event.preventDefault();
-      modal.querySelector(".modal-footer .btn-primary")?.click();
+      // Click the visible primary action, not the footer one by position: in the
+      // import modal's correction mode the footer Import button is display:none
+      // and the real action ("Re-import corrected") lives in the errors panel.
+      const primary = [...modal.querySelectorAll(".btn-primary")].find(
+        (button) => button.offsetParent !== null,
+      );
+      primary?.click();
     } else if (event.key === "Tab") {
       trapTab(event, modal);
     }
