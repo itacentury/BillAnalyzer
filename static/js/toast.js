@@ -68,11 +68,14 @@ let toastRemainingTime = UNDO_WINDOW_MS;
 /**
  * Run the pending commit callback exactly once, if any. Invoked whenever the
  * undo window resolves in favor of keeping the action (i.e. not undone).
+ * Returns whether a commit actually ran, so a caller reloading the list can tell
+ * an early finalize apart from a no-op re-entry and hide the now-stale toast.
  */
 export function commitPendingToast() {
   const commit = toastCommitCallback;
   toastCommitCallback = null;
   if (commit) commit();
+  return Boolean(commit);
 }
 
 /**

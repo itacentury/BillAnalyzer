@@ -4,7 +4,7 @@
 
 import { state, selectedInvoices } from "./state.js";
 import { els, getSearchValue, populateDropdown } from "./dom.js";
-import { showErrorToast, commitPendingToast } from "./toast.js";
+import { showErrorToast, commitPendingToast, hideUndoToast } from "./toast.js";
 import { renderInvoices } from "./render.js";
 import { loadStats } from "./stats.js";
 import { getCombobox, setCategoryOptions } from "./combobox.js";
@@ -102,8 +102,11 @@ async function fetchInvoices() {
   // Finalize any deferred delete/edit before reloading from the server, so a
   // pending row (still present server-side until commit) can't reappear in the
   // fresh list. commitPendingToast() nulls its callback first, so the reload it
-  // triggers re-enters here harmlessly.
-  commitPendingToast();
+  // triggers re-enters here harmlessly. When this reload was triggered by
+  // something other than the action's own commit (a filter change, or an
+  // overlapping action's commit), the toast is now stale — hide it so its Undo
+  // can't restore a snapshot that no longer matches the view or the server.
+  if (commitPendingToast()) hideUndoToast();
 
   const params = buildFilterParams();
   params.set("page", state.page);
