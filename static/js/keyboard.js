@@ -176,13 +176,23 @@ function handleGlobalKeydown(event) {
   }
 }
 
+/**
+ * The element to focus when a modal opens: an explicit [data-autofocus] target
+ * when present and visible, else the first focusable body control (falling back
+ * to the whole overlay). The explicit marker decouples initial focus from DOM
+ * order so reordering fields can't silently move it.
+ */
+function initialFocusTarget(overlay) {
+  const marked = overlay.querySelector("[data-autofocus]");
+  if (marked && marked.offsetParent !== null) return marked;
+  const body = overlay.querySelector(".modal-body");
+  return (body && getFocusable(body)[0]) || getFocusable(overlay)[0];
+}
+
 function onModalOpen(overlay) {
   lastTriggerElement = document.activeElement;
   setBackgroundInert(overlay);
-  // Prefer the first field in the body over the header's close button.
-  const body = overlay.querySelector(".modal-body");
-  const target = (body && getFocusable(body)[0]) || getFocusable(overlay)[0];
-  target?.focus();
+  initialFocusTarget(overlay)?.focus();
 }
 
 function onModalClose() {
