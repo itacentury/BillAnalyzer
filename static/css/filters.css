@@ -53,7 +53,8 @@
   border-radius: var(--radius-md);
 }
 
-.month-nav-btn {
+.month-nav-btn,
+.month-today-btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -67,7 +68,8 @@
   transition: all var(--transition);
 }
 
-.month-nav-btn:hover {
+.month-nav-btn:hover,
+.month-today-btn:hover {
   color: var(--text-primary);
   background: var(--bg-hover);
 }
@@ -255,6 +257,11 @@ body.stats-mode .filters-collapsible {
 
 body.stats-mode .month-reset-btn {
   display: block;
+}
+
+/* Stats view has its own text reset button; hide the icon to avoid duplication. */
+body.stats-mode .month-today-btn {
+  display: none;
 }
 
 @media (width <= 900px) {

@@ -117,6 +117,9 @@ export function setupFilterListeners() {
     .querySelector('[data-action="nav-reset"]')
     .addEventListener("click", resetToCurrent);
   document
+    .querySelector('[data-action="nav-today"]')
+    .addEventListener("click", resetToCurrent);
+  document
     .querySelector('[data-action="reset-filters"]')
     .addEventListener("click", resetAllFilters);
 
@@ -205,6 +208,7 @@ export function updateFilterDisplay() {
 
   const navButtons = document.querySelectorAll(".month-nav-btn");
   const resetBtn = document.querySelector(".month-reset-btn");
+  const todayBtn = document.querySelector('[data-action="nav-today"]');
 
   switch (state.filterMode) {
     case "week": {
@@ -241,6 +245,31 @@ export function updateFilterDisplay() {
       navButtons.forEach((btn) => (btn.style.visibility = "hidden"));
       resetBtn.style.display = "none";
       break;
+  }
+
+  // Reveal the jump-to-today button only once navigated away from the current
+  // period; display (not visibility) so it releases its slot in the pill.
+  todayBtn.style.display = isViewingCurrentPeriod() ? "none" : "";
+}
+
+// Whether state.currentDate falls in the same period as today for the active mode
+function isViewingCurrentPeriod() {
+  const today = new Date();
+  switch (state.filterMode) {
+    case "week":
+      return (
+        getISOWeek(state.currentDate) === getISOWeek(today) &&
+        getISOWeekYear(state.currentDate) === getISOWeekYear(today)
+      );
+    case "month":
+      return (
+        state.currentDate.getMonth() === today.getMonth() &&
+        state.currentDate.getFullYear() === today.getFullYear()
+      );
+    case "year":
+      return state.currentDate.getFullYear() === today.getFullYear();
+    default:
+      return true;
   }
 }
 
