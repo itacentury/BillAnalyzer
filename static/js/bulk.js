@@ -196,16 +196,15 @@ export function saveBulkEdit() {
         revert();
         return;
       }
-      // Preserve the current page. A bulk edit can rename stores / add or
-      // remove categories, so the lookup dropdowns still need refreshing.
-      // Skip the reconcile if a newer deferred action is still pending — it
-      // reconciles on its own commit. Prevents this earlier commit's reload from
-      // cutting short the newer action's undo window (and flickering its rows back in).
-      if (!hasPendingToast()) {
-        reloadCurrentPage();
-        loadStores();
-        loadCategories();
-      }
+      // A bulk edit can rename stores / add or remove categories, so the lookup
+      // dropdowns always need refreshing — no superseding action reconciles
+      // THIS edit's values. Only the invoice-list reconcile is skipped while a
+      // newer deferred action is still pending (it reconciles on its own
+      // commit), so this earlier commit's reload can't cut short the newer
+      // action's undo window or flicker its rows back in.
+      loadStores();
+      loadCategories();
+      if (!hasPendingToast()) reloadCurrentPage();
     } catch {
       showErrorToast("Failed to update");
       revert();
