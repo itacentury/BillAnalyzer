@@ -23,6 +23,7 @@ import { setupBulkListeners } from "./bulk.js";
 import { setupStatsListeners } from "./stats.js";
 import { setupImportListeners } from "./import.js";
 import { setupComboboxes } from "./combobox.js";
+import { initToastListeners } from "./toast.js";
 
 // Register Service Worker for PWA
 if ("serviceWorker" in navigator) {
@@ -58,6 +59,7 @@ function init() {
   setupBulkListeners();
   setupStatsListeners();
   setupImportListeners();
+  initToastListeners();
 }
 
 // Module scripts run after parsing, so DOMContentLoaded may already have fired.

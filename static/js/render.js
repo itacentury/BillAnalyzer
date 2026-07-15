@@ -38,6 +38,30 @@ function itemRowsHtml(items) {
     .join("");
 }
 
+/**
+ * Capture the current list view (rows + summary totals) so a deferred mutation
+ * can be reverted client-side without a server round-trip. Only one deferred
+ * operation is ever open at a time (the toast commits the previous one), so a
+ * full snapshot is sufficient.
+ */
+export function snapshotList() {
+  return {
+    invoices: [...state.invoices],
+    totalCount: state.totalCount,
+    totalSum: state.totalSum,
+  };
+}
+
+/**
+ * Restore a snapshot taken by `snapshotList` and re-render (undo path).
+ */
+export function restoreList(snapshot) {
+  state.invoices = snapshot.invoices;
+  state.totalCount = snapshot.totalCount;
+  state.totalSum = snapshot.totalSum;
+  renderInvoices();
+}
+
 export function renderInvoices() {
   const { invoiceList } = els();
   // Selection is intentionally not pruned to the current page: it spans the

@@ -3,7 +3,8 @@
  */
 
 import { state, selectedInvoices } from "./state.js";
-import { els, getSearchValue, populateDropdown, showToast } from "./dom.js";
+import { els, getSearchValue, populateDropdown } from "./dom.js";
+import { showErrorToast, commitPendingToast } from "./toast.js";
 import { renderInvoices } from "./render.js";
 import { loadStats } from "./stats.js";
 import { getCombobox, setCategoryOptions } from "./combobox.js";
@@ -98,6 +99,12 @@ export async function fetchInvoiceItems(id) {
 }
 
 async function fetchInvoices() {
+  // Finalize any deferred delete/edit before reloading from the server, so a
+  // pending row (still present server-side until commit) can't reappear in the
+  // fresh list. commitPendingToast() nulls its callback first, so the reload it
+  // triggers re-enters here harmlessly.
+  commitPendingToast();
+
   const params = buildFilterParams();
   params.set("page", state.page);
   params.set("page_size", state.pageSize);
@@ -124,7 +131,7 @@ async function fetchInvoices() {
     }
   } catch (error) {
     if (error.name === "AbortError") return;
-    showToast("Failed to load invoices", "error");
+    showErrorToast("Failed to load invoices");
   } finally {
     if (inFlightController === controller) inFlightController = null;
   }

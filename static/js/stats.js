@@ -4,7 +4,8 @@
  */
 
 import { state, chartColors } from "./state.js";
-import { els, escapeHtml, formatCurrency, showToast } from "./dom.js";
+import { els, escapeHtml, formatCurrency } from "./dom.js";
+import { showErrorToast } from "./toast.js";
 
 /**
  * Toggle the visibility of advanced filters on mobile.
@@ -80,7 +81,7 @@ export async function loadStats() {
     const data = await response.json();
     renderStats(data);
   } catch {
-    showToast("Failed to load statistics", "error");
+    showErrorToast("Failed to load statistics");
   }
 }
 

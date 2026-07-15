@@ -1,17 +1,23 @@
 /**
  * Single-invoice create/update/delete actions.
+ *
+ * Delete and edit are deferred: the change is reflected in the list immediately
+ * but only sent to the server when the undo window closes (see toast.js). Undo
+ * reverts the local snapshot without ever touching the server.
  */
 
 import { state, selectedInvoices } from "./state.js";
-import { els, hasOption, showToast } from "./dom.js";
+import { els, hasOption } from "./dom.js";
 import {
   loadCategories,
   loadInvoices,
   loadStores,
   reloadCurrentPage,
 } from "./api.js";
-import { closeAddModal, showConfirmModal } from "./modals.js";
+import { closeAddModal } from "./modals.js";
 import { getCombobox } from "./combobox.js";
+import { showUndoToast, showNoticeToast, showErrorToast } from "./toast.js";
+import { snapshotList, restoreList, renderInvoices } from "./render.js";
 
 export async function saveInvoice() {
   const date = document.querySelector('[data-el="invoice-date"]').value;
@@ -20,7 +26,7 @@ export async function saveInvoice() {
     document.querySelector('[data-el="invoice-type"]').value.trim() || null;
 
   if (!date || !store) {
-    showToast("Please fill in date and store", "error");
+    showErrorToast("Please fill in date and store");
     return;
   }
 
@@ -39,70 +45,139 @@ export async function saveInvoice() {
     0,
   );
 
-  // Capture before closeAddModal() clears state.editingInvoiceId below.
-  const isEdit = Boolean(state.editingInvoiceId);
+  const editingId = state.editingInvoiceId;
+  const payload = { date, store, category: type, total, items };
 
-  try {
-    let url = "/api/invoices";
-    let method = "POST";
-    let successMessage = "Invoice saved";
-
-    if (state.editingInvoiceId) {
-      url = `/api/invoices/${state.editingInvoiceId}`;
-      method = "PUT";
-      successMessage = "Invoice updated";
-    }
-
-    const response = await fetch(url, {
-      method: method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ date, store, category: type, total, items }),
-    });
-
-    if (response.ok) {
-      showToast(successMessage, "success");
-      closeAddModal();
-
-      // Only reload the lookups when this save introduced a new store/category.
-      // The category filter is a combobox (hidden input, no .options), so its
-      // membership check goes through the combobox API rather than hasOption().
-      const { storeFilter } = els();
-      const typeCombobox = getCombobox("type-filter");
-      if (!hasOption(storeFilter, store)) loadStores();
-      if (type && typeCombobox && !typeCombobox.hasOption(type))
-        loadCategories();
-      // Editing keeps the user on the current page; a new invoice jumps to
-      // page 1 so it is visible at the top of the date-descending sort.
-      if (isEdit) reloadCurrentPage();
-      else loadInvoices();
-    } else {
-      showToast("Failed to save", "error");
-    }
-  } catch {
-    showToast("Failed to save", "error");
+  if (editingId) {
+    deferInvoiceUpdate(editingId, payload);
+  } else {
+    await createInvoice(payload);
   }
 }
 
-export async function deleteInvoice(id) {
-  const confirmed = await showConfirmModal(
-    "Are you sure you want to delete this invoice?",
-  );
-  if (!confirmed) return;
-
+/** Create a new invoice immediately (create has no useful deferred undo). */
+async function createInvoice(payload) {
   try {
-    const response = await fetch(`/api/invoices/${id}`, { method: "DELETE" });
-    if (response.ok) {
-      showToast("Invoice deleted", "success");
-      // Drop the id from any active selection; without render-time pruning it
-      // would otherwise linger and inflate the bulk-action count.
-      selectedInvoices.delete(id);
+    const response = await fetch("/api/invoices", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      showErrorToast("Failed to save");
+      return;
+    }
+
+    showNoticeToast("Invoice saved");
+    closeAddModal();
+    refreshLookupsFor(payload.store, payload.category);
+    // A new invoice jumps to page 1 so it is visible at the top of the
+    // date-descending sort.
+    loadInvoices();
+  } catch {
+    showErrorToast("Failed to save");
+  }
+}
+
+/**
+ * Apply an edit optimistically and defer the PUT behind an undo toast. The
+ * visible row is replaced (not mutated) so the snapshot keeps the old values.
+ */
+function deferInvoiceUpdate(id, payload) {
+  const snapshot = snapshotList();
+  const index = state.invoices.findIndex((invoice) => invoice.id === id);
+  if (index !== -1) {
+    state.invoices[index] = {
+      ...state.invoices[index],
+      date: payload.date,
+      store: payload.store,
+      category: payload.category,
+      total: payload.total,
+    };
+  }
+  renderInvoices();
+  closeAddModal();
+
+  const commit = async () => {
+    try {
+      const response = await fetch(`/api/invoices/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) {
+        showErrorToast("Failed to update");
+        restoreList(snapshot);
+        return;
+      }
+      refreshLookupsFor(payload.store, payload.category);
+      reloadCurrentPage();
+    } catch {
+      showErrorToast("Failed to update");
+      restoreList(snapshot);
+    }
+  };
+
+  showUndoToast("Invoice updated", {
+    onUndo: () => restoreList(snapshot),
+    onCommit: commit,
+  });
+}
+
+/**
+ * Reload the store/category lookups only when a save introduced a value the
+ * dropdowns don't have yet. The category filter is a combobox (hidden input, no
+ * `.options`), so its membership check goes through the combobox API.
+ */
+function refreshLookupsFor(store, category) {
+  const { storeFilter } = els();
+  const typeCombobox = getCombobox("type-filter");
+  if (!hasOption(storeFilter, store)) loadStores();
+  if (category && typeCombobox && !typeCombobox.hasOption(category)) {
+    loadCategories();
+  }
+}
+
+/**
+ * Remove an invoice optimistically and defer the DELETE behind an undo toast.
+ * The row already exists server-side (soft delete happens only on commit), so
+ * undo just restores the local snapshot.
+ */
+export function deleteInvoice(id) {
+  const snapshot = snapshotList();
+  const removed = state.invoices.find((invoice) => invoice.id === id);
+  const wasSelected = selectedInvoices.has(id);
+
+  state.invoices = state.invoices.filter((invoice) => invoice.id !== id);
+  selectedInvoices.delete(id);
+  if (removed) {
+    state.totalCount -= 1;
+    state.totalSum -= Number(removed.total);
+  }
+  renderInvoices();
+
+  const commit = async () => {
+    try {
+      const response = await fetch(`/api/invoices/${id}`, { method: "DELETE" });
+      if (!response.ok) {
+        showErrorToast("Failed to delete");
+        restoreList(snapshot);
+        return;
+      }
       // A store/category option lingering after its last invoice is deleted is
       // cosmetic and self-heals on the next lookup load, so reload the list only.
       reloadCurrentPage();
-    } else {
-      showToast("Failed to delete", "error");
+    } catch {
+      showErrorToast("Failed to delete");
+      restoreList(snapshot);
     }
-  } catch {
-    showToast("Failed to delete", "error");
-  }
+  };
+
+  const undo = () => {
+    if (wasSelected) selectedInvoices.add(id);
+    restoreList(snapshot);
+  };
+
+  showUndoToast("Invoice deleted", { onUndo: undo, onCommit: commit });
 }

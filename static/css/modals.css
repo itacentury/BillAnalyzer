@@ -199,40 +199,6 @@
   color: #40593a;
 }
 
-/* Confirm delete (icon tile + solid danger action) */
-.confirm-delete-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  margin-bottom: 12px;
-  color: var(--danger-subtle-text);
-  background: var(--danger-subtle-bg);
-  border-radius: 12px;
-}
-
-.confirm-delete-title {
-  margin-bottom: 6px;
-  font-size: 0.9375rem;
-  font-weight: 700;
-}
-
-.confirm-delete-message {
-  font-size: 0.75rem;
-  line-height: 1.6;
-  color: var(--text-muted);
-}
-
-.btn-danger-solid {
-  color: var(--accent-text-on);
-  background: var(--danger-solid);
-}
-
-.btn-danger-solid:hover {
-  background: #9c4a34;
-}
-
 /* JSON Import */
 .json-textarea {
   min-height: 300px;

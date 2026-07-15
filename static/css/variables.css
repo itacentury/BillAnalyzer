@@ -65,6 +65,8 @@
   --shadow-modal: 0 24px 60px rgb(58 51 42 / 35%);
   --shadow-toolbar: 0 10px 28px rgb(58 51 42 / 35%);
   --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-fast: 0.15s;
+  --transition-normal: 0.25s;
 
   /* Legacy compatibility shim — remapped to warm equivalents so component
      stylesheets keep rendering until each is restyled in its own milestone.

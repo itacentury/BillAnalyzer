@@ -73,6 +73,10 @@
     />
     <link
       rel="stylesheet"
+      href="{{ url_for('static', filename='css/toast.css') }}"
+    />
+    <link
+      rel="stylesheet"
       href="{{ url_for('static', filename='css/stats.css') }}"
     />
   </head>
@@ -91,10 +95,10 @@
     {% include "partials/modals/import.html" %}
     {% include "partials/modals/bulk-edit.html" %}
     {% include "partials/bulk-toolbar.html" %}
-    {% include "partials/modals/confirm-delete.html" %}
 
-    <!-- Toast Container -->
-    <div class="toast-container" data-el="toast-container"></div>
+    <!-- Toasts must follow the bulk-action toolbar in the DOM so toast.css can
+         lift them above it via the general-sibling combinator. -->
+    {% include "partials/toasts.html" %}
 
     <script
       src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"

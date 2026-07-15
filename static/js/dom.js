@@ -149,21 +149,6 @@ export function hasOption(select, value) {
 }
 
 /**
- * Show a transient toast notification.
- */
-export function showToast(message, type = "success") {
-  const container = document.querySelector('[data-el="toast-container"]');
-  const toast = document.createElement("div");
-  toast.className = `toast ${type}`;
-  toast.innerHTML = `
-        <span>${type === "success" ? "✓" : "✕"}</span>
-        <span>${message}</span>
-    `;
-  container.appendChild(toast);
-  setTimeout(() => toast.remove(), 3000);
-}
-
-/**
  * Get the current search value from the search input.
  */
 export function getSearchValue() {

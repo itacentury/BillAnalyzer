@@ -3,16 +3,21 @@
  */
 
 import { state, selectedInvoices } from "./state.js";
-import { showToast } from "./dom.js";
 import {
   fetchFilteredIds,
   loadCategories,
   loadStores,
   reloadCurrentPage,
 } from "./api.js";
-import { renderInvoices, updateBulkActionToolbar } from "./render.js";
-import { lockScroll, unlockScroll, showConfirmModal } from "./modals.js";
+import {
+  renderInvoices,
+  updateBulkActionToolbar,
+  snapshotList,
+  restoreList,
+} from "./render.js";
+import { lockScroll, unlockScroll } from "./modals.js";
 import { getCombobox } from "./combobox.js";
+import { showUndoToast, showErrorToast } from "./toast.js";
 
 export function toggleInvoiceSelection(invoiceId, isSelected) {
   if (isSelected) {
@@ -50,7 +55,7 @@ export async function selectAllInvoices() {
     const ids = await fetchFilteredIds();
     ids.forEach((id) => selectedInvoices.add(id));
   } catch {
-    showToast("Failed to select all invoices", "error");
+    showErrorToast("Failed to select all invoices");
     renderInvoices();
     return;
   }
@@ -128,7 +133,7 @@ export function closeBulkEditModal() {
   categoryCombobox.setPlaceholder("");
 }
 
-export async function saveBulkEdit() {
+export function saveBulkEdit() {
   const newStore = document
     .querySelector('[data-el="bulk-edit-store"]')
     .value.trim();
@@ -137,11 +142,12 @@ export async function saveBulkEdit() {
     .value.trim();
 
   if (!newStore && !newCategory) {
-    showToast("Please fill in at least one field", "error");
+    showErrorToast("Please fill in at least one field");
     return;
   }
 
   const ids = [...selectedInvoices];
+  const idSet = new Set(ids);
   const payload = { ids };
 
   if (newStore) {
@@ -152,29 +158,55 @@ export async function saveBulkEdit() {
     payload.category = newCategory;
   }
 
-  try {
-    const response = await fetch("/api/invoices/bulk-update", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+  // Apply optimistically to the visible selected rows (replace, don't mutate, so
+  // the snapshot keeps the old values). Off-page selected rows are updated on
+  // the server at commit time; the deferred PUT carries every selected id.
+  const snapshot = snapshotList();
+  state.invoices = state.invoices.map((invoice) => {
+    if (!idSet.has(invoice.id)) return invoice;
+    const updated = { ...invoice };
+    if (newStore) updated.store = newStore;
+    if (newCategory) updated.category = newCategory;
+    return updated;
+  });
+  closeBulkEditModal();
+  selectedInvoices.clear();
+  renderInvoices();
 
-    const result = await response.json();
-    if (result.success) {
-      showToast(`${result.updated} invoice(s) updated`, "success");
-      closeBulkEditModal();
-      selectedInvoices.clear();
+  const count = ids.length;
+  const revert = () => {
+    ids.forEach((id) => selectedInvoices.add(id));
+    restoreList(snapshot);
+  };
+
+  const commit = async () => {
+    try {
+      const response = await fetch("/api/invoices/bulk-update", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const result = await response.json();
+      if (!result.success) {
+        showErrorToast("Failed to update");
+        revert();
+        return;
+      }
       // Preserve the current page. A bulk edit can rename stores / add or
       // remove categories, so the lookup dropdowns still need refreshing.
       reloadCurrentPage();
       loadStores();
       loadCategories();
-    } else {
-      showToast("Failed to update", "error");
+    } catch {
+      showErrorToast("Failed to update");
+      revert();
     }
-  } catch {
-    showToast("Failed to update", "error");
-  }
+  };
+
+  showUndoToast(`${count} invoice${count !== 1 ? "s" : ""} updated`, {
+    onUndo: revert,
+    onCommit: commit,
+  });
 }
 
 /**
@@ -214,37 +246,57 @@ export function setupBulkListeners() {
   });
 }
 
-export async function bulkDeleteInvoices() {
+export function bulkDeleteInvoices() {
   const count = selectedInvoices.size;
   if (count === 0) return;
 
-  const confirmed = await showConfirmModal(
-    `Are you sure you want to permanently delete ${count} invoice${
-      count !== 1 ? "s" : ""
-    }?`,
-  );
-
-  if (!confirmed) return;
-
   const ids = [...selectedInvoices];
+  const idSet = new Set(ids);
 
-  try {
-    const response = await fetch("/api/invoices/bulk-delete", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ids }),
-    });
+  // Optimistically drop the selected rows. totalCount reflects the full
+  // selection (may span pages); totalSum can only subtract the visible rows'
+  // totals — reloadCurrentPage on commit reconciles both with the server.
+  const snapshot = snapshotList();
+  const removedVisible = state.invoices.filter((invoice) =>
+    idSet.has(invoice.id),
+  );
+  state.invoices = state.invoices.filter((invoice) => !idSet.has(invoice.id));
+  state.totalCount -= ids.length;
+  state.totalSum -= removedVisible.reduce(
+    (sum, invoice) => sum + Number(invoice.total),
+    0,
+  );
+  selectedInvoices.clear();
+  renderInvoices();
 
-    const result = await response.json();
-    if (result.success) {
-      showToast(`${result.deleted} invoice(s) deleted`, "success");
-      selectedInvoices.clear();
+  const revert = () => {
+    ids.forEach((id) => selectedInvoices.add(id));
+    restoreList(snapshot);
+  };
+
+  const commit = async () => {
+    try {
+      const response = await fetch("/api/invoices/bulk-delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids }),
+      });
+      const result = await response.json();
+      if (!result.success) {
+        showErrorToast("Failed to delete");
+        revert();
+        return;
+      }
       // Reload the list only; stale lookup options self-heal (see deleteInvoice).
       reloadCurrentPage();
-    } else {
-      showToast("Failed to delete", "error");
+    } catch {
+      showErrorToast("Failed to delete");
+      revert();
     }
-  } catch {
-    showToast("Failed to delete", "error");
-  }
+  };
+
+  showUndoToast(`${count} invoice${count !== 1 ? "s" : ""} deleted`, {
+    onUndo: revert,
+    onCommit: commit,
+  });
 }
