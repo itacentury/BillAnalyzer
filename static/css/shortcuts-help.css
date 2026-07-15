@@ -29,6 +29,12 @@
   text-align: right;
 }
 
+.shortcut-row .shortcut-sep {
+  align-self: center;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
 .shortcut-row kbd {
   min-width: 1.5rem;
   padding: 2px 6px;
