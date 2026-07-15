@@ -16,7 +16,12 @@ import {
 } from "./api.js";
 import { closeAddModal } from "./modals.js";
 import { getCombobox } from "./combobox.js";
-import { showUndoToast, showNoticeToast, showErrorToast } from "./toast.js";
+import {
+  showUndoToast,
+  showNoticeToast,
+  showErrorToast,
+  hasPendingToast,
+} from "./toast.js";
 import { snapshotList, restoreList, renderInvoices } from "./render.js";
 
 export async function saveInvoice() {
@@ -115,7 +120,10 @@ function deferInvoiceUpdate(id, payload) {
         return;
       }
       refreshLookupsFor(payload.store, payload.category);
-      reloadCurrentPage();
+      // Skip the reconcile if a newer deferred action is still pending — it
+      // reconciles on its own commit. Prevents this earlier commit's reload from
+      // cutting short the newer action's undo window (and flickering its row back in).
+      if (!hasPendingToast()) reloadCurrentPage();
     } catch {
       showErrorToast("Failed to update");
       restoreList(snapshot);
@@ -174,7 +182,10 @@ export function deleteInvoice(id) {
       }
       // A store/category option lingering after its last invoice is deleted is
       // cosmetic and self-heals on the next lookup load, so reload the list only.
-      reloadCurrentPage();
+      // Skip the reconcile if a newer deferred action is still pending — it
+      // reconciles on its own commit. Prevents this earlier commit's reload from
+      // cutting short the newer action's undo window (and flickering its row back in).
+      if (!hasPendingToast()) reloadCurrentPage();
     } catch {
       showErrorToast("Failed to delete");
       restoreList(snapshot);

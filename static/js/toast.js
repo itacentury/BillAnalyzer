@@ -78,6 +78,15 @@ export function commitPendingToast() {
 }
 
 /**
+ * Whether a deferred action's commit is still armed (a toast is pending). Lets a
+ * just-finished commit detect it was superseded by a newer action and defer the
+ * reconcile reload to that newer action's own commit.
+ */
+export function hasPendingToast() {
+  return Boolean(toastCommitCallback);
+}
+
+/**
  * Show an undo toast with the given message.
  *
  * @param {string} message - Text to display in the toast.

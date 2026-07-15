@@ -17,7 +17,7 @@ import {
 } from "./render.js";
 import { lockScroll, unlockScroll } from "./modals.js";
 import { getCombobox } from "./combobox.js";
-import { showUndoToast, showErrorToast } from "./toast.js";
+import { showUndoToast, showErrorToast, hasPendingToast } from "./toast.js";
 
 export function toggleInvoiceSelection(invoiceId, isSelected) {
   if (isSelected) {
@@ -197,9 +197,14 @@ export function saveBulkEdit() {
       }
       // Preserve the current page. A bulk edit can rename stores / add or
       // remove categories, so the lookup dropdowns still need refreshing.
-      reloadCurrentPage();
-      loadStores();
-      loadCategories();
+      // Skip the reconcile if a newer deferred action is still pending — it
+      // reconciles on its own commit. Prevents this earlier commit's reload from
+      // cutting short the newer action's undo window (and flickering its rows back in).
+      if (!hasPendingToast()) {
+        reloadCurrentPage();
+        loadStores();
+        loadCategories();
+      }
     } catch {
       showErrorToast("Failed to update");
       revert();
@@ -294,7 +299,10 @@ export function bulkDeleteInvoices() {
         return;
       }
       // Reload the list only; stale lookup options self-heal (see deleteInvoice).
-      reloadCurrentPage();
+      // Skip the reconcile if a newer deferred action is still pending — it
+      // reconciles on its own commit. Prevents this earlier commit's reload from
+      // cutting short the newer action's undo window (and flickering its rows back in).
+      if (!hasPendingToast()) reloadCurrentPage();
     } catch {
       showErrorToast("Failed to delete");
       revert();
