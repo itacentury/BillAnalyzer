@@ -86,6 +86,11 @@ export function setupDrawerListeners() {
       event.target === els().searchInput
     ) {
       closeMobileSearch();
+    } else if (document.body.classList.contains("filter-sheet-open")) {
+      // Let an open combobox dropdown inside the sheet win (same rule as the
+      // modal Escape handling in keyboard.js); a second Escape closes the sheet.
+      if (event.defaultPrevented) return;
+      document.querySelector('[data-action="close-filter-sheet"]').click();
     }
   });
 
