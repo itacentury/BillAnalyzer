@@ -349,6 +349,17 @@
   align-items: center;
 }
 
+/* "Select All" toggle: pressed (everything selected) switches to the accent. */
+.bulk-action-buttons [data-action="select-all"][aria-pressed="true"] {
+  color: var(--accent-text-on);
+  background: var(--accent);
+  border-color: transparent;
+}
+
+.bulk-action-buttons [data-action="select-all"][aria-pressed="true"]:hover {
+  background: var(--accent-hover);
+}
+
 /* ✕ dismiss button: dismisses the selection (data-action="deselect-all"). */
 .btn-bulk-close {
   display: flex;

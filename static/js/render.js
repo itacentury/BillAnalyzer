@@ -346,6 +346,11 @@ function handleListKeydown(event) {
 export function updateBulkActionToolbar() {
   const toolbar = document.querySelector('[data-el="bulk-action-toolbar"]');
   const count = selectedInvoices.size;
+  const allSelected = state.totalCount > 0 && count >= state.totalCount;
+
+  toolbar
+    .querySelector('[data-action="select-all"]')
+    .setAttribute("aria-pressed", String(allSelected));
 
   if (count > 0) {
     toolbar.classList.add("visible");
