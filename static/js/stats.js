@@ -4,12 +4,10 @@
  */
 
 import { state, chartColors } from "./state.js";
-import { els, escapeHtml, formatCurrency } from "./dom.js";
+import { els, escapeHtml, formatCurrency, mobileViewport } from "./dom.js";
 import { showErrorToast } from "./toast.js";
 import { lockScroll, unlockScroll } from "./modals.js";
 import { closeMobileSearch } from "./drawer.js";
-
-const mobileViewport = window.matchMedia("(width <= 640px)");
 
 /**
  * Toggle the advanced filter panel — an inline collapsible on desktop, a

@@ -5,6 +5,9 @@
  * without creating cycles.
  */
 
+/** Shared mobile breakpoint — keep in sync with the CSS `(width <= 640px)` media queries. */
+export const mobileViewport = window.matchMedia("(width <= 640px)");
+
 let cachedEls = null;
 
 /**

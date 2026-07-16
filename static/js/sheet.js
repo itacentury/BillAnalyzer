@@ -5,9 +5,9 @@
  * threshold) or snaps it back.
  */
 
-const CLOSE_THRESHOLD_PX = 80;
+import { mobileViewport } from "./dom.js";
 
-const mobileViewport = window.matchMedia("(width <= 640px)");
+const CLOSE_THRESHOLD_PX = 80;
 
 /** Return the draggable sheet element for a grabber/header hit, if any. */
 function sheetFromHandle(target) {
