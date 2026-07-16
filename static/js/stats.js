@@ -22,9 +22,11 @@ export function toggleAdvancedFilters() {
   const visible = collapsible.classList.toggle("visible");
   toggleBtn.classList.toggle("active");
 
-  if (!mobileViewport.matches) return;
-  document.body.classList.toggle("filter-sheet-open", visible);
-  if (visible) lockScroll();
+  // Cleanup runs regardless of viewport: the sheet may have been opened on
+  // mobile and closed after resizing across the breakpoint.
+  const mobileOpen = visible && mobileViewport.matches;
+  document.body.classList.toggle("filter-sheet-open", mobileOpen);
+  if (mobileOpen) lockScroll();
   else unlockScroll();
 }
 
