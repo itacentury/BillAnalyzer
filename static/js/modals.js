@@ -223,6 +223,23 @@ export function setupModalListeners() {
     if (removeButton) removeItemRow(removeButton);
   });
 
+  // Clicking the dimmed backdrop closes any dialog via its own ✕ button, so
+  // each modal's close/reset logic stays in one place. Track where the press
+  // started: a drag that begins inside the dialog (e.g. selecting text in an
+  // input) and is released over the backdrop fires click on the overlay and
+  // must not close it.
+  document.querySelectorAll(".modal-overlay").forEach((overlay) => {
+    let pressStartedOnOverlay = false;
+    overlay.addEventListener("pointerdown", (event) => {
+      pressStartedOnOverlay = event.target === overlay;
+    });
+    overlay.addEventListener("click", (event) => {
+      if (pressStartedOnOverlay && event.target === overlay) {
+        overlay.querySelector(".modal-close").click();
+      }
+    });
+  });
+
   // Import modal
   const importModal = document.querySelector('[data-el="import-modal"]');
   importModal
