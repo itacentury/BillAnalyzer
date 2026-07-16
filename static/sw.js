@@ -3,7 +3,7 @@
  * Provides offline support and caching strategies.
  */
 
-const CACHE_NAME = "summa-cache-v80";
+const CACHE_NAME = "summa-cache-v81";
 // JS modules and CSS files are not listed here: they are discovered at install
 // time from the server-rendered /static/js-manifest.json and
 // /static/css-manifest.json (which glob static/js/*.js and static/css/*.css),

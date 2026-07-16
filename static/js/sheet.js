@@ -50,8 +50,12 @@ export function setupSheetGestures() {
     const dragged = sheet;
     sheet = null;
     dragged.style.transition = "";
-    dragged.style.transform = "";
+    // Close first, clear the inline transform after: the inline value still
+    // holds the dragged position when the close retargets the CSS transform,
+    // so the filter sheet's close transition continues downward from the
+    // finger instead of snapping back to 0 first.
     if (deltaY > CLOSE_THRESHOLD_PX) closeSheet(dragged);
+    dragged.style.transform = "";
   };
 
   document.addEventListener("pointerup", release);
