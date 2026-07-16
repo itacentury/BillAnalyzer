@@ -68,6 +68,11 @@
   --transition-fast: 0.15s;
   --transition-normal: 0.25s;
 
+  /* Mobile search row: 28px content + 2×9px padding + 2×1px border.
+     Max-height transition target; must stay >= the row's natural height
+     or the open state clips. Also budgeted in .invoice-list (invoices.css). */
+  --mobile-search-height: 48px;
+
   /* Legacy compatibility shim — remapped to warm equivalents so component
      stylesheets keep rendering until each is restyled in its own milestone.
      Pruned in the final polish milestone once no rule references them. */

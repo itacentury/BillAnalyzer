@@ -410,9 +410,9 @@
     max-height: calc(100dvh - 310px);
   }
 
-  /* The expanded search row adds 56px (48px field + 8px row spacing). */
+  /* The expanded search row adds its height + 8px row spacing. */
   body.mobile-search-open .invoice-list {
-    max-height: calc(100dvh - 366px);
+    max-height: calc(100dvh - 310px - var(--mobile-search-height) - 8px);
   }
 
   .invoice-header {

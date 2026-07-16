@@ -350,7 +350,7 @@ body.stats-mode .filters-collapsible {
 
   body.mobile-search-open .filter-search {
     display: flex;
-    max-height: 48px;
+    max-height: var(--mobile-search-height);
     padding-block: 9px;
     margin-bottom: 8px;
     border-block-width: 1px;
