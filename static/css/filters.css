@@ -282,8 +282,14 @@ body.stats-mode .filters-collapsible {
   .month-navigator {
     display: flex;
     flex: 1;
-    justify-content: space-between;
     border-radius: 10px;
+  }
+
+  /* The label absorbs the flexible width so the nav buttons and the
+     conditionally shown today button stay compact at the edges — with
+     justify-content: space-between the today button would open a huge gap. */
+  .month-display {
+    flex: 1;
   }
 
   .month-nav-btn,
