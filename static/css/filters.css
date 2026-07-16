@@ -292,8 +292,11 @@ body.stats-mode .filters-collapsible {
     height: 31px;
   }
 
+  /* The row's align-items: center would collapse the button to its content
+     height; stretch it to match the month navigator instead. */
   .filter-button {
     gap: 6px;
+    align-self: stretch;
     padding: 0 13px;
     border-radius: 10px;
   }
