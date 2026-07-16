@@ -150,25 +150,6 @@ export function formatCurrency(amount) {
 }
 
 /**
- * Fill a <select> with an "all" placeholder followed by the given values.
- */
-export function populateDropdown(select, values, allLabel) {
-  const options = [`<option value="">${allLabel}</option>`];
-  for (const value of values) {
-    const safe = escapeHtml(value);
-    options.push(`<option value="${safe}">${safe}</option>`);
-  }
-  select.innerHTML = options.join("");
-}
-
-/**
- * Return whether a <select> already contains an option with the given value.
- */
-export function hasOption(select, value) {
-  return [...select.options].some((option) => option.value === value);
-}
-
-/**
  * Get the current search value from the search input.
  */
 export function getSearchValue() {

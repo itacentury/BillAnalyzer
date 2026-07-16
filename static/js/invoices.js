@@ -7,7 +7,6 @@
  */
 
 import { state, selectedInvoices } from "./state.js";
-import { els, hasOption } from "./dom.js";
 import {
   loadCategories,
   loadInvoices,
@@ -142,13 +141,14 @@ function deferInvoiceUpdate(id, payload) {
 
 /**
  * Reload the store/category lookups only when a save introduced a value the
- * dropdowns don't have yet. The category filter is a combobox (hidden input, no
- * `.options`), so its membership check goes through the combobox API.
+ * filter comboboxes don't have yet.
  */
 function refreshLookupsFor(store, category) {
-  const { storeFilter } = els();
+  const storeCombobox = getCombobox("store-filter");
   const typeCombobox = getCombobox("type-filter");
-  if (!hasOption(storeFilter, store)) loadStores();
+  if (store && storeCombobox && !storeCombobox.hasOption(store)) {
+    loadStores();
+  }
   if (category && typeCombobox && !typeCombobox.hasOption(category)) {
     loadCategories();
   }

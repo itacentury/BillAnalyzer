@@ -1,4 +1,4 @@
-{% from "partials/_macros.html" import modal_close_button, category_combobox %}
+{% from "partials/_macros.html" import modal_close_button, combobox %}
 <!-- Bulk Edit Modal -->
 <div class="modal-overlay" data-el="bulk-edit-modal">
   <div
@@ -27,7 +27,7 @@
       </div>
       <div class="form-group">
         <label class="form-label">New Category</label>
-        {{ category_combobox("bulk-edit-category") }}
+        {{ combobox("bulk-edit-category") }}
       </div>
     </div>
     <div class="modal-footer">

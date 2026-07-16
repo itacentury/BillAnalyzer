@@ -43,13 +43,15 @@ if ("serviceWorker" in navigator) {
 }
 
 function init() {
-  // Instantiate the category comboboxes before the first data load, so
-  // loadCategories() has live instances to feed options into.
+  // Instantiate the comboboxes before the first data load, so loadStores() and
+  // loadCategories() have live instances to feed options into.
+  const reloadOnFilterChange = () => {
+    updateFilterBadge();
+    loadInvoices();
+  };
   setupComboboxes({
-    "type-filter": () => {
-      updateFilterBadge();
-      loadInvoices();
-    },
+    "store-filter": reloadOnFilterChange,
+    "type-filter": reloadOnFilterChange,
   });
 
   applyFilter("month");

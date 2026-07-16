@@ -1,4 +1,4 @@
-{% from "partials/_macros.html" import category_combobox %}
+{% from "partials/_macros.html" import combobox %}
 <!-- Filters -->
 <div class="filters">
   <div class="filters-row">
@@ -150,13 +150,11 @@
       <div class="filters-panel">
         <div class="form-group">
           <label class="form-label">Store</label>
-          <select class="form-select" data-el="store-filter">
-            <option value="">All Stores</option>
-          </select>
+          {{ combobox("store-filter", "filter", "store") }}
         </div>
         <div class="form-group">
           <label class="form-label">Category</label>
-          {{ category_combobox("type-filter", "filter") }}
+          {{ combobox("type-filter", "filter") }}
         </div>
         <div class="form-group">
           <label class="form-label">From</label>
