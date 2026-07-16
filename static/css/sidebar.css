@@ -1,7 +1,7 @@
 /* App shell + left sidebar navigation (top bar + drawer on mobile). */
 .app {
   display: flex;
-  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .app .container {

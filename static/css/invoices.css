@@ -42,7 +42,7 @@
 
 .invoice-list {
   min-height: 150px;
-  max-height: min(600px, calc(100vh - 260px));
+  max-height: min(600px, calc(100dvh - 260px));
   overflow-y: auto;
 }
 
@@ -400,6 +400,19 @@
 
   .section-total {
     font-size: 14px;
+  }
+
+  /* The mobile chrome around the list (sticky top bar + container padding +
+     the two filter rows + section header + pagination) measures ~306px, well
+     above the 260px desktop budget — without this the page overflows the
+     viewport and clips the pagination. */
+  .invoice-list {
+    max-height: calc(100dvh - 310px);
+  }
+
+  /* The expanded search row adds 56px (48px field + 8px row spacing). */
+  body.mobile-search-open .invoice-list {
+    max-height: calc(100dvh - 366px);
   }
 
   .invoice-header {
