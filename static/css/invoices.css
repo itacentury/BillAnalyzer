@@ -104,6 +104,11 @@
   color: var(--text-muted);
 }
 
+/* The compact DD/MM variant only appears in the two-line mobile row. */
+.invoice-date-short {
+  display: none;
+}
+
 .invoice-store {
   font-size: 0.9375rem;
   font-weight: 500;
@@ -363,36 +368,68 @@
   background: rgb(255 255 255 / 10%);
 }
 
-/* Invoice List Mobile */
+/* Invoice List Mobile: two-line rows (date + store / category badge). */
 @media (width <= 640px) {
   .invoices-section {
-    border-radius: var(--radius-sm);
+    border-radius: 14px;
   }
 
   .section-header {
-    padding: 0.75rem 1rem;
+    padding: 11px 14px;
+  }
+
+  .section-header-left {
+    gap: 11px;
   }
 
   .section-title {
-    font-size: 0.8125rem;
+    font-size: 12px;
+    color: var(--text-muted);
   }
 
   .section-total {
-    font-size: 1rem;
+    font-size: 14px;
   }
 
   .invoice-header {
-    padding: 0.75rem 1rem;
+    gap: 11px;
+    padding: 11px 14px;
+  }
+
+  /* 16px visual box with a padded hit area for a ~44px touch target. */
+  .invoice-checkbox {
+    box-sizing: content-box;
+    width: 16px;
+    height: 16px;
+    padding: 14px;
+    margin: -14px;
+  }
+
+  .checkbox-mark {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 5px;
   }
 
   .invoice-main {
     flex-wrap: wrap;
-    gap: 0.5rem 0.75rem;
+    gap: 4px 8px;
+    align-items: baseline;
   }
 
   .invoice-date {
     min-width: auto;
-    font-size: 0.75rem;
+    font-size: 11px;
+    color: var(--text-faint);
+  }
+
+  .invoice-date-full {
+    display: none;
+  }
+
+  .invoice-date-short {
+    display: inline;
   }
 
   .invoice-store {
@@ -400,11 +437,12 @@
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
-    font-size: 0.875rem;
+    font-size: 13px;
+    font-weight: 600;
     white-space: nowrap;
   }
 
-  /* Category always on its own line on mobile */
+  /* Category badge always on its own second line */
   .invoice-main::after {
     flex-basis: 100%;
     order: 2;
@@ -414,14 +452,26 @@
 
   .invoice-type {
     order: 3;
+    padding: 2px 8px;
+    font-size: 9.5px;
+    font-weight: 600;
+  }
+
+  .invoice-meta {
+    gap: 6px;
   }
 
   .invoice-total {
-    font-size: 0.9375rem;
+    font-size: 13px;
+  }
+
+  .invoice-expand svg {
+    width: 13px;
+    height: 13px;
   }
 
   .invoice-details {
-    padding: 0 1rem 0.75rem;
+    padding: 0 14px 11px;
   }
 
   .items-table {
@@ -436,45 +486,65 @@
   }
 }
 
-/* Bulk Action Toolbar Mobile */
+/* Bulk Action Toolbar Mobile: full-width dark pill along the bottom edge. */
 @media (width <= 640px) {
   .bulk-action-toolbar {
-    right: 1rem;
-    bottom: -150px; /* Larger offset for taller mobile toolbar */
-    left: 1rem;
-    padding: 0.625rem 1rem;
-    border-radius: var(--radius-md);
+    right: 14px;
+    bottom: -80px;
+    left: 14px;
+    padding: 9px 8px 9px 16px;
+    border-radius: 999px;
     transform: none;
   }
 
   .bulk-action-toolbar.visible {
-    bottom: 1rem;
+    bottom: 14px;
   }
 
   .bulk-action-content {
-    flex-wrap: wrap;
-    gap: 0.75rem;
+    gap: 10px;
+    justify-content: space-between;
   }
 
   .bulk-action-count {
-    width: 100%;
-    font-size: 0.8125rem;
-    text-align: center;
+    font-size: 12px;
+  }
+
+  .bulk-action-count span {
+    font-weight: 700;
+    color: #e0b894;
   }
 
   .bulk-action-buttons {
-    flex-wrap: wrap;
-    justify-content: center;
-    width: 100%;
+    gap: 6px;
   }
 
   .bulk-action-buttons .btn {
-    padding: 0.375rem 0.625rem;
-    font-size: 0.75rem;
+    padding: 7px 12px;
+    font-size: 11px;
+    border-radius: 999px;
   }
 
-  /* Hide less important buttons text on very small screens */
+  /* Icon-free compact buttons keep the pill on a single line. */
+  .bulk-action-buttons .btn svg {
+    display: none;
+  }
+
   .bulk-action-buttons .btn-secondary {
-    padding: 0.375rem 0.5rem;
+    color: var(--bg-primary);
+    background: rgb(253 249 241 / 14%);
+    border: none;
+  }
+
+  .bulk-action-buttons .btn-danger {
+    color: #5c2c1e;
+    background: #e0a292;
+    border: none;
+  }
+
+  .btn-bulk-close {
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
   }
 }

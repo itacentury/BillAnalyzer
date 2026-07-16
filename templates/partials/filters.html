@@ -79,6 +79,23 @@
         data-el="search"
         placeholder="Search store or item…"
       />
+      <button
+        class="filter-search-close"
+        data-el="search-close"
+        aria-label="Close search"
+      >
+        <svg
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <path d="M18 6 6 18" />
+          <path d="m6 6 12 12" />
+        </svg>
+      </button>
     </div>
 
     <!-- Filter panel toggle -->
@@ -93,14 +110,43 @@
       >
         <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
       </svg>
-      <span>Filter</span>
+      <span class="filter-button-label">Filter</span>
       <span class="filter-badge" data-el="filter-badge" hidden>0</span>
     </button>
   </div>
 
-  <!-- Collapsible filter panel -->
+  <!-- Scrim behind the mobile filter bottom sheet (hidden on desktop) -->
+  <button
+    class="filter-sheet-scrim"
+    data-el="filter-sheet-scrim"
+    aria-label="Close filters"
+    tabindex="-1"
+  ></button>
+
+  <!-- Collapsible filter panel (bottom sheet on mobile) -->
   <div class="filters-collapsible" data-el="filters-collapsible">
     <div class="filters-collapsible-inner">
+      <div class="sheet-grabber" aria-hidden="true"></div>
+      <div class="sheet-header">
+        <span class="sheet-title">Filter</span>
+        <button
+          class="modal-close"
+          data-action="close-filter-sheet"
+          aria-label="Close filters"
+        >
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path d="M18 6 6 18" />
+            <path d="m6 6 12 12" />
+          </svg>
+        </button>
+      </div>
       <div class="filters-panel">
         <div class="form-group">
           <label class="form-label">Store</label>

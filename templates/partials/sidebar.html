@@ -2,6 +2,19 @@
   <div class="sidebar-logo">
     <div class="logo-icon">&Sigma;</div>
     <h1 class="sidebar-title">Summa</h1>
+    <button class="drawer-close" data-el="drawer-close" aria-label="Close menu">
+      <svg
+        width="12"
+        height="12"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+      >
+        <path d="M18 6 6 18" />
+        <path d="m6 6 12 12" />
+      </svg>
+    </button>
   </div>
 
   <nav class="sidebar-nav">
@@ -77,41 +90,17 @@
   </div>
 </aside>
 
-<!-- Mobile-only floating actions: New (primary) with Import above it. -->
-<div class="fab-cluster">
-  <button
-    class="fab fab-secondary"
-    data-action="open-import"
-    aria-label="JSON Import"
+<!-- Mobile-only floating action: New Invoice (hides while a selection is active). -->
+<button class="fab" data-action="open-add" aria-label="New Invoice">
+  <svg
+    width="22"
+    height="22"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2.5"
   >
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="2"
-    >
-      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-      <polyline points="17 8 12 3 7 8" />
-      <line x1="12" y1="3" x2="12" y2="15" />
-    </svg>
-  </button>
-  <button
-    class="fab fab-primary"
-    data-action="open-add"
-    aria-label="New Invoice"
-  >
-    <svg
-      width="22"
-      height="22"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="2.5"
-    >
-      <line x1="12" y1="5" x2="12" y2="19" />
-      <line x1="5" y1="12" x2="19" y2="12" />
-    </svg>
-  </button>
-</div>
+    <line x1="12" y1="5" x2="12" y2="19" />
+    <line x1="5" y1="12" x2="19" y2="12" />
+  </svg>
+</button>

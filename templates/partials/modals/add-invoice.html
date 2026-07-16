@@ -2,11 +2,12 @@
 <!-- Add Invoice Modal -->
 <div class="modal-overlay" data-el="add-invoice-modal">
   <div
-    class="modal"
+    class="modal modal-sheet"
     role="dialog"
     aria-modal="true"
     aria-labelledby="add-invoice-title"
   >
+    <div class="sheet-grabber" aria-hidden="true"></div>
     <div class="modal-header">
       <h3 class="modal-title" id="add-invoice-title">New Invoice</h3>
       {{ modal_close_button() }}

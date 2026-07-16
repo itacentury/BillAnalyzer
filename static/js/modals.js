@@ -44,10 +44,13 @@ export function lockScroll() {
 }
 
 /**
- * Restore body scroll when no modals are open.
+ * Restore body scroll when no modals, drawer or mobile filter sheet are open.
  */
 export function unlockScroll() {
-  const anyOpen = document.querySelector(".modal-overlay.active");
+  const anyOpen =
+    document.querySelector(".modal-overlay.active") ||
+    document.body.classList.contains("drawer-open") ||
+    document.body.classList.contains("filter-sheet-open");
   if (!anyOpen) {
     document.body.style.overflow = "";
   }
@@ -189,13 +192,13 @@ export function calculateTotal() {
  * on the items container for the dynamically added item rows.
  */
 export function setupModalListeners() {
-  // Header buttons that open the modals
+  // Every trigger opens the modal (drawer buttons and the mobile FAB)
   document
-    .querySelector('[data-action="open-add"]')
-    .addEventListener("click", openAddModal);
+    .querySelectorAll('[data-action="open-add"]')
+    .forEach((button) => button.addEventListener("click", openAddModal));
   document
-    .querySelector('[data-action="open-import"]')
-    .addEventListener("click", openImportModal);
+    .querySelectorAll('[data-action="open-import"]')
+    .forEach((button) => button.addEventListener("click", openImportModal));
 
   // Add/edit invoice modal
   const addModal = document.querySelector('[data-el="add-invoice-modal"]');

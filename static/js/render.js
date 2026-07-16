@@ -12,6 +12,7 @@ import {
   escapeHtml,
   formatCurrency,
   formatDate,
+  formatDateShort,
   categoryBadgeStyle,
 } from "./dom.js";
 import { editInvoice } from "./modals.js";
@@ -122,9 +123,14 @@ export function renderInvoices() {
                         <span class="checkbox-mark"></span>
                     </label>
                     <div class="invoice-main">
-                        <span class="invoice-date">${formatDate(
-                          invoice.date,
-                        )}</span>
+                        <span class="invoice-date">
+                            <span class="invoice-date-full">${formatDate(
+                              invoice.date,
+                            )}</span>
+                            <span class="invoice-date-short">${formatDateShort(
+                              invoice.date,
+                            )}</span>
+                        </span>
                         <span class="invoice-store">${escapeHtml(
                           invoice.store,
                         )}</span>

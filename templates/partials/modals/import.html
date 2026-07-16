@@ -2,11 +2,12 @@
 <!-- Import Modal -->
 <div class="modal-overlay" data-el="import-modal">
   <div
-    class="modal"
+    class="modal modal-sheet"
     role="dialog"
     aria-modal="true"
     aria-labelledby="import-title"
   >
+    <div class="sheet-grabber" aria-hidden="true"></div>
     <div class="modal-header">
       <h3 class="modal-title" id="import-title">JSON Import</h3>
       {{ modal_close_button() }}
@@ -29,8 +30,11 @@
             </svg>
           </div>
           <div class="dropzone-text">
-            Drag JSON files here or click to select<br /><small
-              style="color: var(--text-muted)"
+            <span class="label-long"
+              >Drag JSON files here or click to select</span
+            >
+            <span class="label-short">Tap to select JSON files</span>
+            <br /><small style="color: var(--text-muted)"
               >Multiple files supported</small
             >
           </div>

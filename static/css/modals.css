@@ -30,6 +30,11 @@
   max-width: 360px;
 }
 
+/* Bottom-sheet drag handle: only rendered on mobile sheets. */
+.sheet-grabber {
+  display: none;
+}
+
 @keyframes modal-in {
   from {
     opacity: 0;
@@ -300,16 +305,21 @@
   justify-content: flex-end;
 }
 
-/* Modal Mobile */
-@media (width <= 480px) {
-  .modal-overlay {
+/* Modal Mobile (Design 6b/6c): large modals become bottom sheets with a
+   grabber; small dialogs (.modal-sm) stay centered. */
+@media (width <= 640px) {
+  .modal-overlay:has(.modal-sheet) {
     align-items: flex-end;
     padding: 0;
   }
 
-  .modal {
-    max-height: 90vh;
-    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  .modal-sheet {
+    display: flex;
+    flex-direction: column;
+    max-width: none;
+    max-height: 85vh;
+    border-radius: 20px 20px 0 0;
+    box-shadow: 0 -12px 40px rgb(58 51 42 / 30%);
     animation: modal-slide-up 0.3s ease;
   }
 
@@ -325,32 +335,71 @@
     }
   }
 
-  .modal-header {
-    padding: 1rem;
+  .modal-sheet .sheet-grabber {
+    display: block;
+    flex: none;
+    width: 36px;
+    height: 4px;
+    margin: 10px auto 2px;
+    touch-action: none;
+    background: var(--border-strong);
+    border-radius: 2px;
   }
 
-  .modal-body {
-    padding: 1rem;
+  .modal-sheet .modal-header {
+    flex: none;
+    padding: 10px 20px 14px;
+    touch-action: none;
+  }
+
+  .modal-sheet .modal-title {
+    font-size: 16px;
+  }
+
+  .modal-sheet .modal-body {
+    max-height: 70vh;
+    padding: 18px 20px;
+    overflow-y: auto;
   }
 
   .modal-footer {
-    padding: 0.75rem 1rem;
-    padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0));
+    flex: none;
+    padding: 14px 20px max(24px, env(safe-area-inset-bottom));
   }
 
+  .modal-footer .btn {
+    flex: 1;
+    justify-content: center;
+    padding: 12px;
+  }
+
+  .modal-sm {
+    max-width: 330px;
+    border-radius: var(--radius-xl);
+  }
+
+  /* Design 6b keeps Date + Store side by side. */
   .form-row {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
   }
 
+  /* Item rows: name · 84px price · 34px remove, all ≥44px touch height. */
   .item-input-row {
-    grid-template-columns: 1fr auto;
+    grid-template-columns: 1fr 84px 34px;
+    gap: 7px;
   }
 
-  .item-input-row .form-group:first-child {
-    grid-column: 1 / -1;
+  .item-input-row .form-input {
+    padding: 11px 13px;
+  }
+
+  .item-input-row .form-input[type="number"] {
+    width: auto;
+    padding: 11px 10px;
   }
 
   .json-textarea {
-    min-height: 200px;
+    min-height: 90px;
   }
 }

@@ -46,23 +46,40 @@ export function debounce(func, wait) {
 }
 
 /**
+ * Parse an ISO date string into a local-time Date.
+ *
+ * Date-only ISO strings parse as UTC midnight; split the parts so the Date is
+ * built in local time and the rendered day can't shift by one. Anything that
+ * isn't a bare YYYY-MM-DD (e.g. an imported datetime) falls back to the
+ * permissive Date parser.
+ */
+function parseLocalDate(dateStr) {
+  const parts = dateStr.split("-").map(Number);
+  return parts.length === 3 && parts.every(Number.isFinite)
+    ? new Date(parts[0], parts[1] - 1, parts[2])
+    : new Date(dateStr);
+}
+
+/**
  * Format an ISO date string as DD/MM/YYYY.
  */
 export function formatDate(dateStr) {
   if (!dateStr) return "";
-  // Date-only ISO strings parse as UTC midnight; split the parts so the Date is
-  // built in local time and the rendered day can't shift by one. Anything that
-  // isn't a bare YYYY-MM-DD (e.g. an imported datetime) falls back to the
-  // permissive Date parser.
-  const parts = dateStr.split("-").map(Number);
-  const date =
-    parts.length === 3 && parts.every(Number.isFinite)
-      ? new Date(parts[0], parts[1] - 1, parts[2])
-      : new Date(dateStr);
-  return date.toLocaleDateString("en-GB", {
+  return parseLocalDate(dateStr).toLocaleDateString("en-GB", {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
+  });
+}
+
+/**
+ * Format an ISO date string as DD/MM (the compact mobile list variant).
+ */
+export function formatDateShort(dateStr) {
+  if (!dateStr) return "";
+  return parseLocalDate(dateStr).toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "2-digit",
   });
 }
 

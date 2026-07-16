@@ -234,6 +234,13 @@
   border-color: var(--accent);
 }
 
+/* Mobile-only chrome (search ✕, sheet scrim/header) is hidden on desktop. */
+.filter-search-close,
+.filter-sheet-scrim,
+.filters-collapsible .sheet-header {
+  display: none;
+}
+
 /* Stats view: only the period controls remain; search + filter panel hidden. */
 body.stats-mode .filter-search,
 body.stats-mode .filter-button,
@@ -247,29 +254,188 @@ body.stats-mode .filters-collapsible {
   }
 }
 
+/* Mobile filter header (Design 5a): full-width period segment, month + filter
+   row; search slides in below the top bar; the panel becomes a bottom sheet. */
 @media (width <= 640px) {
+  .filters {
+    margin-bottom: 14px;
+  }
+
   .filters-row {
+    display: flex;
     flex-wrap: wrap;
+    gap: 8px;
   }
 
   .quick-filters {
-    overflow-x: auto;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
+    display: grid;
+    flex-basis: 100%;
+    grid-template-columns: repeat(4, 1fr);
+    border-radius: 10px;
   }
 
-  .quick-filters::-webkit-scrollbar {
+  .quick-filter-btn {
+    padding: 7px 0;
+    text-align: center;
+  }
+
+  .month-navigator {
+    display: flex;
+    flex: 1;
+    justify-content: space-between;
+    border-radius: 10px;
+  }
+
+  .month-nav-btn,
+  .month-today-btn {
+    width: 31px;
+    height: 31px;
+  }
+
+  .filter-button {
+    gap: 6px;
+    padding: 0 13px;
+    border-radius: 10px;
+  }
+
+  .filter-button-label {
     display: none;
   }
 
-  .filter-search {
-    flex-basis: 100%;
-    order: 5;
+  /* Even with 0 active filters the badge is the button's only content. */
+  .filter-badge[hidden] {
+    display: inline-flex;
   }
-}
 
-@media (width <= 480px) {
+  /* Search field appears in-flow as the first full-width filter row (right
+     below the top bar), pushing the other controls down instead of covering
+     them. The slide-down runs via @starting-style where supported; elsewhere
+     the field simply appears. */
+  .filter-search {
+    display: none;
+    flex-basis: 100%;
+    order: -1;
+    min-width: 0;
+  }
+
+  body.mobile-search-open .filter-search {
+    display: flex;
+    opacity: 1;
+    transform: translateY(0);
+    transition:
+      opacity var(--transition),
+      transform var(--transition),
+      display var(--transition) allow-discrete;
+  }
+
+  @starting-style {
+    body.mobile-search-open .filter-search {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+  }
+
+  .filter-search-close {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    margin: -6px -6px -6px 0;
+    color: var(--text-faint);
+    cursor: pointer;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+  }
+
+  /* Scrim behind the filter bottom sheet */
+  .filter-sheet-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 999;
+    display: block;
+    visibility: hidden;
+    cursor: default;
+    background: rgb(58 51 42 / 45%);
+    border: none;
+    opacity: 0;
+    transition:
+      opacity var(--transition),
+      visibility 0s 0.2s;
+  }
+
+  body.filter-sheet-open .filter-sheet-scrim {
+    visibility: visible;
+    opacity: 1;
+    transition:
+      opacity var(--transition),
+      visibility 0s;
+  }
+
+  /* Filter panel as a bottom sheet */
+  .filters-collapsible {
+    position: fixed;
+    inset: auto 0 0;
+    z-index: 1000;
+    display: block;
+    max-height: 85vh;
+    overflow-y: auto;
+    background: var(--bg-card);
+    border-radius: 20px 20px 0 0;
+    box-shadow: 0 -12px 40px rgb(58 51 42 / 30%);
+    opacity: 1;
+    transform: translateY(100%);
+    transition: transform 0.3s ease;
+  }
+
+  .filters-collapsible.visible {
+    transform: translateY(0);
+  }
+
+  .filters-collapsible-inner {
+    overflow: visible;
+  }
+
+  .filters-collapsible .sheet-grabber {
+    display: block;
+    width: 36px;
+    height: 4px;
+    margin: 10px auto 2px;
+    touch-action: none;
+    background: var(--border-strong);
+    border-radius: 2px;
+  }
+
+  .filters-collapsible .sheet-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 20px 14px;
+    touch-action: none;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .sheet-title {
+    font-size: 16px;
+    font-weight: 700;
+  }
+
   .filters-panel {
     grid-template-columns: 1fr;
+    gap: 14px;
+    padding: 18px 20px 0;
+    margin-top: 0;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .filter-reset-row {
+    padding: 0 20px max(24px, env(safe-area-inset-bottom));
+    margin-top: 14px;
   }
 }
