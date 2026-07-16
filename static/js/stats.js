@@ -10,6 +10,20 @@ import { lockScroll, unlockScroll } from "./modals.js";
 import { closeMobileSearch } from "./drawer.js";
 
 /**
+ * Sync the scrim class and body scroll lock to the filter panel's current
+ * visible/viewport state. Runs on toggle and on breakpoint crossings, so an
+ * open panel gains/loses its sheet chrome when the viewport changes.
+ */
+function syncFilterSheetChrome() {
+  const collapsible = document.querySelector('[data-el="filters-collapsible"]');
+  const mobileOpen =
+    collapsible.classList.contains("visible") && mobileViewport.matches;
+  document.body.classList.toggle("filter-sheet-open", mobileOpen);
+  if (mobileOpen) lockScroll();
+  else unlockScroll();
+}
+
+/**
  * Toggle the advanced filter panel — an inline collapsible on desktop, a
  * bottom sheet (with scrim and scroll lock) on mobile.
  */
@@ -17,15 +31,9 @@ export function toggleAdvancedFilters() {
   const collapsible = document.querySelector('[data-el="filters-collapsible"]');
   const toggleBtn = document.querySelector('[data-el="filters-toggle"]');
 
-  const visible = collapsible.classList.toggle("visible");
+  collapsible.classList.toggle("visible");
   toggleBtn.classList.toggle("active");
-
-  // Cleanup runs regardless of viewport: the sheet may have been opened on
-  // mobile and closed after resizing across the breakpoint.
-  const mobileOpen = visible && mobileViewport.matches;
-  document.body.classList.toggle("filter-sheet-open", mobileOpen);
-  if (mobileOpen) lockScroll();
-  else unlockScroll();
+  syncFilterSheetChrome();
 }
 
 /**
@@ -88,6 +96,10 @@ export function setupStatsListeners() {
   document
     .querySelector('[data-el="filter-sheet-scrim"]')
     .addEventListener("click", closeFilterSheet);
+
+  // Crossing the 640px breakpoint while the panel is open must add/remove
+  // the sheet chrome (scrim + scroll lock) without another toggle.
+  mobileViewport.addEventListener("change", syncFilterSheetChrome);
   document
     .querySelector('[data-action="close-filter-sheet"]')
     .addEventListener("click", closeFilterSheet);
