@@ -140,6 +140,13 @@
   margin-bottom: 1rem;
 }
 
+/* Grid items default to min-width auto, so a text input's intrinsic width
+   would force the modal to overflow horizontally. */
+.form-row .form-group,
+.item-input-row .form-group {
+  min-width: 0;
+}
+
 .form-group.full {
   grid-column: 1 / -1;
 }
