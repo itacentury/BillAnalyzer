@@ -25,9 +25,12 @@
   animation: modal-in 0.2s ease;
 }
 
-/* Narrower variant for compact dialogs (bulk edit, confirm delete) */
+/* Narrower variant for compact dialogs (bulk edit, confirm delete). Its
+   content is short and never scrolls, so let the category combobox menu
+   overflow the dialog instead of turning it into a scroll container. */
 .modal-sm {
   max-width: 360px;
+  overflow: visible;
 }
 
 /* Bottom-sheet drag handle: only rendered on mobile sheets. */
