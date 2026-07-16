@@ -261,16 +261,19 @@ body.stats-mode .filters-collapsible {
     margin-bottom: 14px;
   }
 
+  /* Row spacing comes from item margins instead of a row-gap so the search
+     row can animate its spacing away when collapsing (a row-gap would snap). */
   .filters-row {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 0 8px;
   }
 
   .quick-filters {
     display: grid;
     flex-basis: 100%;
     grid-template-columns: repeat(4, 1fr);
+    margin-bottom: 8px;
     border-radius: 10px;
   }
 
@@ -318,27 +321,49 @@ body.stats-mode .filters-collapsible {
 
   /* Search field appears in-flow as the first full-width filter row (right
      below the top bar), pushing the other controls down instead of covering
-     them. The slide-down runs via @starting-style where supported; elsewhere
-     the field simply appears. */
+     them. It expands/collapses in both directions: height, padding, border
+     and the bottom margin (its row spacing) animate to 0 so the controls
+     below glide instead of jumping. @starting-style and
+     `display allow-discrete` run the same animation on open; elsewhere the
+     field simply appears/disappears. */
   .filter-search {
     display: none;
     flex-basis: 100%;
     order: -1;
     min-width: 0;
-  }
-
-  body.mobile-search-open .filter-search {
-    display: flex;
-    opacity: 1;
-    transform: translateY(0);
+    max-height: 0;
+    padding-block: 0;
+    margin-bottom: 0;
+    overflow: clip;
+    border-block-width: 0;
+    opacity: 0;
+    transform: translateY(-8px);
     transition:
+      max-height var(--transition),
+      padding var(--transition),
+      margin var(--transition),
+      border-width var(--transition),
       opacity var(--transition),
       transform var(--transition),
       display var(--transition) allow-discrete;
   }
 
+  body.mobile-search-open .filter-search {
+    display: flex;
+    max-height: 48px;
+    padding-block: 9px;
+    margin-bottom: 8px;
+    border-block-width: 1px;
+    opacity: 1;
+    transform: translateY(0);
+  }
+
   @starting-style {
     body.mobile-search-open .filter-search {
+      max-height: 0;
+      padding-block: 0;
+      margin-bottom: 0;
+      border-block-width: 0;
       opacity: 0;
       transform: translateY(-8px);
     }
