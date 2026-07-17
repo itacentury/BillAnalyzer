@@ -80,10 +80,10 @@ uv run mypy            # type check (files are configured in pyproject.toml)
 
 ## Configuration
 
-| Environment Variable | Default       | Description                                                                                                      |
-| -------------------- | ------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `DATABASE_PATH`      | `invoices.db` | Path to SQLite database                                                                                          |
-| `FLASK_DEBUG`        | `0` (off)     | Set to `1` to enable the Flask/Werkzeug debugger on the dev server. Never enable in production — it allows RCE.  |
+| Environment Variable | Default       | Description                                                                                                     |
+| -------------------- | ------------- | --------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_PATH`      | `invoices.db` | Path to SQLite database                                                                                         |
+| `FLASK_DEBUG`        | `0` (off)     | Set to `1` to enable the Flask/Werkzeug debugger on the dev server. Never enable in production — it allows RCE. |
 
 ## API
 
