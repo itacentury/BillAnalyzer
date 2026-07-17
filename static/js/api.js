@@ -3,7 +3,7 @@
  */
 
 import { state, selectedInvoices } from "./state.js";
-import { els, getSearchValue, populateDropdown } from "./dom.js";
+import { els, getSearchValue } from "./dom.js";
 import { showErrorToast, commitPendingToast, hideUndoToast } from "./toast.js";
 import { renderInvoices } from "./render.js";
 import { loadStats } from "./stats.js";
@@ -156,23 +156,29 @@ export function setupPaginationListeners() {
 }
 
 export async function loadStores() {
-  const { storeFilter } = els();
   try {
-    const previousValue = storeFilter.value;
+    const storeFilter = getCombobox("store-filter");
+    const previousValue = storeFilter ? storeFilter.getValue() : "";
+
     const response = await fetch("/api/stores");
     const stores = await response.json();
 
-    populateDropdown(storeFilter, stores, "All Stores");
+    if (storeFilter) storeFilter.setOptions(stores);
 
     // Restore filter or jump to next store if previous one no longer exists
-    if (previousValue) {
+    if (storeFilter && previousValue) {
       if (stores.includes(previousValue)) {
-        storeFilter.value = previousValue;
+        storeFilter.setValue(previousValue);
       } else if (stores.length > 0) {
         // Find next store alphabetically, or last one if none found
         const nextStore =
           stores.find((s) => s > previousValue) || stores[stores.length - 1];
-        storeFilter.value = nextStore;
+        storeFilter.setValue(nextStore);
+        loadInvoices();
+      } else {
+        // No stores left at all: clear the stale selection.
+        storeFilter.setValue("");
+        updateFilterBadge();
         loadInvoices();
       }
     }

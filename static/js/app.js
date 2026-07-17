@@ -25,6 +25,8 @@ import { setupImportListeners } from "./import.js";
 import { setupComboboxes } from "./combobox.js";
 import { initToastListeners } from "./toast.js";
 import { setupKeyboardListeners } from "./keyboard.js";
+import { setupDrawerListeners } from "./drawer.js";
+import { setupSheetGestures } from "./sheet.js";
 
 // Register Service Worker for PWA
 if ("serviceWorker" in navigator) {
@@ -41,13 +43,15 @@ if ("serviceWorker" in navigator) {
 }
 
 function init() {
-  // Instantiate the category comboboxes before the first data load, so
-  // loadCategories() has live instances to feed options into.
+  // Instantiate the comboboxes before the first data load, so loadStores() and
+  // loadCategories() have live instances to feed options into.
+  const reloadOnFilterChange = () => {
+    updateFilterBadge();
+    loadInvoices();
+  };
   setupComboboxes({
-    "type-filter": () => {
-      updateFilterBadge();
-      loadInvoices();
-    },
+    "store-filter": reloadOnFilterChange,
+    "type-filter": reloadOnFilterChange,
   });
 
   applyFilter("month");
@@ -62,6 +66,8 @@ function init() {
   setupImportListeners();
   initToastListeners();
   setupKeyboardListeners();
+  setupDrawerListeners();
+  setupSheetGestures();
 }
 
 // Module scripts run after parsing, so DOMContentLoaded may already have fired.

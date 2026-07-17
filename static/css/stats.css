@@ -101,10 +101,11 @@
   }
 }
 
-/* Stats Cards */
+/* Stats Cards: fluid across desktop and the icon-rail band (Design 7b) — three
+   up when they fit, wrapping automatically as the content area narrows. */
 .stats-cards {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
   gap: 1rem;
   margin-bottom: 1.5rem;
 }
@@ -230,12 +231,12 @@
 
 .chart-container {
   position: relative;
-  height: 250px;
+  height: min(250px, calc(100vh - 320px));
   padding: 1.25rem;
 }
 
 .chart-container-bar {
-  height: 300px;
+  height: min(300px, calc(100vh - 300px));
 }
 
 /* Category Legend */
@@ -295,82 +296,59 @@
    STATISTICS RESPONSIVE
    ======================================== */
 
-/* Tablet: Stack charts */
-@media (width <= 1070px) {
+/* Icon-rail band (Design 7b): charts stack; two up again above 960px. */
+@media (width <= 960px) {
   .stats-charts {
     grid-template-columns: 1fr;
   }
 }
 
-/* Mobile: Stack cards and charts */
+/* Mobile (Design 6a): Total full width, Invoices + Average side by side,
+   charts stacked with the donut centered above its legend. */
 @media (width <= 640px) {
   .stats-cards {
     grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 14px;
   }
 
   .stats-cards .stat-card:first-child {
     grid-column: 1 / -1;
-  }
-
-  .stats-view .stat-value {
-    font-size: 1.5rem;
-  }
-
-  .chart-container {
-    height: 220px;
-  }
-
-  .chart-container-bar {
-    height: 280px;
-  }
-
-  /* Bulk toolbar sits above the mobile bottom tab bar (see sidebar.css). */
-  .bulk-action-toolbar.visible {
-    bottom: calc(3.5rem + env(safe-area-inset-bottom) + 0.5rem);
-  }
-}
-
-/* Very small screens */
-@media (width <= 480px) {
-  .stats-cards {
-    grid-template-columns: 1fr;
-  }
-
-  .stats-cards .stat-card:first-child {
-    grid-column: auto;
+    padding: 18px 20px;
   }
 
   .stats-view .stat-card {
-    padding: 1rem;
+    padding: 16px 18px;
   }
 
   .stats-view .stat-value {
-    font-size: 1.375rem;
+    font-size: 23px;
   }
 
-  .chart-header {
-    padding: 0.75rem 1rem;
+  .stats-cards .stat-card:first-child .stat-value {
+    font-size: 26px;
   }
 
+  .stats-charts {
+    gap: 14px;
+  }
+
+  /* Donut centered at 150px; the legend renders below it full width. */
   .chart-container {
-    height: 200px;
-    padding: 1rem;
-  }
-
-  .chart-container-bar {
-    height: 250px;
+    max-width: 190px;
+    height: 150px;
+    padding: 20px 18px 0;
+    margin: 0 auto;
   }
 
   .chart-legend {
-    gap: 0.375rem;
-    padding: 0 1rem 1rem;
+    padding: 18px;
   }
 
-  .legend-item {
-    font-size: 0.75rem;
-  }
-
-  .legend-percent {
-    display: none;
+  .chart-container-bar {
+    max-width: none;
+    height: 250px;
+    padding: 18px;
+    margin: 0;
   }
 }

@@ -44,10 +44,13 @@ export function lockScroll() {
 }
 
 /**
- * Restore body scroll when no modals are open.
+ * Restore body scroll when no modals, drawer or mobile filter sheet are open.
  */
 export function unlockScroll() {
-  const anyOpen = document.querySelector(".modal-overlay.active");
+  const anyOpen =
+    document.querySelector(".modal-overlay.active") ||
+    document.body.classList.contains("drawer-open") ||
+    document.body.classList.contains("filter-sheet-open");
   if (!anyOpen) {
     document.body.style.overflow = "";
   }
@@ -189,13 +192,13 @@ export function calculateTotal() {
  * on the items container for the dynamically added item rows.
  */
 export function setupModalListeners() {
-  // Header buttons that open the modals
+  // Every trigger opens the modal (drawer buttons and the mobile FAB)
   document
-    .querySelector('[data-action="open-add"]')
-    .addEventListener("click", openAddModal);
+    .querySelectorAll('[data-action="open-add"]')
+    .forEach((button) => button.addEventListener("click", openAddModal));
   document
-    .querySelector('[data-action="open-import"]')
-    .addEventListener("click", openImportModal);
+    .querySelectorAll('[data-action="open-import"]')
+    .forEach((button) => button.addEventListener("click", openImportModal));
 
   // Add/edit invoice modal
   const addModal = document.querySelector('[data-el="add-invoice-modal"]');
@@ -218,6 +221,23 @@ export function setupModalListeners() {
   itemsContainer.addEventListener("click", (event) => {
     const removeButton = event.target.closest('[data-action="remove-item"]');
     if (removeButton) removeItemRow(removeButton);
+  });
+
+  // Clicking the dimmed backdrop closes any dialog via its own ✕ button, so
+  // each modal's close/reset logic stays in one place. Track where the press
+  // started: a drag that begins inside the dialog (e.g. selecting text in an
+  // input) and is released over the backdrop fires click on the overlay and
+  // must not close it.
+  document.querySelectorAll(".modal-overlay").forEach((overlay) => {
+    let pressStartedOnOverlay = false;
+    overlay.addEventListener("pointerdown", (event) => {
+      pressStartedOnOverlay = event.target === overlay;
+    });
+    overlay.addEventListener("click", (event) => {
+      if (pressStartedOnOverlay && event.target === overlay) {
+        overlay.querySelector(".modal-close").click();
+      }
+    });
   });
 
   // Import modal

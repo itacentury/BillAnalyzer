@@ -1,6 +1,8 @@
 /**
- * Category combobox (design 4b): a searchable, keyboard-navigable dropdown that
- * replaces the legacy `<input list>`+`<datalist>` / `<select>` category controls.
+ * Combobox (design 4b): a searchable, keyboard-navigable dropdown that replaces
+ * the legacy `<input list>`+`<datalist>` / `<select>` category/store controls.
+ * The root's `data-kind` ("category" | "store") decides whether options carry a
+ * category color dot and which option feed the instance subscribes to.
  *
  * Each instance wraps a hidden `<input>` carrying the original `data-el` hook, so
  * every existing `.value` reader (saveInvoice, saveBulkEdit, buildFilterParams)
@@ -10,7 +12,7 @@
 import { escapeHtml, categoryColorVar } from "./dom.js";
 
 // Registry of live instances, keyed by the wrapped hidden input's data-el name,
-// plus a flat list for fanning category options out to every instance at once.
+// plus a flat list for fanning category options out to every category instance.
 const registry = new Map();
 const allComboboxes = [];
 
@@ -40,6 +42,7 @@ export function createCombobox(root, { onChange } = {}) {
   const dot = root.querySelector(".combobox-dot");
 
   const dataEl = hidden.dataset.el;
+  const kind = root.dataset.kind || "category";
   const defaultPlaceholder = textInput.placeholder;
   const allowCreate = root.dataset.allowCreate === "true";
   const emptyLabel = root.dataset.emptyLabel || "None";
@@ -54,6 +57,7 @@ export function createCombobox(root, { onChange } = {}) {
   let open = false;
 
   const updateDot = (value) => {
+    if (!dot) return;
     if (value) {
       dot.hidden = false;
       dot.style.background = categoryColorVar(value);
@@ -71,6 +75,7 @@ export function createCombobox(root, { onChange } = {}) {
   };
 
   const dotMarkup = (value) => {
+    if (kind !== "category") return "";
     const color = value ? categoryColorVar(value) : "var(--border-color)";
     return `<span class="combobox-option-dot" style="background: ${color}"></span>`;
   };
@@ -260,8 +265,9 @@ export function createCombobox(root, { onChange } = {}) {
 
   const instance = {
     root,
-    setOptions(categories) {
-      options = categories;
+    kind,
+    setOptions(values) {
+      options = values;
       if (open) renderMenu();
     },
     hasOption(value) {
@@ -290,9 +296,11 @@ export function getCombobox(dataEl) {
   return registry.get(dataEl);
 }
 
-/** Feed the category option list to every combobox instance. */
+/** Feed the category option list to every category combobox instance. */
 export function setCategoryOptions(categories) {
-  allComboboxes.forEach((instance) => instance.setOptions(categories));
+  allComboboxes.forEach((instance) => {
+    if (instance.kind === "category") instance.setOptions(categories);
+  });
 }
 
 /**

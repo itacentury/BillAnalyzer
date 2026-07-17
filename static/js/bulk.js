@@ -68,6 +68,18 @@ export function deselectAllInvoices() {
   renderInvoices();
 }
 
+/**
+ * Toolbar "Select All" toggle: selects the full filtered set, or clears the
+ * selection when everything is already selected.
+ */
+function toggleSelectAllButton() {
+  if (state.totalCount > 0 && selectedInvoices.size >= state.totalCount) {
+    deselectAllInvoices();
+  } else {
+    selectAllInvoices();
+  }
+}
+
 export function openBulkEditModal() {
   if (selectedInvoices.size === 0) return;
 
@@ -224,7 +236,7 @@ export function setupBulkListeners() {
   const toolbar = document.querySelector('[data-el="bulk-action-toolbar"]');
   toolbar
     .querySelector('[data-action="select-all"]')
-    .addEventListener("click", selectAllInvoices);
+    .addEventListener("click", toggleSelectAllButton);
   toolbar
     .querySelector('[data-action="deselect-all"]')
     .addEventListener("click", deselectAllInvoices);

@@ -5,6 +5,9 @@
  * without creating cycles.
  */
 
+/** Shared mobile breakpoint — keep in sync with the CSS `(width <= 640px)` media queries. */
+export const mobileViewport = window.matchMedia("(width <= 640px)");
+
 let cachedEls = null;
 
 /**
@@ -46,23 +49,40 @@ export function debounce(func, wait) {
 }
 
 /**
+ * Parse an ISO date string into a local-time Date.
+ *
+ * Date-only ISO strings parse as UTC midnight; split the parts so the Date is
+ * built in local time and the rendered day can't shift by one. Anything that
+ * isn't a bare YYYY-MM-DD (e.g. an imported datetime) falls back to the
+ * permissive Date parser.
+ */
+function parseLocalDate(dateStr) {
+  const parts = dateStr.split("-").map(Number);
+  return parts.length === 3 && parts.every(Number.isFinite)
+    ? new Date(parts[0], parts[1] - 1, parts[2])
+    : new Date(dateStr);
+}
+
+/**
  * Format an ISO date string as DD/MM/YYYY.
  */
 export function formatDate(dateStr) {
   if (!dateStr) return "";
-  // Date-only ISO strings parse as UTC midnight; split the parts so the Date is
-  // built in local time and the rendered day can't shift by one. Anything that
-  // isn't a bare YYYY-MM-DD (e.g. an imported datetime) falls back to the
-  // permissive Date parser.
-  const parts = dateStr.split("-").map(Number);
-  const date =
-    parts.length === 3 && parts.every(Number.isFinite)
-      ? new Date(parts[0], parts[1] - 1, parts[2])
-      : new Date(dateStr);
-  return date.toLocaleDateString("en-GB", {
+  return parseLocalDate(dateStr).toLocaleDateString("en-GB", {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
+  });
+}
+
+/**
+ * Format an ISO date string as DD/MM (the compact mobile list variant).
+ */
+export function formatDateShort(dateStr) {
+  if (!dateStr) return "";
+  return parseLocalDate(dateStr).toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "2-digit",
   });
 }
 
@@ -127,25 +147,6 @@ export function categoryColorVar(category) {
  */
 export function formatCurrency(amount) {
   return Number(amount).toFixed(2);
-}
-
-/**
- * Fill a <select> with an "all" placeholder followed by the given values.
- */
-export function populateDropdown(select, values, allLabel) {
-  const options = [`<option value="">${allLabel}</option>`];
-  for (const value of values) {
-    const safe = escapeHtml(value);
-    options.push(`<option value="${safe}">${safe}</option>`);
-  }
-  select.innerHTML = options.join("");
-}
-
-/**
- * Return whether a <select> already contains an option with the given value.
- */
-export function hasOption(select, value) {
-  return [...select.options].some((option) => option.value === value);
 }
 
 /**

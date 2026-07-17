@@ -68,10 +68,10 @@ export function resetToCurrent() {
 
 // Reset all filters back to defaults (current month, no search/store/category)
 export function resetAllFilters() {
-  const { searchInput, storeFilter, sortBy, sortOrder } = els();
+  const { searchInput, sortBy, sortOrder } = els();
 
   searchInput.value = "";
-  storeFilter.value = "";
+  getCombobox("store-filter").setValue("");
   getCombobox("type-filter").setValue("");
   sortBy.value = "date";
   sortOrder.value = "desc";
@@ -114,24 +114,18 @@ export function setupFilterListeners() {
     .querySelector('[data-action="nav-next"]')
     .addEventListener("click", navigateToNext);
   document
-    .querySelector('[data-action="nav-reset"]')
-    .addEventListener("click", resetToCurrent);
-  document
     .querySelector('[data-action="nav-today"]')
     .addEventListener("click", resetToCurrent);
   document
     .querySelector('[data-action="reset-filters"]')
     .addEventListener("click", resetAllFilters);
 
-  // Advanced filter inputs. The category control is a combobox whose selection
-  // callback (wired in app.js) already reloads and updates the badge.
-  const { searchInput, storeFilter, dateFrom, dateTo } = els();
+  // Advanced filter inputs. The store and category controls are comboboxes
+  // whose selection callbacks (wired in app.js) already reload and update the
+  // badge.
+  const { searchInput, dateFrom, dateTo } = els();
 
   searchInput.addEventListener("input", debounce(loadInvoices, 300));
-  storeFilter.addEventListener("change", () => {
-    updateFilterBadge();
-    loadInvoices();
-  });
   // Manually changing a date filter switches to custom mode
   dateFrom.addEventListener("change", switchToCustomMode);
   dateTo.addEventListener("change", switchToCustomMode);
@@ -207,7 +201,6 @@ export function updateFilterDisplay() {
   ];
 
   const navButtons = document.querySelectorAll(".month-nav-btn");
-  const resetBtn = document.querySelector(".month-reset-btn");
   const todayBtn = document.querySelector('[data-action="nav-today"]');
 
   switch (state.filterMode) {
@@ -216,8 +209,6 @@ export function updateFilterDisplay() {
       const weekYear = getISOWeekYear(state.currentDate);
       monthDisplay.textContent = `W${weekNum} / ${weekYear}`;
       navButtons.forEach((btn) => (btn.style.visibility = "visible"));
-      resetBtn.textContent = "Current Week";
-      resetBtn.style.display = "";
       break;
     }
     case "month": {
@@ -225,25 +216,19 @@ export function updateFilterDisplay() {
       const year = state.currentDate.getFullYear();
       monthDisplay.textContent = `${monthName} ${year}`;
       navButtons.forEach((btn) => (btn.style.visibility = "visible"));
-      resetBtn.textContent = "Current Month";
-      resetBtn.style.display = "";
       break;
     }
     case "year":
       monthDisplay.textContent = `${state.currentDate.getFullYear()}`;
       navButtons.forEach((btn) => (btn.style.visibility = "visible"));
-      resetBtn.textContent = "Current Year";
-      resetBtn.style.display = "";
       break;
     case "all":
       monthDisplay.textContent = "All Invoices";
       navButtons.forEach((btn) => (btn.style.visibility = "hidden"));
-      resetBtn.style.display = "none";
       break;
     case "custom":
       monthDisplay.textContent = "Custom";
       navButtons.forEach((btn) => (btn.style.visibility = "hidden"));
-      resetBtn.style.display = "none";
       break;
   }
 

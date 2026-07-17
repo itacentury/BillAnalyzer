@@ -3,16 +3,21 @@
   margin-bottom: 12px;
 }
 
+/* Fluid header (Design 7a): wraps at all widths > 640px — search + filter drop
+   to a second line when the row gets tight instead of overflowing the container. */
 .filters-row {
   display: flex;
-  gap: 10px;
+  flex-wrap: wrap;
+  gap: 8px;
   align-items: center;
 }
 
-/* Period segment */
+/* Period segment: grows to fill the row; its pills split the width evenly. */
 .quick-filters {
   display: flex;
+  flex: 1;
   gap: 2px;
+  min-width: 230px;
   padding: 3px;
   background: var(--bg-card);
   border: 1px solid var(--border-color);
@@ -20,11 +25,13 @@
 }
 
 .quick-filter-btn {
+  flex: 1;
   padding: 6px 13px;
   font: inherit;
   font-size: 12px;
   font-weight: 500;
   color: var(--text-muted);
+  text-align: center;
   cursor: pointer;
   background: transparent;
   border: none;
@@ -82,24 +89,13 @@
   text-align: center;
 }
 
-/* Current-period reset: only shown in the stats view. */
-.month-reset-btn {
-  display: none;
-  padding: 8px 14px;
-  font: inherit;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  cursor: pointer;
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  transition: all var(--transition);
-}
-
-.month-reset-btn:hover {
-  color: var(--text-primary);
-  background: var(--bg-hover);
+/* Search + filter toggle share a wrapper so they wrap to the next line
+   together, instead of the button orphaning onto its own row. */
+.search-filter-group {
+  display: flex;
+  flex: 1;
+  gap: 8px;
+  min-width: 300px;
 }
 
 /* Search */
@@ -108,7 +104,7 @@
   flex: 1;
   gap: 8px;
   align-items: center;
-  min-width: 180px;
+  min-width: 0;
   padding: 9px 13px;
   color: var(--text-faint);
   background: var(--bg-card);
@@ -138,6 +134,7 @@
 /* Filter panel toggle */
 .filter-button {
   display: flex;
+  flex: none;
   gap: 7px;
   align-items: center;
   padding: 9px 14px;
@@ -254,19 +251,17 @@
   border-color: var(--accent);
 }
 
+/* Mobile-only chrome (search ✕, sheet scrim/header) is hidden on desktop. */
+.filter-search-close,
+.filter-sheet-scrim,
+.filters-collapsible .sheet-header {
+  display: none;
+}
+
 /* Stats view: only the period controls remain; search + filter panel hidden. */
 body.stats-mode .filter-search,
 body.stats-mode .filter-button,
 body.stats-mode .filters-collapsible {
-  display: none;
-}
-
-body.stats-mode .month-reset-btn {
-  display: block;
-}
-
-/* Stats view has its own text reset button; hide the icon to avoid duplication. */
-body.stats-mode .month-today-btn {
   display: none;
 }
 
@@ -276,29 +271,229 @@ body.stats-mode .month-today-btn {
   }
 }
 
+/* Mobile filter header (Design 5a): full-width period segment, month + filter
+   row; search slides in below the top bar; the panel becomes a bottom sheet. */
 @media (width <= 640px) {
+  .filters {
+    margin-bottom: 14px;
+  }
+
+  /* Row spacing comes from item margins instead of a row-gap so the search
+     row can animate its spacing away when collapsing (a row-gap would snap). */
   .filters-row {
+    display: flex;
     flex-wrap: wrap;
+    gap: 0 8px;
+  }
+
+  /* Dissolve the wrapper so search and filter button reflow as direct children
+     of .filters-row again: search as its own full-width row, button beside the
+     month navigator. */
+  .search-filter-group {
+    display: contents;
   }
 
   .quick-filters {
-    overflow-x: auto;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
+    display: grid;
+    flex-basis: 100%;
+    grid-template-columns: repeat(4, 1fr);
+    margin-bottom: 8px;
+    border-radius: 10px;
   }
 
-  .quick-filters::-webkit-scrollbar {
+  .quick-filter-btn {
+    padding: 7px 0;
+    text-align: center;
+  }
+
+  .month-navigator {
+    display: flex;
+    flex: 1;
+    border-radius: 10px;
+  }
+
+  /* The label absorbs the flexible width so the nav buttons and the
+     conditionally shown today button stay compact at the edges — with
+     justify-content: space-between the today button would open a huge gap. */
+  .month-display {
+    flex: 1;
+  }
+
+  .month-nav-btn,
+  .month-today-btn {
+    width: 31px;
+    height: 31px;
+  }
+
+  /* The row's align-items: center would collapse the button to its content
+     height; stretch it to match the month navigator instead. */
+  .filter-button {
+    gap: 6px;
+    align-self: stretch;
+    padding: 0 13px;
+    border-radius: 10px;
+  }
+
+  .filter-button-label {
     display: none;
   }
 
-  .filter-search {
-    flex-basis: 100%;
-    order: 5;
+  /* Even with 0 active filters the badge is the button's only content. */
+  .filter-badge[hidden] {
+    display: inline-flex;
   }
-}
 
-@media (width <= 480px) {
+  /* Search field appears in-flow as the first full-width filter row (right
+     below the top bar), pushing the other controls down instead of covering
+     them. It expands/collapses in both directions: height, padding, border
+     and the bottom margin (its row spacing) animate to 0 so the controls
+     below glide instead of jumping. @starting-style and
+     `display allow-discrete` run the same animation on open; elsewhere the
+     field simply appears/disappears. */
+  .filter-search {
+    display: none;
+    flex-basis: 100%;
+    order: -1;
+    min-width: 0;
+    max-height: 0;
+    padding-block: 0;
+    margin-bottom: 0;
+    overflow: clip;
+    border-block-width: 0;
+    opacity: 0;
+    transform: translateY(-8px);
+    transition:
+      max-height var(--transition),
+      padding var(--transition),
+      margin var(--transition),
+      border-width var(--transition),
+      opacity var(--transition),
+      transform var(--transition),
+      display var(--transition) allow-discrete;
+  }
+
+  body.mobile-search-open .filter-search {
+    display: flex;
+    max-height: var(--mobile-search-height);
+    padding-block: 9px;
+    margin-bottom: 8px;
+    border-block-width: 1px;
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  @starting-style {
+    body.mobile-search-open .filter-search {
+      max-height: 0;
+      padding-block: 0;
+      margin-bottom: 0;
+      border-block-width: 0;
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+  }
+
+  .filter-search-close {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    margin: -6px -6px -6px 0;
+    color: var(--text-faint);
+    cursor: pointer;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+  }
+
+  /* Scrim behind the filter bottom sheet */
+  .filter-sheet-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 999;
+    display: block;
+    visibility: hidden;
+    cursor: default;
+    background: rgb(58 51 42 / 45%);
+    border: none;
+    opacity: 0;
+    transition:
+      opacity var(--transition),
+      visibility 0s 0.2s;
+  }
+
+  body.filter-sheet-open .filter-sheet-scrim {
+    visibility: visible;
+    opacity: 1;
+    transition:
+      opacity var(--transition),
+      visibility 0s;
+  }
+
+  /* Filter panel as a bottom sheet */
+  .filters-collapsible {
+    position: fixed;
+    inset: auto 0 0;
+    z-index: 1000;
+    display: block;
+    max-height: 85vh;
+    overflow-y: auto;
+    background: var(--bg-card);
+    border-radius: 20px 20px 0 0;
+    box-shadow: 0 -12px 40px rgb(58 51 42 / 30%);
+    opacity: 1;
+    transform: translateY(100%);
+    transition: transform 0.3s ease;
+  }
+
+  .filters-collapsible.visible {
+    transform: translateY(0);
+  }
+
+  .filters-collapsible-inner {
+    overflow: visible;
+  }
+
+  .filters-collapsible .sheet-grabber {
+    display: block;
+    width: 36px;
+    height: 4px;
+    margin: 10px auto 2px;
+    touch-action: none;
+    background: var(--border-strong);
+    border-radius: 2px;
+  }
+
+  .filters-collapsible .sheet-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 20px 14px;
+    touch-action: none;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .sheet-title {
+    font-size: 16px;
+    font-weight: 700;
+  }
+
   .filters-panel {
     grid-template-columns: 1fr;
+    gap: 14px;
+    padding: 18px 20px 0;
+    margin-top: 0;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .filter-reset-row {
+    padding: 0 20px max(24px, env(safe-area-inset-bottom));
+    margin-top: 14px;
   }
 }

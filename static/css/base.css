@@ -7,7 +7,7 @@
 }
 
 body {
-  min-height: 100vh;
+  min-height: 100dvh;
   font-family:
     Sora,
     -apple-system,
@@ -151,8 +151,22 @@ body {
   background: var(--text-muted);
 }
 
+/* Long/short label pairs: the compact variant only appears on mobile
+   (e.g. "Select All" → "All" in the bulk pill, the import dropzone copy). */
+.label-short {
+  display: none;
+}
+
 @media (width <= 640px) {
   .container {
-    padding: 1rem;
+    padding: 14px 16px;
+  }
+
+  .label-long {
+    display: none;
+  }
+
+  .label-short {
+    display: inline;
   }
 }

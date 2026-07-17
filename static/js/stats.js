@@ -4,11 +4,28 @@
  */
 
 import { state, chartColors } from "./state.js";
-import { els, escapeHtml, formatCurrency } from "./dom.js";
+import { els, escapeHtml, formatCurrency, mobileViewport } from "./dom.js";
 import { showErrorToast } from "./toast.js";
+import { lockScroll, unlockScroll } from "./modals.js";
+import { closeMobileSearch } from "./drawer.js";
 
 /**
- * Toggle the visibility of advanced filters on mobile.
+ * Sync the scrim class and body scroll lock to the filter panel's current
+ * visible/viewport state. Runs on toggle and on breakpoint crossings, so an
+ * open panel gains/loses its sheet chrome when the viewport changes.
+ */
+function syncFilterSheetChrome() {
+  const collapsible = document.querySelector('[data-el="filters-collapsible"]');
+  const mobileOpen =
+    collapsible.classList.contains("visible") && mobileViewport.matches;
+  document.body.classList.toggle("filter-sheet-open", mobileOpen);
+  if (mobileOpen) lockScroll();
+  else unlockScroll();
+}
+
+/**
+ * Toggle the advanced filter panel — an inline collapsible on desktop, a
+ * bottom sheet (with scrim and scroll lock) on mobile.
  */
 export function toggleAdvancedFilters() {
   const collapsible = document.querySelector('[data-el="filters-collapsible"]');
@@ -16,6 +33,7 @@ export function toggleAdvancedFilters() {
 
   collapsible.classList.toggle("visible");
   toggleBtn.classList.toggle("active");
+  syncFilterSheetChrome();
 }
 
 /**
@@ -26,6 +44,7 @@ export function showInvoicesView() {
   document.body.classList.remove("stats-mode");
   document.querySelector('[data-el="invoices-view"]').style.display = "";
   document.querySelector('[data-el="stats-view"]').style.display = "none";
+  document.querySelector('[data-el="topbar-title"]').textContent = "Invoices";
 
   // Update sidebar nav items
   document.querySelectorAll(".nav-item").forEach((btn) => {
@@ -41,6 +60,8 @@ export function showStatsView() {
   document.body.classList.add("stats-mode");
   document.querySelector('[data-el="invoices-view"]').style.display = "none";
   document.querySelector('[data-el="stats-view"]').style.display = "";
+  document.querySelector('[data-el="topbar-title"]').textContent = "Statistics";
+  closeMobileSearch();
 
   // Update sidebar nav items
   document.querySelectorAll(".nav-item").forEach((btn) => {
@@ -64,6 +85,24 @@ export function setupStatsListeners() {
   document
     .querySelector('[data-el="filters-toggle"]')
     .addEventListener("click", toggleAdvancedFilters);
+
+  // Mobile filter sheet: scrim tap and the sheet's own ✕ both close it.
+  const closeFilterSheet = () => {
+    const collapsible = document.querySelector(
+      '[data-el="filters-collapsible"]',
+    );
+    if (collapsible.classList.contains("visible")) toggleAdvancedFilters();
+  };
+  document
+    .querySelector('[data-el="filter-sheet-scrim"]')
+    .addEventListener("click", closeFilterSheet);
+
+  // Crossing the 640px breakpoint while the panel is open must add/remove
+  // the sheet chrome (scrim + scroll lock) without another toggle.
+  mobileViewport.addEventListener("change", syncFilterSheetChrome);
+  document
+    .querySelector('[data-action="close-filter-sheet"]')
+    .addEventListener("click", closeFilterSheet);
 }
 
 /**
@@ -213,6 +252,9 @@ function renderStoreChart(data) {
     state.storeChart.destroy();
   }
 
+  // Design 6a: thinner bars, 82px ellipsized label column, smaller mono ticks.
+  const mobile = mobileViewport.matches;
+
   state.storeChart = new Chart(ctx, {
     type: "bar",
     data: {
@@ -224,7 +266,7 @@ function renderStoreChart(data) {
             (_, i) => chartColors[i % chartColors.length],
           ),
           borderRadius: 5,
-          barThickness: 16,
+          barThickness: mobile ? 15 : 16,
         },
       ],
     },
@@ -256,6 +298,9 @@ function renderStoreChart(data) {
           },
           ticks: {
             color: "#8a7c62",
+            font: mobile
+              ? { size: 10.5, family: "'JetBrains Mono', monospace" }
+              : undefined,
             callback: (value) => `€${value}`,
           },
         },
@@ -263,8 +308,17 @@ function renderStoreChart(data) {
           grid: {
             display: false,
           },
+          afterFit: (scale) => {
+            if (mobile) scale.width = 82;
+          },
           ticks: {
             color: "#6b5f4a",
+            font: mobile ? { size: 10.5 } : undefined,
+            callback: function (value) {
+              const label = this.getLabelForValue(value);
+              if (!mobile || label.length <= 11) return label;
+              return `${label.slice(0, 10)}…`;
+            },
           },
         },
       },
