@@ -87,12 +87,17 @@ export function formatDateShort(dateStr) {
 }
 
 /**
- * Escape text for safe insertion into innerHTML.
+ * Escape text for safe insertion into innerHTML, including HTML attribute
+ * values (encodes quotes, unlike the textContent trick).
  */
 export function escapeHtml(text) {
-  const div = document.createElement("div");
-  div.textContent = text;
-  return div.innerHTML;
+  if (text == null) return "";
+  return String(text)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 const CATEGORY_COLOR_SLUGS = {
