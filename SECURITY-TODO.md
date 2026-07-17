@@ -24,7 +24,7 @@ The app is designed as a personal, single-user tool with no auth, exposed via Do
       Chart.js from jsdelivr ([templates/index.html:109-112](templates/index.html#L109-L112)) and Google Fonts, no `integrity` attribute. A CDN compromise executes arbitrary JS in an app holding all financial data; also leaks the user's IP/UA to Google/jsdelivr on every visit and breaks the PWA offline (these assets are not in the SW cache).
       **Fix:** self-host Chart.js under `static/js/vendor/` (auto-picked-up by the JS manifest/SW) and self-host the fonts; enables a strict `default-src 'self'` CSP.
 
-- [ ] **M3 — No request-size limit or import bounds.**
+- [x] **M3 — No request-size limit or import bounds.**
       `MAX_CONTENT_LENGTH` unset; `/api/invoices/import` parses arbitrarily large JSON fully into memory and inserfiles are detected immediatelyts unbounded rows (per-row `SELECT` + `INSERT`). One large request can exhaust memory/disk. No rate limiting anywhere.
       **Fix:** set `app.config["MAX_CONTENT_LENGTH"]` (e.g. 5 MB); optionally cap the import batch size in `parse_invoice_batch`.
 

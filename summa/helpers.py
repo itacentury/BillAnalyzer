@@ -1,12 +1,16 @@
 """Shared types and helper functions for the Summa backend."""
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Final
 
 from flask import Response, jsonify
 
 # Type alias for API responses that may include HTTP status codes
 ApiResponse = Response | tuple[Response, int]
+
+# Cap the number of entries in a single /import batch (SECURITY-TODO M3): a small
+# payload can still hold tens of thousands of rows, each a SELECT + INSERT.
+MAX_IMPORT_BATCH: Final[int] = 10_000
 
 
 def error_response(message: str, status: int) -> tuple[Response, int]:
@@ -133,6 +137,11 @@ def parse_invoice_batch(data: Any) -> ImportValidation:
     """
     if not isinstance(data, list):
         raise ValidationError("Expected a list of invoices")
+
+    if len(data) > MAX_IMPORT_BATCH:
+        raise ValidationError(
+            f"Import batch too large (max {MAX_IMPORT_BATCH} invoices)"
+        )
 
     invoices: list[Invoice] = []
     errors: list[ImportEntryError] = []

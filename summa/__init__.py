@@ -6,11 +6,14 @@ side effects; the eager WSGI ``app`` instance lives in :mod:`summa.wsgi`.
 
 import logging
 from pathlib import Path
+from typing import Final
 
 from flask import Flask, Response
 from flask_cors import CORS
+from werkzeug.exceptions import RequestEntityTooLarge
 
 from summa.db import init_db
+from summa.helpers import ApiResponse, error_response
 from summa.routes.invoices import invoices_bp
 from summa.routes.stats import stats_bp
 from summa.routes.web import web_bp
@@ -37,6 +40,10 @@ _CSP_DIRECTIVES: list[str] = [
 ]
 SECURITY_CSP: str = "; ".join(_CSP_DIRECTIVES)
 
+# Cap the raw request body (SECURITY-TODO M3): every handler reads the whole
+# JSON body into memory, so without this one request could exhaust it.
+MAX_CONTENT_LENGTH: Final[int] = 5 * 1024 * 1024  # 5 MB
+
 
 def create_app() -> Flask:
     """Build, configure and return the Flask application."""
@@ -48,6 +55,7 @@ def create_app() -> Flask:
         static_folder=str(root / "static"),
     )
     CORS(app)  # Enable CORS for all routes (required for native mobile apps)
+    app.config["MAX_CONTENT_LENGTH"] = MAX_CONTENT_LENGTH
 
     @app.after_request
     def set_security_headers(response: Response) -> Response:
@@ -57,6 +65,11 @@ def create_app() -> Flask:
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["Referrer-Policy"] = "no-referrer"
         return response
+
+    @app.errorhandler(RequestEntityTooLarge)
+    def handle_request_too_large(_: RequestEntityTooLarge) -> ApiResponse:
+        """Return the body-size 413 as JSON, matching the API error convention."""
+        return error_response("Request body too large", 413)
 
     app.register_blueprint(web_bp)
     app.register_blueprint(invoices_bp)
