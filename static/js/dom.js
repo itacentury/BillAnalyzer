@@ -111,12 +111,12 @@ const CATEGORY_COLOR_SLUGS = {
 };
 
 /**
- * Return an inline style (background + text color) for a category badge.
+ * Return the background + text color for a category badge.
  *
  * Known categories map to a fixed `--cat-*` pair; anything else is hashed
  * deterministically onto the `--chart-1…8` palette so a given name always keeps
  * the same color. Pure function — only emits CSS-variable references, never the
- * raw category text, so the result is safe to inline into `innerHTML`.
+ * raw category text.
  */
 function categoryColorPair(category) {
   const key = category.trim().toLowerCase();
@@ -133,9 +133,14 @@ function categoryColorPair(category) {
   return { bg: `var(--chart-${index})`, text: "var(--text-primary)" };
 }
 
-export function categoryBadgeStyle(category) {
+/**
+ * Paint a category badge's colors via the CSSOM (not a `style` attribute), so a
+ * strict `style-src` CSP without `'unsafe-inline'` does not block it.
+ */
+export function applyCategoryBadge(element, category) {
   const { bg, text } = categoryColorPair(category);
-  return `background: ${bg}; color: ${text};`;
+  element.style.background = bg;
+  element.style.color = text;
 }
 
 /**

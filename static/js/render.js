@@ -13,7 +13,7 @@ import {
   formatCurrency,
   formatDate,
   formatDateShort,
-  categoryBadgeStyle,
+  applyCategoryBadge,
 } from "./dom.js";
 import { editInvoice } from "./modals.js";
 import { deleteInvoice } from "./invoices.js";
@@ -134,7 +134,7 @@ export function renderInvoices() {
                         <span class="invoice-store">${escapeHtml(
                           invoice.store,
                         )}</span>
-                        ${invoice.category ? `<span class="invoice-type" style="${categoryBadgeStyle(invoice.category)}">${escapeHtml(invoice.category)}</span>` : ""}
+                        ${invoice.category ? `<span class="invoice-type">${escapeHtml(invoice.category)}</span>` : ""}
                     </div>
                     <div class="invoice-meta">
                         <span class="invoice-total">${formatCurrency(
@@ -150,7 +150,7 @@ export function renderInvoices() {
                 <div class="invoice-details">
                     <div class="items-table"></div>
                     <div class="invoice-actions">
-                        <button class="btn btn-secondary btn-sm" data-action="edit" style="margin-right: 0.5rem;">
+                        <button class="btn btn-secondary btn-sm" data-action="edit">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                                 <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
@@ -173,6 +173,12 @@ export function renderInvoices() {
         `,
       )
       .join("");
+
+    // Colors are applied via the CSSOM (not a style attribute) so a strict
+    // style-src CSP does not block them. textContent is the raw category name.
+    invoiceList.querySelectorAll(".invoice-type").forEach((badge) => {
+      applyCategoryBadge(badge, badge.textContent);
+    });
 
     // Re-apply the roving tab stop to the previously active row if it survived
     // the render; otherwise the template default (first row) stands.

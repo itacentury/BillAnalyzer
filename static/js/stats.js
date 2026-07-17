@@ -43,7 +43,7 @@ export function showInvoicesView() {
   state.currentView = "invoices";
   document.body.classList.remove("stats-mode");
   document.querySelector('[data-el="invoices-view"]').style.display = "";
-  document.querySelector('[data-el="stats-view"]').style.display = "none";
+  document.querySelector('[data-el="stats-view"]').classList.add("is-hidden");
   document.querySelector('[data-el="topbar-title"]').textContent = "Invoices";
 
   // Update sidebar nav items
@@ -59,7 +59,9 @@ export function showStatsView() {
   state.currentView = "stats";
   document.body.classList.add("stats-mode");
   document.querySelector('[data-el="invoices-view"]').style.display = "none";
-  document.querySelector('[data-el="stats-view"]').style.display = "";
+  document
+    .querySelector('[data-el="stats-view"]')
+    .classList.remove("is-hidden");
   document.querySelector('[data-el="topbar-title"]').textContent = "Statistics";
   closeMobileSearch();
 
@@ -134,13 +136,13 @@ function renderStats(data) {
   const statsCharts = document.querySelector(".stats-charts");
 
   if (summary.total_invoices === 0) {
-    statsEmpty.style.display = "";
+    statsEmpty.classList.remove("is-hidden");
     statsCards.style.display = "none";
     statsCharts.style.display = "none";
     return;
   }
 
-  statsEmpty.style.display = "none";
+  statsEmpty.classList.add("is-hidden");
   statsCards.style.display = "";
   statsCharts.style.display = "";
 
@@ -184,11 +186,11 @@ function renderCategoryChart(data) {
   const legendEl = document.querySelector('[data-el="category-legend"]');
   const total = data.reduce((sum, item) => sum + item.amount, 0);
   legendEl.innerHTML = data
-    .map((item, i) => {
+    .map((item) => {
       const percent = total > 0 ? ((item.amount / total) * 100).toFixed(1) : 0;
       return `
         <div class="legend-item">
-          <span class="legend-color" style="background: ${chartColors[i % chartColors.length]}"></span>
+          <span class="legend-color"></span>
           <span class="legend-label">${escapeHtml(item.category)}</span>
           <span class="legend-value">€${formatCurrency(item.amount)}</span>
           <span class="legend-percent">${percent}%</span>
@@ -196,6 +198,11 @@ function renderCategoryChart(data) {
       `;
     })
     .join("");
+  // Paint the swatches via the CSSOM (not a style attribute) so a strict
+  // style-src CSP does not block them; order matches the chart data.
+  legendEl.querySelectorAll(".legend-color").forEach((swatch, i) => {
+    swatch.style.background = chartColors[i % chartColors.length];
+  });
 
   state.categoryChart = new Chart(ctx, {
     type: "doughnut",

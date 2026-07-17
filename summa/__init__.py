@@ -7,7 +7,7 @@ side effects; the eager WSGI ``app`` instance lives in :mod:`summa.wsgi`.
 import logging
 from pathlib import Path
 
-from flask import Flask
+from flask import Flask, Response
 from flask_cors import CORS
 
 from summa.db import init_db
@@ -20,6 +20,23 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(message)s",
 )
 
+# Content-Security-Policy. Still loosened for the CDN-hosted Chart.js and Google
+# Fonts (see SECURITY-TODO M2); once those are self-hosted, drop the extra hosts
+# and tighten every directive to 'self'.
+_CSP_DIRECTIVES: list[str] = [
+    "default-src 'self'",
+    "script-src 'self' https://cdn.jsdelivr.net",
+    "style-src 'self' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com",
+    "img-src 'self' data:",
+    "connect-src 'self'",
+    "frame-ancestors 'none'",
+    "base-uri 'none'",
+    "form-action 'self'",
+    "object-src 'none'",
+]
+SECURITY_CSP: str = "; ".join(_CSP_DIRECTIVES)
+
 
 def create_app() -> Flask:
     """Build, configure and return the Flask application."""
@@ -31,6 +48,15 @@ def create_app() -> Flask:
         static_folder=str(root / "static"),
     )
     CORS(app)  # Enable CORS for all routes (required for native mobile apps)
+
+    @app.after_request
+    def set_security_headers(response: Response) -> Response:
+        """Attach the CSP and hardening headers to every response."""
+        response.headers["Content-Security-Policy"] = SECURITY_CSP
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "no-referrer"
+        return response
 
     app.register_blueprint(web_bp)
     app.register_blueprint(invoices_bp)

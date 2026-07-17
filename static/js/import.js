@@ -24,24 +24,24 @@ export function handleMultipleFiles(files) {
 function updateSelectedFilesDisplay() {
   const container = document.querySelector('[data-el="selected-files"]');
   if (state.pendingFiles.length === 0) {
-    container.style.display = "none";
+    container.classList.add("is-hidden");
     return;
   }
 
-  container.style.display = "block";
+  container.classList.remove("is-hidden");
   container.innerHTML = `
-        <div style="background: var(--bg-tertiary); border-radius: var(--radius-sm); padding: 0.75rem;">
-            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem;">
+        <div class="selected-files-card">
+            <div class="selected-files-title">
                 ${state.pendingFiles.length} file(s) selected
             </div>
             ${state.pendingFiles
               .map(
                 (f, i) => `
-                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.375rem 0; border-bottom: 1px solid var(--border-subtle);">
-                    <span style="font-size: 0.875rem;">📄 ${escapeHtml(
+                <div class="selected-file-row">
+                    <span class="selected-file-name">📄 ${escapeHtml(
                       f.name,
                     )}</span>
-                    <button type="button" class="btn btn-danger btn-sm" data-action="remove-file" data-index="${i}" style="padding: 0.25rem 0.5rem;">✕</button>
+                    <button type="button" class="btn btn-danger btn-sm selected-file-remove" data-action="remove-file" data-index="${i}">✕</button>
                 </div>
             `,
               )

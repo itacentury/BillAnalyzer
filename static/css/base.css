@@ -31,6 +31,21 @@ body {
   clip-path: inset(50%);
 }
 
+/* Hidden: fully removed from layout and the accessibility tree. Toggle by
+   adding/removing this class (do not fight it with an inline display style). */
+.is-hidden {
+  display: none;
+}
+
+/* Spacing / text utilities */
+.mb-1 {
+  margin-bottom: 1rem;
+}
+
+.text-muted {
+  color: var(--text-muted);
+}
+
 /* Buttons */
 .btn {
   display: inline-flex;
