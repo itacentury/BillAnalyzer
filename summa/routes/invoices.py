@@ -261,7 +261,8 @@ def import_invoices() -> ApiResponse:
             for invoice in validation.invoices:
                 # Duplicate check: same combination of date, store and total amount
                 cursor.execute(
-                    "SELECT id FROM invoices WHERE date = ? AND store = ? AND total = ?",
+                    "SELECT id FROM invoices "
+                    "WHERE date = ? AND store = ? AND total = ? AND deleted_at IS NULL",
                     (invoice.date, invoice.store, invoice.total),
                 )
                 existing: Any = cursor.fetchone()
@@ -310,7 +311,8 @@ def update_invoice(invoice_id: int) -> ApiResponse:
     try:
         with db_cursor() as cursor:
             cursor.execute(
-                "UPDATE invoices SET date = ?, store = ?, category = ?, total = ? WHERE id = ?",
+                "UPDATE invoices SET date = ?, store = ?, category = ?, total = ? "
+                "WHERE id = ? AND deleted_at IS NULL",
                 (
                     invoice.date,
                     invoice.store,
@@ -319,6 +321,10 @@ def update_invoice(invoice_id: int) -> ApiResponse:
                     invoice_id,
                 ),
             )
+            # A soft-deleted or unknown invoice is treated as absent: bail out
+            # before touching its items instead of silently rewriting them.
+            if cursor.rowcount == 0:
+                return error_response("Invoice not found", 404)
             # Replace all items: remove the old ones, then insert the new set
             cursor.execute(
                 "DELETE FROM invoice_items WHERE invoice_id = ?", (invoice_id,)
@@ -344,9 +350,12 @@ def delete_invoice(invoice_id: int) -> ApiResponse:
         with db_cursor() as cursor:
             # Soft delete: set deleted_at timestamp instead of removing from database
             cursor.execute(
-                "UPDATE invoices SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?",
+                "UPDATE invoices SET deleted_at = CURRENT_TIMESTAMP "
+                "WHERE id = ? AND deleted_at IS NULL",
                 (invoice_id,),
             )
+            if cursor.rowcount == 0:
+                return error_response("Invoice not found", 404)
         logger.info("Invoice soft-deleted: id=%d", invoice_id)
         return jsonify({"success": True})
     except sqlite3.Error as e:
@@ -387,7 +396,8 @@ def bulk_update_invoices() -> ApiResponse:
             for chunk in chunked(invoice_ids):
                 cursor.execute(
                     f"UPDATE invoices SET {', '.join(set_clauses)} "
-                    f"WHERE id IN ({placeholders_for(len(chunk))})",
+                    f"WHERE id IN ({placeholders_for(len(chunk))}) "
+                    "AND deleted_at IS NULL",
                     [*params, *chunk],
                 )
                 updated_count += cursor.rowcount

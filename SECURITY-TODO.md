@@ -42,7 +42,7 @@ The app is designed as a personal, single-user tool with no auth, exposed via Do
 
 ## Low
 
-- [ ] **L1 — Soft-delete blind spots.**
+- [x] **L1 — Soft-delete blind spots.**
       `PUT /api/invoices/<id>`, `DELETE` and `bulk-update` do not filter `deleted_at IS NULL`, so "deleted" rows can still be modified; the import duplicate check ([summa/routes/invoices.py:263](summa/routes/invoices.py#L263)) also matches deleted rows, silently blocking re-import. No purge path (data kept forever).
       **Fix:** add `AND deleted_at IS NULL` to those WHERE clauses and the duplicate check.
 

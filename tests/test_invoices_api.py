@@ -318,6 +318,24 @@ def test_import_skips_duplicates(
     assert len(_list(client)) == 2
 
 
+def test_import_reimports_soft_deleted_invoice(
+    client: FlaskClient, seed_invoice: SeedInvoice
+) -> None:
+    """A soft-deleted invoice no longer blocks re-importing the same entry."""
+    seed_invoice(date="2024-01-01", store="Gone", total=10.0, deleted=True)
+
+    response = client.post(
+        "/api/invoices/import",
+        json=[{"date": "2024-01-01", "store": "Gone", "total": 10.0, "items": []}],
+    )
+
+    body = _get_json(response)
+    assert response.status_code == 200
+    assert body["imported"] == 1
+    assert body["skipped"] == 0
+    assert [invoice["store"] for invoice in _list(client)] == ["Gone"]
+
+
 def test_import_invalid_entry_reports_partial_success(client: FlaskClient) -> None:
     """A lone invalid entry no longer aborts the batch: 200 with an indexed error."""
     response = client.post(
@@ -470,15 +488,50 @@ def test_update_invoice_missing_field_returns_400(
     assert _get_json(response)["error"] == "Missing required field: date"
 
 
-def test_update_nonexistent_invoice_reports_success(client: FlaskClient) -> None:
-    """Updating an unknown id succeeds silently and creates nothing."""
+def test_update_nonexistent_invoice_returns_404(client: FlaskClient) -> None:
+    """Updating an unknown id is rejected as not found and creates nothing."""
     response = client.put(
         "/api/invoices/999999",
         json={"date": "2024-04-01", "store": "Ghost", "total": 1.0, "items": []},
     )
-    assert response.status_code == 200
-    assert _get_json(response) == {"success": True}
+    assert response.status_code == 404
+    assert _get_json(response)["error"] == "Invoice not found"
     assert _list(client) == []
+
+
+def test_update_soft_deleted_invoice_returns_404(
+    client: FlaskClient, seed_invoice: SeedInvoice
+) -> None:
+    """A soft-deleted invoice is immutable: PUT returns 404 and its items stay."""
+    invoice_id = seed_invoice(
+        deleted=True, items=[{"item_name": "original", "item_price": 1.0}]
+    )
+
+    response = client.put(
+        f"/api/invoices/{invoice_id}",
+        json={
+            "date": "2024-04-01",
+            "store": "New",
+            "total": 42.0,
+            "items": [{"item_name": "replacement", "item_price": 5.0}],
+        },
+    )
+    assert response.status_code == 404
+    assert _get_json(response)["error"] == "Invoice not found"
+
+    # The line items of the deleted invoice must not have been rewritten.
+    conn = db.get_db()
+    try:
+        names = [
+            row["item_name"]
+            for row in conn.execute(
+                "SELECT item_name FROM invoice_items WHERE invoice_id = ?",
+                (invoice_id,),
+            ).fetchall()
+        ]
+    finally:
+        conn.close()
+    assert names == ["original"]
 
 
 # --- DELETE /api/invoices/<id> ------------------------------------------------
@@ -503,6 +556,17 @@ def test_delete_invoice_is_soft(client: FlaskClient, seed_invoice: SeedInvoice) 
     assert row["deleted_at"] is not None
 
 
+def test_delete_soft_deleted_invoice_returns_404(
+    client: FlaskClient, seed_invoice: SeedInvoice
+) -> None:
+    """Deleting an already soft-deleted invoice is rejected as not found."""
+    invoice_id = seed_invoice(deleted=True)
+
+    response = client.delete(f"/api/invoices/{invoice_id}")
+    assert response.status_code == 404
+    assert _get_json(response)["error"] == "Invoice not found"
+
+
 # --- PUT /api/invoices/bulk-update --------------------------------------------
 
 
@@ -522,6 +586,29 @@ def test_bulk_update_store_and_category(
     assert body == {"success": True, "updated": 2}
     stores = {invoice["store"] for invoice in _list(client)}
     assert stores == {"Renamed"}
+
+
+def test_bulk_update_skips_soft_deleted(
+    client: FlaskClient, seed_invoice: SeedInvoice
+) -> None:
+    """A soft-deleted id in the set is neither updated nor counted."""
+    active = seed_invoice(store="Old")
+    deleted = seed_invoice(store="Old", deleted=True)
+
+    response = client.put(
+        "/api/invoices/bulk-update",
+        json={"ids": [active, deleted], "store": "Renamed"},
+    )
+    assert _get_json(response) == {"success": True, "updated": 1}
+
+    conn = db.get_db()
+    try:
+        store = conn.execute(
+            "SELECT store FROM invoices WHERE id = ?", (deleted,)
+        ).fetchone()["store"]
+    finally:
+        conn.close()
+    assert store == "Old"
 
 
 def test_bulk_update_empty_category_clears_it(
