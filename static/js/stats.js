@@ -42,7 +42,9 @@ export function toggleAdvancedFilters() {
 export function showInvoicesView() {
   state.currentView = "invoices";
   document.body.classList.remove("stats-mode");
-  document.querySelector('[data-el="invoices-view"]').style.display = "";
+  document
+    .querySelector('[data-el="invoices-view"]')
+    .classList.remove("is-hidden");
   document.querySelector('[data-el="stats-view"]').classList.add("is-hidden");
   document.querySelector('[data-el="topbar-title"]').textContent = "Invoices";
 
@@ -58,7 +60,9 @@ export function showInvoicesView() {
 export function showStatsView() {
   state.currentView = "stats";
   document.body.classList.add("stats-mode");
-  document.querySelector('[data-el="invoices-view"]').style.display = "none";
+  document
+    .querySelector('[data-el="invoices-view"]')
+    .classList.add("is-hidden");
   document
     .querySelector('[data-el="stats-view"]')
     .classList.remove("is-hidden");
@@ -137,14 +141,14 @@ function renderStats(data) {
 
   if (summary.total_invoices === 0) {
     statsEmpty.classList.remove("is-hidden");
-    statsCards.style.display = "none";
-    statsCharts.style.display = "none";
+    statsCards.classList.add("is-hidden");
+    statsCharts.classList.add("is-hidden");
     return;
   }
 
   statsEmpty.classList.add("is-hidden");
-  statsCards.style.display = "";
-  statsCharts.style.display = "";
+  statsCards.classList.remove("is-hidden");
+  statsCharts.classList.remove("is-hidden");
 
   document.querySelector('[data-el="stats-total"]').textContent =
     formatCurrency(summary.total_amount);
@@ -163,9 +167,9 @@ function renderStats(data) {
       </span>
       <span class="change-label">vs. previous period</span>
     `;
-    changeEl.style.display = "";
+    changeEl.classList.remove("is-hidden");
   } else {
-    changeEl.style.display = "none";
+    changeEl.classList.add("is-hidden");
   }
 
   renderCategoryChart(by_category);

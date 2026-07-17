@@ -284,7 +284,7 @@ function renderImportErrors(errors) {
       <button type="button" class="btn btn-primary btn-sm" data-action="reimport-corrected">Re-import corrected</button>
     </div>
   `;
-  container.style.display = "block";
+  container.classList.remove("is-hidden");
   setImportCorrectionMode(true);
 }
 
@@ -294,9 +294,12 @@ function renderImportErrors(errors) {
  * them. The footer Import would re-send the stale full payload, hence hiding it.
  */
 export function setImportCorrectionMode(on) {
-  const display = on ? "none" : "";
-  document.querySelector('[data-el="import-input"]').style.display = display;
-  document.querySelector('[data-action="import"]').style.display = display;
+  document
+    .querySelector('[data-el="import-input"]')
+    .classList.toggle("is-hidden", on);
+  document
+    .querySelector('[data-action="import"]')
+    .classList.toggle("is-hidden", on);
 }
 
 /**
