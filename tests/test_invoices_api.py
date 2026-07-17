@@ -542,7 +542,23 @@ def test_bulk_update_missing_ids_returns_400(client: FlaskClient) -> None:
     """An empty ids list is rejected with 400."""
     response = client.put("/api/invoices/bulk-update", json={"ids": [], "store": "X"})
     assert response.status_code == 400
-    assert _get_json(response)["error"] == "Missing ids"
+    assert _get_json(response)["error"] == "Field 'ids' must be a non-empty list"
+
+
+def test_bulk_update_non_dict_body_returns_json_400(client: FlaskClient) -> None:
+    """A list body yields a JSON 400, not an HTML 500 from AttributeError."""
+    response = client.put("/api/invoices/bulk-update", json=[1, 2])
+    assert response.status_code == 400
+    assert _get_json(response)["error"] == "Request body must be a JSON object"
+
+
+def test_bulk_update_non_int_ids_returns_400(client: FlaskClient) -> None:
+    """Ids that are not integers are rejected with a JSON 400."""
+    response = client.put(
+        "/api/invoices/bulk-update", json={"ids": ["x"], "store": "X"}
+    )
+    assert response.status_code == 400
+    assert _get_json(response)["error"] == "Field 'ids' must contain only integers"
 
 
 def test_bulk_update_missing_fields_returns_400(
@@ -575,7 +591,21 @@ def test_bulk_delete_missing_ids_returns_400(client: FlaskClient) -> None:
     """An empty ids list is rejected with 400."""
     response = client.post("/api/invoices/bulk-delete", json={"ids": []})
     assert response.status_code == 400
-    assert _get_json(response)["error"] == "Missing ids"
+    assert _get_json(response)["error"] == "Field 'ids' must be a non-empty list"
+
+
+def test_bulk_delete_non_dict_body_returns_json_400(client: FlaskClient) -> None:
+    """A list body yields a JSON 400, not an HTML 500 from AttributeError."""
+    response = client.post("/api/invoices/bulk-delete", json=[1, 2])
+    assert response.status_code == 400
+    assert _get_json(response)["error"] == "Request body must be a JSON object"
+
+
+def test_bulk_delete_non_int_ids_returns_400(client: FlaskClient) -> None:
+    """Ids that are not integers are rejected with a JSON 400."""
+    response = client.post("/api/invoices/bulk-delete", json={"ids": ["x"]})
+    assert response.status_code == 400
+    assert _get_json(response)["error"] == "Field 'ids' must contain only integers"
 
 
 # --- GET /api/invoices pagination ---------------------------------------------

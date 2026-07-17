@@ -111,6 +111,20 @@ def parse_invoice(data: Any) -> Invoice:
     )
 
 
+def parse_id_list(data: Any) -> list[int]:
+    """Validate a bulk payload and return its non-empty list of integer ids."""
+    if not isinstance(data, dict):
+        raise ValidationError("Request body must be a JSON object")
+    ids: Any = data.get("ids")
+    if not isinstance(ids, list) or not ids:
+        raise ValidationError("Field 'ids' must be a non-empty list", field="ids")
+    for id_value in ids:
+        # bool is a subclass of int; reject it explicitly so `true` is not `1`.
+        if not isinstance(id_value, int) or isinstance(id_value, bool):
+            raise ValidationError("Field 'ids' must contain only integers", field="ids")
+    return ids
+
+
 @dataclass
 class ImportEntryError:
     """One invalid entry from a batch import: its position, field and reason."""

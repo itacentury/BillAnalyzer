@@ -32,7 +32,7 @@ The app is designed as a personal, single-user tool with no auth, exposed via Do
       Write handlers return `error_response(str(e), 500)` on `sqlite3.Error` (e.g. [summa/routes/invoices.py:239](summa/routes/invoices.py#L239)), leaking schema/internal detail.
       **Fix:** return a generic `"Internal server error"`, keep `logger.error` with details server-side.
 
-- [ ] **M5 — Unvalidated JSON shape on bulk endpoints.**
+- [x] **M5 — Unvalidated JSON shape on bulk endpoints.**
       `bulk_update_invoices` / `bulk_delete_invoices` call `data.get(...)` on `request.json` without checking it is a dict and never validate that `ids` is a list of ints ([summa/routes/invoices.py:356-431](summa/routes/invoices.py#L356-L431)) → unhandled `AttributeError`/type confusion → HTML 500 that bypasses the JSON error convention. (SQL is parameterized, so no injection.)
       **Fix:** require a dict body and a non-empty list-of-ints `ids`, reusing the `ValidationError`/`error_response` pattern from `summa/helpers.py`.
 

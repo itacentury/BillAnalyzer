@@ -16,6 +16,7 @@ from summa.helpers import (
     error_response,
     escape_like,
     parse_bounded_int,
+    parse_id_list,
     parse_invoice,
     parse_invoice_batch,
     strip_text,
@@ -357,12 +358,13 @@ def delete_invoice(invoice_id: int) -> ApiResponse:
 def bulk_update_invoices() -> ApiResponse:
     """Update store name and/or category for multiple invoices at once."""
     data: Any = request.json
-    invoice_ids: list[int] = data.get("ids", [])
+    try:
+        invoice_ids: list[int] = parse_id_list(data)
+    except ValidationError as e:
+        return error_response(str(e), 400)
+
     new_store: str | None = strip_text(data.get("store"))
     new_category: str | None = data.get("category")
-
-    if not invoice_ids:
-        return error_response("Missing ids", 400)
 
     if not new_store and new_category is None:
         return error_response("Missing store or category", 400)
@@ -404,10 +406,10 @@ def bulk_update_invoices() -> ApiResponse:
 def bulk_delete_invoices() -> ApiResponse:
     """Soft-delete multiple invoices at once."""
     data: Any = request.json
-    invoice_ids: list[int] = data.get("ids", [])
-
-    if not invoice_ids:
-        return error_response("Missing ids", 400)
+    try:
+        invoice_ids: list[int] = parse_id_list(data)
+    except ValidationError as e:
+        return error_response(str(e), 400)
 
     try:
         with db_cursor() as cursor:
