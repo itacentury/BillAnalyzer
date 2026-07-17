@@ -101,10 +101,11 @@
   }
 }
 
-/* Stats Cards */
+/* Stats Cards: fluid across desktop and the icon-rail band (Design 7b) — three
+   up when they fit, wrapping automatically as the content area narrows. */
 .stats-cards {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
   gap: 1rem;
   margin-bottom: 1.5rem;
 }
@@ -295,8 +296,8 @@
    STATISTICS RESPONSIVE
    ======================================== */
 
-/* Tablet: Stack charts */
-@media (width <= 1070px) {
+/* Icon-rail band (Design 7b): charts stack; two up again above 960px. */
+@media (width <= 960px) {
   .stats-charts {
     grid-template-columns: 1fr;
   }

@@ -60,59 +60,62 @@
       </button>
     </div>
 
-    <!-- Search -->
-    <div class="filter-search">
-      <svg
-        width="13"
-        height="13"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-      >
-        <circle cx="11" cy="11" r="8" />
-        <line x1="21" y1="21" x2="16.65" y2="16.65" />
-      </svg>
-      <input
-        type="text"
-        class="filter-search-input"
-        data-el="search"
-        placeholder="Search store or item…"
-      />
-      <button
-        class="filter-search-close"
-        data-el="search-close"
-        aria-label="Close search"
-      >
+    <!-- Search + filter toggle wrap together as one unit -->
+    <div class="search-filter-group">
+      <!-- Search -->
+      <div class="filter-search">
         <svg
-          width="12"
-          height="12"
+          width="13"
+          height="13"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
           stroke-width="2"
         >
-          <path d="M18 6 6 18" />
-          <path d="m6 6 12 12" />
+          <circle cx="11" cy="11" r="8" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" />
         </svg>
+        <input
+          type="text"
+          class="filter-search-input"
+          data-el="search"
+          placeholder="Search store or item…"
+        />
+        <button
+          class="filter-search-close"
+          data-el="search-close"
+          aria-label="Close search"
+        >
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path d="M18 6 6 18" />
+            <path d="m6 6 12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Filter panel toggle -->
+      <button class="filter-button" data-el="filters-toggle">
+        <svg
+          width="13"
+          height="13"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+        </svg>
+        <span class="filter-button-label">Filter</span>
+        <span class="filter-badge" data-el="filter-badge" hidden>0</span>
       </button>
     </div>
-
-    <!-- Filter panel toggle -->
-    <button class="filter-button" data-el="filters-toggle">
-      <svg
-        width="13"
-        height="13"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-      >
-        <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
-      </svg>
-      <span class="filter-button-label">Filter</span>
-      <span class="filter-badge" data-el="filter-badge" hidden>0</span>
-    </button>
   </div>
 
   <!-- Scrim behind the mobile filter bottom sheet (hidden on desktop) -->

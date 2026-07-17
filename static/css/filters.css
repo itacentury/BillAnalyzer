@@ -3,16 +3,21 @@
   margin-bottom: 12px;
 }
 
+/* Fluid header (Design 7a): wraps at all widths > 640px — search + filter drop
+   to a second line when the row gets tight instead of overflowing the container. */
 .filters-row {
   display: flex;
-  gap: 10px;
+  flex-wrap: wrap;
+  gap: 8px;
   align-items: center;
 }
 
-/* Period segment */
+/* Period segment: grows to fill the row; its pills split the width evenly. */
 .quick-filters {
   display: flex;
+  flex: 1;
   gap: 2px;
+  min-width: 230px;
   padding: 3px;
   background: var(--bg-card);
   border: 1px solid var(--border-color);
@@ -20,11 +25,13 @@
 }
 
 .quick-filter-btn {
+  flex: 1;
   padding: 6px 13px;
   font: inherit;
   font-size: 12px;
   font-weight: 500;
   color: var(--text-muted);
+  text-align: center;
   cursor: pointer;
   background: transparent;
   border: none;
@@ -82,13 +89,22 @@
   text-align: center;
 }
 
+/* Search + filter toggle share a wrapper so they wrap to the next line
+   together, instead of the button orphaning onto its own row. */
+.search-filter-group {
+  display: flex;
+  flex: 1;
+  gap: 8px;
+  min-width: 300px;
+}
+
 /* Search */
 .filter-search {
   display: flex;
   flex: 1;
   gap: 8px;
   align-items: center;
-  min-width: 180px;
+  min-width: 0;
   padding: 9px 13px;
   color: var(--text-faint);
   background: var(--bg-card);
@@ -118,6 +134,7 @@
 /* Filter panel toggle */
 .filter-button {
   display: flex;
+  flex: none;
   gap: 7px;
   align-items: center;
   padding: 9px 14px;
@@ -267,6 +284,13 @@ body.stats-mode .filters-collapsible {
     display: flex;
     flex-wrap: wrap;
     gap: 0 8px;
+  }
+
+  /* Dissolve the wrapper so search and filter button reflow as direct children
+     of .filters-row again: search as its own full-width row, button beside the
+     month navigator. */
+  .search-filter-group {
+    display: contents;
   }
 
   .quick-filters {

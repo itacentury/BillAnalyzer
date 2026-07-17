@@ -95,9 +95,11 @@
   flex: 1;
   gap: 1.25rem;
   align-items: center;
+  min-width: 0;
 }
 
 .invoice-date {
+  flex: none;
   min-width: 90px;
   font-family: "JetBrains Mono", monospace;
   font-size: 0.8125rem;
@@ -109,26 +111,36 @@
   display: none;
 }
 
+/* Absorbs the row's slack and truncates, so date/badge/amount/chevron stay put
+   and long store names never wrap or push the layout (Design 7a). */
 .invoice-store {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-size: 0.9375rem;
   font-weight: 500;
+  white-space: nowrap;
 }
 
 /* Color pair comes from the inline categoryBadgeStyle(); the neutral values here
    are only a fallback for a badge rendered without it. */
 .invoice-type {
+  flex: none;
   padding: 0.25rem 0.5rem;
   font-size: 0.6875rem;
   font-weight: 500;
   color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.03em;
+  white-space: nowrap;
   background: var(--bg-inset);
   border-radius: var(--radius-sm);
 }
 
 .invoice-meta {
   display: flex;
+  flex: none;
   gap: 1rem;
   align-items: center;
 }

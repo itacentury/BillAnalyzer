@@ -330,3 +330,57 @@
     transform: scale(0.5);
   }
 }
+
+/* Intermediate widths (Design 7a): the sidebar collapses to a 64px icon rail —
+   icons only, labels hidden, tooltips via each control's title attribute. */
+@media (641px <= width <= 960px) {
+  .sidebar {
+    align-items: center;
+    width: 64px;
+    padding: 18px 0;
+  }
+
+  .sidebar-logo {
+    padding: 0;
+  }
+
+  .logo-icon {
+    width: 36px;
+    height: 36px;
+  }
+
+  .sidebar-title,
+  .nav-item span,
+  .sidebar-action-btn span {
+    display: none;
+  }
+
+  .sidebar-nav {
+    align-items: center;
+  }
+
+  .nav-item {
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    padding: 0;
+    border-radius: 11px;
+  }
+
+  .nav-item svg {
+    width: 17px;
+    height: 17px;
+  }
+
+  .sidebar-actions {
+    align-items: center;
+  }
+
+  .sidebar-action-btn {
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    padding: 0;
+    border-radius: 11px;
+  }
+}
