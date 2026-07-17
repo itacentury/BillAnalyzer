@@ -236,7 +236,7 @@ def add_invoice() -> ApiResponse:
         return jsonify({"success": True, "id": invoice_id})
     except sqlite3.Error as e:
         logger.error("Failed to create invoice: %s", e)
-        return error_response(str(e), 500)
+        return error_response("Internal server error", 500)
 
 
 @invoices_bp.route("/api/invoices/import", methods=["POST"])
@@ -294,7 +294,7 @@ def import_invoices() -> ApiResponse:
         )
     except sqlite3.Error as e:
         logger.error("Import failed: %s", e)
-        return error_response(str(e), 500)
+        return error_response("Internal server error", 500)
 
 
 @invoices_bp.route("/api/invoices/<int:invoice_id>", methods=["PUT"])
@@ -333,7 +333,7 @@ def update_invoice(invoice_id: int) -> ApiResponse:
         return jsonify({"success": True})
     except sqlite3.Error as e:
         logger.error("Failed to update invoice id=%d: %s", invoice_id, e)
-        return error_response(str(e), 500)
+        return error_response("Internal server error", 500)
 
 
 @invoices_bp.route("/api/invoices/<int:invoice_id>", methods=["DELETE"])
@@ -350,7 +350,7 @@ def delete_invoice(invoice_id: int) -> ApiResponse:
         return jsonify({"success": True})
     except sqlite3.Error as e:
         logger.error("Failed to delete invoice id=%d: %s", invoice_id, e)
-        return error_response(str(e), 500)
+        return error_response("Internal server error", 500)
 
 
 @invoices_bp.route("/api/invoices/bulk-update", methods=["PUT"])
@@ -397,7 +397,7 @@ def bulk_update_invoices() -> ApiResponse:
         return jsonify({"success": True, "updated": updated_count})
     except sqlite3.Error as e:
         logger.error("Bulk update failed for ids=%s: %s", invoice_ids, e)
-        return error_response(str(e), 500)
+        return error_response("Internal server error", 500)
 
 
 @invoices_bp.route("/api/invoices/bulk-delete", methods=["POST"])
@@ -428,4 +428,4 @@ def bulk_delete_invoices() -> ApiResponse:
         return jsonify({"success": True, "deleted": deleted_count})
     except sqlite3.Error as e:
         logger.error("Bulk delete failed for ids=%s: %s", invoice_ids, e)
-        return error_response(str(e), 500)
+        return error_response("Internal server error", 500)

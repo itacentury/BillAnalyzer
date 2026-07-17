@@ -28,7 +28,7 @@ The app is designed as a personal, single-user tool with no auth, exposed via Do
       `MAX_CONTENT_LENGTH` unset; `/api/invoices/import` parses arbitrarily large JSON fully into memory and inserfiles are detected immediatelyts unbounded rows (per-row `SELECT` + `INSERT`). One large request can exhaust memory/disk. No rate limiting anywhere.
       **Fix:** set `app.config["MAX_CONTENT_LENGTH"]` (e.g. 5 MB); optionally cap the import batch size in `parse_invoice_batch`.
 
-- [ ] **M4 — Raw exception text returned to clients.**
+- [x] **M4 — Raw exception text returned to clients.**
       Write handlers return `error_response(str(e), 500)` on `sqlite3.Error` (e.g. [summa/routes/invoices.py:239](summa/routes/invoices.py#L239)), leaking schema/internal detail.
       **Fix:** return a generic `"Internal server error"`, keep `logger.error` with details server-side.
 
