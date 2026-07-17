@@ -5,6 +5,7 @@ side effects; the eager WSGI ``app`` instance lives in :mod:`summa.wsgi`.
 """
 
 import logging
+import os
 from pathlib import Path
 from typing import Final
 
@@ -84,4 +85,7 @@ def create_app() -> Flask:
 def main() -> None:
     """Start the Flask development server."""
     app: Flask = create_app()
-    app.run(debug=True, port=8000)
+    # Debug is opt-in only: the Werkzeug debugger allows remote code execution,
+    # so it must never default on (SECURITY-TODO M6).
+    debug: bool = os.environ.get("FLASK_DEBUG") == "1"
+    app.run(debug=debug, port=8000)

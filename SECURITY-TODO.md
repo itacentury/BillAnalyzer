@@ -36,7 +36,7 @@ The app is designed as a personal, single-user tool with no auth, exposed via Do
       `bulk_update_invoices` / `bulk_delete_invoices` call `data.get(...)` on `request.json` without checking it is a dict and never validate that `ids` is a list of ints ([summa/routes/invoices.py:356-431](summa/routes/invoices.py#L356-L431)) → unhandled `AttributeError`/type confusion → HTML 500 that bypasses the JSON error convention. (SQL is parameterized, so no injection.)
       **Fix:** require a dict body and a non-empty list-of-ints `ids`, reusing the `ValidationError`/`error_response` pattern from `summa/helpers.py`.
 
-- [ ] **M6 — Dev server hardcodes `debug=True`.**
+- [x] **M6 — Dev server hardcodes `debug=True`.**
       [summa/**init**.py:48](summa/__init__.py#L48). The Werkzeug debugger is RCE-by-design if the dev server is ever reachable by others.
       **Fix:** `debug=os.environ.get("FLASK_DEBUG") == "1"`.
 
