@@ -27,6 +27,7 @@ import { initToastListeners } from "./toast.js";
 import { setupKeyboardListeners } from "./keyboard.js";
 import { setupDrawerListeners } from "./drawer.js";
 import { setupSheetGestures } from "./sheet.js";
+import { setupViewportListeners } from "./viewport.js";
 
 // Register Service Worker for PWA
 if ("serviceWorker" in navigator) {
@@ -68,6 +69,7 @@ function init() {
   setupKeyboardListeners();
   setupDrawerListeners();
   setupSheetGestures();
+  setupViewportListeners();
 }
 
 // Module scripts run after parsing, so DOMContentLoaded may already have fired.

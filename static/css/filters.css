@@ -439,7 +439,7 @@ body.stats-mode .filters-collapsible {
     inset: auto 0 0;
     z-index: 1000;
     display: block;
-    max-height: 85vh;
+    max-height: var(--visual-viewport-height, 85dvh);
     overflow-y: auto;
     background: var(--bg-card);
     border-radius: 20px 20px 0 0;
@@ -450,6 +450,9 @@ body.stats-mode .filters-collapsible {
   }
 
   .filters-collapsible.visible {
+    /* Only the open sheet is lifted above the keyboard; a closed sheet stays
+       pinned at the bottom so its translateY(100%) fully hides it. */
+    bottom: var(--keyboard-inset, 0);
     transform: translateY(0);
   }
 
