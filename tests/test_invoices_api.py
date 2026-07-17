@@ -157,6 +157,30 @@ def test_add_invoice_non_numeric_total_returns_400(client: FlaskClient) -> None:
     assert body["error"] == "Field 'total' must be a number"
 
 
+def test_add_invoice_non_string_store_returns_400(client: FlaskClient) -> None:
+    """A non-string store is rejected with the JSON 400 envelope."""
+    response = client.post(
+        "/api/invoices",
+        json={"date": "2024-03-01", "store": 123, "total": 1.0},
+    )
+    assert response.status_code == 400
+    body = _get_json(response)
+    assert body["success"] is False
+    assert body["error"] == "Field 'store' must be a string"
+
+
+def test_add_invoice_non_string_category_returns_400(client: FlaskClient) -> None:
+    """A non-string category is rejected with the JSON 400 envelope."""
+    response = client.post(
+        "/api/invoices",
+        json={"date": "2024-03-01", "store": "Shop", "category": ["a"], "total": 1.0},
+    )
+    assert response.status_code == 400
+    body = _get_json(response)
+    assert body["success"] is False
+    assert body["error"] == "Field 'category' must be a string"
+
+
 # --- GET /api/invoices --------------------------------------------------------
 
 
@@ -656,6 +680,30 @@ def test_bulk_update_missing_fields_returns_400(
     response = client.put("/api/invoices/bulk-update", json={"ids": [invoice_id]})
     assert response.status_code == 400
     assert _get_json(response)["error"] == "Missing store or category"
+
+
+def test_bulk_update_non_string_store_returns_400(
+    client: FlaskClient, seed_invoice: SeedInvoice
+) -> None:
+    """A non-string store on bulk-update is rejected with a JSON 400."""
+    invoice_id = seed_invoice()
+    response = client.put(
+        "/api/invoices/bulk-update", json={"ids": [invoice_id], "store": 123}
+    )
+    assert response.status_code == 400
+    assert _get_json(response)["error"] == "Field 'store' must be a string"
+
+
+def test_bulk_update_non_string_category_returns_400(
+    client: FlaskClient, seed_invoice: SeedInvoice
+) -> None:
+    """A non-string category on bulk-update is rejected with a JSON 400."""
+    invoice_id = seed_invoice()
+    response = client.put(
+        "/api/invoices/bulk-update", json={"ids": [invoice_id], "category": {"x": 1}}
+    )
+    assert response.status_code == 400
+    assert _get_json(response)["error"] == "Field 'category' must be a string"
 
 
 # --- POST /api/invoices/bulk-delete -------------------------------------------
