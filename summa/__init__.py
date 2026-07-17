@@ -46,6 +46,21 @@ SECURITY_CSP: str = "; ".join(_CSP_DIRECTIVES)
 MAX_CONTENT_LENGTH: Final[int] = 5 * 1024 * 1024  # 5 MB
 
 
+def _cors_origins() -> str | list[str]:
+    """Resolve the CORS allowlist from CORS_ALLOWED_ORIGINS.
+
+    Empty/unset -> no cross-origin access (the PWA is same-origin). The literal
+    '*' is an explicit opt-in for native mobile clients; otherwise a
+    comma-separated origin allowlist.
+    """
+    raw: str = os.environ.get("CORS_ALLOWED_ORIGINS", "").strip()
+    if not raw:
+        return []
+    if raw == "*":
+        return "*"
+    return [origin.strip() for origin in raw.split(",") if origin.strip()]
+
+
 def create_app() -> Flask:
     """Build, configure and return the Flask application."""
     # Templates and static assets live at the repo root, not inside the package
@@ -55,7 +70,10 @@ def create_app() -> Flask:
         template_folder=str(root / "templates"),
         static_folder=str(root / "static"),
     )
-    CORS(app)  # Enable CORS for all routes (required for native mobile apps)
+    # Cross-origin access is denied by default (the PWA is same-origin, so it
+    # needs no CORS). Opt origins in via CORS_ALLOWED_ORIGINS; '*' re-enables the
+    # wildcard for native mobile clients (SECURITY-TODO H1).
+    CORS(app, origins=_cors_origins())
     app.config["MAX_CONTENT_LENGTH"] = MAX_CONTENT_LENGTH
 
     @app.after_request

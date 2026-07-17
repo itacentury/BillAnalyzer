@@ -50,6 +50,11 @@ server {
 Certificates come from certbot/ACME (Let's Encrypt) or your own CA. Bind the
 container's published port to `127.0.0.1:8000:8000` so only the proxy can reach it.
 
+Cross-origin browser access is **denied by default** — the PWA is served
+same-origin and needs no CORS. To allow other origins (e.g. a native mobile
+client), set `CORS_ALLOWED_ORIGINS` to a comma-separated allowlist, or to `*` to
+re-enable the wildcard.
+
 ### Local Development
 
 ```bash
