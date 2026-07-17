@@ -19,6 +19,7 @@ from summa.helpers import (
     parse_id_list,
     parse_invoice,
     parse_invoice_batch,
+    require_optional_str,
     strip_text,
 )
 
@@ -369,11 +370,15 @@ def bulk_update_invoices() -> ApiResponse:
     data: Any = request.json
     try:
         invoice_ids: list[int] = parse_id_list(data)
+        new_store: str | None = strip_text(
+            require_optional_str(data.get("store"), "store")
+        )
+        # Keep the raw string (empty string is meaningful below); type-check only.
+        new_category: str | None = require_optional_str(
+            data.get("category"), "category"
+        )
     except ValidationError as e:
         return error_response(str(e), 400)
-
-    new_store: str | None = strip_text(data.get("store"))
-    new_category: str | None = data.get("category")
 
     if not new_store and new_category is None:
         return error_response("Missing store or category", 400)

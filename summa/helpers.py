@@ -54,6 +54,13 @@ def strip_text(value: Any) -> str | None:
     return stripped if stripped else None
 
 
+def require_optional_str(value: Any, field: str) -> str | None:
+    """Return value if it is a string or None; raise ValidationError otherwise."""
+    if value is not None and not isinstance(value, str):
+        raise ValidationError(f"Field '{field}' must be a string", field=field)
+    return value
+
+
 def escape_like(value: str) -> str:
     """Escape LIKE wildcards so a search term matches literally."""
     # Escape the escape char first, then the two LIKE wildcards.
@@ -104,8 +111,8 @@ def parse_invoice(data: Any) -> Invoice:
 
     return Invoice(
         date=strip_text(_require(data, "date")),
-        store=strip_text(_require(data, "store")),
-        category=strip_text(data.get("category")),
+        store=strip_text(require_optional_str(_require(data, "store"), "store")),
+        category=strip_text(require_optional_str(data.get("category"), "category")),
         total=_parse_float(_require(data, "total"), "total"),
         items=items,
     )
