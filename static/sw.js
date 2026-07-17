@@ -3,7 +3,7 @@
  * Provides offline support and caching strategies.
  */
 
-const CACHE_NAME = "summa-cache-v93";
+const CACHE_NAME = "summa-cache-v94";
 // JS modules, CSS files and fonts are not listed here: they are discovered at
 // install time from the server-rendered /static/js-manifest.json,
 // /static/css-manifest.json and /static/fonts-manifest.json (which glob
@@ -76,7 +76,7 @@ self.addEventListener("activate", (event) => {
 });
 
 /**
- * Fetch event - network-first strategy for API, cache-first for static assets.
+ * Fetch event - network-only for API, cache-first for static assets.
  */
 self.addEventListener("fetch", (event) => {
   const { request } = event;
@@ -87,9 +87,9 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // API requests: Network-first, fallback to cache
+  // API requests: Network-only, never cached (financial data at rest)
   if (url.pathname.startsWith("/api/")) {
-    event.respondWith(networkFirst(request));
+    event.respondWith(networkOnly(request));
     return;
   }
 
@@ -124,23 +124,15 @@ async function cacheFirst(request) {
 }
 
 /**
- * Network-first strategy: Try network, fallback to cache.
+ * Network-only strategy: fetch from the network, never persist to the cache.
+ * API payloads are financial data; keeping them out of Cache Storage avoids an
+ * unencrypted copy at rest on the device (SECURITY-TODO L3).
  */
-async function networkFirst(request) {
+async function networkOnly(request) {
   try {
-    const networkResponse = await fetch(request);
-    // Cache successful GET responses
-    if (networkResponse.ok) {
-      const cache = await caches.open(CACHE_NAME);
-      cache.put(request, networkResponse.clone());
-    }
-    return networkResponse;
+    return await fetch(request);
   } catch {
-    const cachedResponse = await caches.match(request);
-    if (cachedResponse) {
-      return cachedResponse;
-    }
-    // Return error response for failed API calls
+    // No cached fallback by design: report offline for failed API calls.
     return new Response(JSON.stringify({ error: "Offline - no connection" }), {
       status: 503,
       headers: { "Content-Type": "application/json" },

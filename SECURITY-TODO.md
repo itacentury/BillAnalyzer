@@ -50,7 +50,7 @@ The app is designed as a personal, single-user tool with no auth, exposed via Do
       gunicorn serves plain HTTP; fine behind a reverse proxy, but nothing in the repo documents/enforces that.
       **Fix:** document/require a TLS-terminating reverse proxy.
 
-- [ ] **L3 — SW caches API responses on device.**
+- [x] **L3 — SW caches API responses on device.**
       [static/sw.js](static/sw.js#L118) network-first caches all `/api/` GETs in Cache Storage — financial data persists unencrypted on any device that loaded the app. Acceptable for a personal device; worth documenting or excluding `/api/` from caching.
 
 ## Positive (no action needed)
