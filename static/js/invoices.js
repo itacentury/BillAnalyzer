@@ -61,6 +61,13 @@ export async function saveInvoice() {
 
 /** Create a new invoice immediately (create has no useful deferred undo). */
 async function createInvoice(payload) {
+  const saveButton = document.querySelector(
+    '[data-el="add-invoice-modal"] [data-action="save"]',
+  );
+  const originalContent = saveButton.innerHTML;
+  saveButton.innerHTML = '<div class="spinner"></div>';
+  saveButton.disabled = true;
+
   try {
     const response = await fetch("/api/invoices", {
       method: "POST",
@@ -81,6 +88,9 @@ async function createInvoice(payload) {
     loadInvoices();
   } catch {
     showErrorToast("Failed to save");
+  } finally {
+    saveButton.innerHTML = originalContent;
+    saveButton.disabled = false;
   }
 }
 
