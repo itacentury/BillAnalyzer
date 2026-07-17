@@ -35,3 +35,9 @@ def js_manifest() -> Response:
 def css_manifest() -> Response:
     """Return the URLs of all frontend CSS files for the service worker to precache."""
     return _asset_manifest("css", ".css")
+
+
+@web_bp.route("/static/fonts-manifest.json")
+def fonts_manifest() -> Response:
+    """Return the URLs of all self-hosted font files for the service worker to precache."""
+    return _asset_manifest("fonts", ".woff2")

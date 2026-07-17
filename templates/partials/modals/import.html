@@ -34,22 +34,17 @@
               >Drag JSON files here or click to select</span
             >
             <span class="label-short">Tap to select JSON files</span>
-            <br /><small style="color: var(--text-muted)"
-              >Multiple files supported</small
-            >
+            <br /><small class="text-muted">Multiple files supported</small>
           </div>
           <input
             type="file"
+            class="is-hidden"
             data-el="file-input"
             accept=".json"
             multiple
-            style="display: none"
           />
         </div>
-        <div
-          data-el="selected-files"
-          style="display: none; margin-bottom: 1rem"
-        ></div>
+        <div class="is-hidden mb-1" data-el="selected-files"></div>
         <div class="form-group">
           <label class="form-label">Or paste JSON directly</label>
           <textarea
@@ -60,11 +55,7 @@
           ></textarea>
         </div>
       </div>
-      <div
-        class="import-errors"
-        data-el="import-errors"
-        style="display: none"
-      ></div>
+      <div class="import-errors is-hidden" data-el="import-errors"></div>
     </div>
     <div class="modal-footer">
       <button

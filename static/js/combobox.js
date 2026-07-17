@@ -74,10 +74,11 @@ export function createCombobox(root, { onChange } = {}) {
     updateDot(value);
   };
 
-  const dotMarkup = (value) => {
+  const dotMarkup = () => {
     if (kind !== "category") return "";
-    const color = value ? categoryColorVar(value) : "var(--border-color)";
-    return `<span class="combobox-option-dot" style="background: ${color}"></span>`;
+    // Color is painted post-insert via the CSSOM (see renderMenu), so a strict
+    // style-src CSP without 'unsafe-inline' does not block it.
+    return `<span class="combobox-option-dot"></span>`;
   };
 
   const renderMenu = () => {
@@ -91,7 +92,7 @@ export function createCombobox(root, { onChange } = {}) {
     entries = [{ value: "", isCreate: false }];
     const rows = [
       `<li class="combobox-option${hidden.value ? "" : " is-active"}" role="option" id="${menuId}-option-0" data-index="0">
-        ${dotMarkup("")}<span class="combobox-option-label combobox-option-empty">${escapeHtml(emptyLabel)}</span>
+        ${dotMarkup()}<span class="combobox-option-label combobox-option-empty">${escapeHtml(emptyLabel)}</span>
         ${hidden.value ? "" : '<span class="combobox-check">✓</span>'}
       </li>`,
     ];
@@ -102,7 +103,7 @@ export function createCombobox(root, { onChange } = {}) {
       const active = option === hidden.value;
       rows.push(
         `<li class="combobox-option${active ? " is-active" : ""}" role="option" id="${menuId}-option-${index}" data-index="${index}">
-          ${dotMarkup(option)}<span class="combobox-option-label">${highlightMatch(option, query)}</span>
+          ${dotMarkup()}<span class="combobox-option-label">${highlightMatch(option, query)}</span>
           ${active ? '<span class="combobox-check">✓</span>' : ""}
         </li>`,
       );
@@ -126,6 +127,16 @@ export function createCombobox(root, { onChange } = {}) {
     }
 
     menu.innerHTML = rows.join("");
+    // Paint each option's dot via the CSSOM; entries[] maps the row index to its
+    // value, and only category comboboxes render dots.
+    menu.querySelectorAll(".combobox-option").forEach((element) => {
+      const dot = element.querySelector(".combobox-option-dot");
+      if (!dot) return;
+      const value = entries[Number(element.dataset.index)].value;
+      dot.style.background = value
+        ? categoryColorVar(value)
+        : "var(--border-color)";
+    });
     applyHighlight();
   };
 

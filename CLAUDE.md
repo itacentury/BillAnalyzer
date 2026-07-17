@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Summa is an invoice management and expense-tracking web app: a Flask REST backend
 backed by SQLite, plus a vanilla-JS Progressive Web App frontend. There is no
-build step for the frontend and no test suite.
+build step for the frontend. The backend has a `pytest` suite under `tests/`.
 
 ## Code Style
 
@@ -22,6 +22,7 @@ uv run python -m summa        # run dev server (port 8000, DB at ./invoices.db)
 uv run ruff format .          # format
 uv run ruff check .           # lint (E, F, I; E501 intentionally ignored)
 uv run mypy                   # strict type check (files set in pyproject.toml)
+uv run pytest                 # backend test suite (tests/)
 ```
 
 Frontend (JS/CSS/HTML) is linted and formatted through `npm` (Node 22):

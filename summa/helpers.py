@@ -1,12 +1,16 @@
 """Shared types and helper functions for the Summa backend."""
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Final
 
 from flask import Response, jsonify
 
 # Type alias for API responses that may include HTTP status codes
 ApiResponse = Response | tuple[Response, int]
+
+# Cap the number of entries in a single /import batch (SECURITY-TODO M3): a small
+# payload can still hold tens of thousands of rows, each a SELECT + INSERT.
+MAX_IMPORT_BATCH: Final[int] = 10_000
 
 
 def error_response(message: str, status: int) -> tuple[Response, int]:
@@ -48,6 +52,13 @@ def strip_text(value: Any) -> str | None:
         return None
     stripped: str = str(value).strip()
     return stripped if stripped else None
+
+
+def require_optional_str(value: Any, field: str) -> str | None:
+    """Return value if it is a string or None; raise ValidationError otherwise."""
+    if value is not None and not isinstance(value, str):
+        raise ValidationError(f"Field '{field}' must be a string", field=field)
+    return value
 
 
 def escape_like(value: str) -> str:
@@ -100,11 +111,25 @@ def parse_invoice(data: Any) -> Invoice:
 
     return Invoice(
         date=strip_text(_require(data, "date")),
-        store=strip_text(_require(data, "store")),
-        category=strip_text(data.get("category")),
+        store=strip_text(require_optional_str(_require(data, "store"), "store")),
+        category=strip_text(require_optional_str(data.get("category"), "category")),
         total=_parse_float(_require(data, "total"), "total"),
         items=items,
     )
+
+
+def parse_id_list(data: Any) -> list[int]:
+    """Validate a bulk payload and return its non-empty list of integer ids."""
+    if not isinstance(data, dict):
+        raise ValidationError("Request body must be a JSON object")
+    ids: Any = data.get("ids")
+    if not isinstance(ids, list) or not ids:
+        raise ValidationError("Field 'ids' must be a non-empty list", field="ids")
+    for id_value in ids:
+        # bool is a subclass of int; reject it explicitly so `true` is not `1`.
+        if not isinstance(id_value, int) or isinstance(id_value, bool):
+            raise ValidationError("Field 'ids' must contain only integers", field="ids")
+    return ids
 
 
 @dataclass
@@ -133,6 +158,11 @@ def parse_invoice_batch(data: Any) -> ImportValidation:
     """
     if not isinstance(data, list):
         raise ValidationError("Expected a list of invoices")
+
+    if len(data) > MAX_IMPORT_BATCH:
+        raise ValidationError(
+            f"Import batch too large (max {MAX_IMPORT_BATCH} invoices)"
+        )
 
     invoices: list[Invoice] = []
     errors: list[ImportEntryError] = []

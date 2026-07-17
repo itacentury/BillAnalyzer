@@ -157,6 +157,30 @@ def test_add_invoice_non_numeric_total_returns_400(client: FlaskClient) -> None:
     assert body["error"] == "Field 'total' must be a number"
 
 
+def test_add_invoice_non_string_store_returns_400(client: FlaskClient) -> None:
+    """A non-string store is rejected with the JSON 400 envelope."""
+    response = client.post(
+        "/api/invoices",
+        json={"date": "2024-03-01", "store": 123, "total": 1.0},
+    )
+    assert response.status_code == 400
+    body = _get_json(response)
+    assert body["success"] is False
+    assert body["error"] == "Field 'store' must be a string"
+
+
+def test_add_invoice_non_string_category_returns_400(client: FlaskClient) -> None:
+    """A non-string category is rejected with the JSON 400 envelope."""
+    response = client.post(
+        "/api/invoices",
+        json={"date": "2024-03-01", "store": "Shop", "category": ["a"], "total": 1.0},
+    )
+    assert response.status_code == 400
+    body = _get_json(response)
+    assert body["success"] is False
+    assert body["error"] == "Field 'category' must be a string"
+
+
 # --- GET /api/invoices --------------------------------------------------------
 
 
@@ -318,6 +342,24 @@ def test_import_skips_duplicates(
     assert len(_list(client)) == 2
 
 
+def test_import_reimports_soft_deleted_invoice(
+    client: FlaskClient, seed_invoice: SeedInvoice
+) -> None:
+    """A soft-deleted invoice no longer blocks re-importing the same entry."""
+    seed_invoice(date="2024-01-01", store="Gone", total=10.0, deleted=True)
+
+    response = client.post(
+        "/api/invoices/import",
+        json=[{"date": "2024-01-01", "store": "Gone", "total": 10.0, "items": []}],
+    )
+
+    body = _get_json(response)
+    assert response.status_code == 200
+    assert body["imported"] == 1
+    assert body["skipped"] == 0
+    assert [invoice["store"] for invoice in _list(client)] == ["Gone"]
+
+
 def test_import_invalid_entry_reports_partial_success(client: FlaskClient) -> None:
     """A lone invalid entry no longer aborts the batch: 200 with an indexed error."""
     response = client.post(
@@ -470,15 +512,50 @@ def test_update_invoice_missing_field_returns_400(
     assert _get_json(response)["error"] == "Missing required field: date"
 
 
-def test_update_nonexistent_invoice_reports_success(client: FlaskClient) -> None:
-    """Updating an unknown id succeeds silently and creates nothing."""
+def test_update_nonexistent_invoice_returns_404(client: FlaskClient) -> None:
+    """Updating an unknown id is rejected as not found and creates nothing."""
     response = client.put(
         "/api/invoices/999999",
         json={"date": "2024-04-01", "store": "Ghost", "total": 1.0, "items": []},
     )
-    assert response.status_code == 200
-    assert _get_json(response) == {"success": True}
+    assert response.status_code == 404
+    assert _get_json(response)["error"] == "Invoice not found"
     assert _list(client) == []
+
+
+def test_update_soft_deleted_invoice_returns_404(
+    client: FlaskClient, seed_invoice: SeedInvoice
+) -> None:
+    """A soft-deleted invoice is immutable: PUT returns 404 and its items stay."""
+    invoice_id = seed_invoice(
+        deleted=True, items=[{"item_name": "original", "item_price": 1.0}]
+    )
+
+    response = client.put(
+        f"/api/invoices/{invoice_id}",
+        json={
+            "date": "2024-04-01",
+            "store": "New",
+            "total": 42.0,
+            "items": [{"item_name": "replacement", "item_price": 5.0}],
+        },
+    )
+    assert response.status_code == 404
+    assert _get_json(response)["error"] == "Invoice not found"
+
+    # The line items of the deleted invoice must not have been rewritten.
+    conn = db.get_db()
+    try:
+        names = [
+            row["item_name"]
+            for row in conn.execute(
+                "SELECT item_name FROM invoice_items WHERE invoice_id = ?",
+                (invoice_id,),
+            ).fetchall()
+        ]
+    finally:
+        conn.close()
+    assert names == ["original"]
 
 
 # --- DELETE /api/invoices/<id> ------------------------------------------------
@@ -503,6 +580,17 @@ def test_delete_invoice_is_soft(client: FlaskClient, seed_invoice: SeedInvoice) 
     assert row["deleted_at"] is not None
 
 
+def test_delete_soft_deleted_invoice_returns_404(
+    client: FlaskClient, seed_invoice: SeedInvoice
+) -> None:
+    """Deleting an already soft-deleted invoice is rejected as not found."""
+    invoice_id = seed_invoice(deleted=True)
+
+    response = client.delete(f"/api/invoices/{invoice_id}")
+    assert response.status_code == 404
+    assert _get_json(response)["error"] == "Invoice not found"
+
+
 # --- PUT /api/invoices/bulk-update --------------------------------------------
 
 
@@ -524,6 +612,29 @@ def test_bulk_update_store_and_category(
     assert stores == {"Renamed"}
 
 
+def test_bulk_update_skips_soft_deleted(
+    client: FlaskClient, seed_invoice: SeedInvoice
+) -> None:
+    """A soft-deleted id in the set is neither updated nor counted."""
+    active = seed_invoice(store="Old")
+    deleted = seed_invoice(store="Old", deleted=True)
+
+    response = client.put(
+        "/api/invoices/bulk-update",
+        json={"ids": [active, deleted], "store": "Renamed"},
+    )
+    assert _get_json(response) == {"success": True, "updated": 1}
+
+    conn = db.get_db()
+    try:
+        store = conn.execute(
+            "SELECT store FROM invoices WHERE id = ?", (deleted,)
+        ).fetchone()["store"]
+    finally:
+        conn.close()
+    assert store == "Old"
+
+
 def test_bulk_update_empty_category_clears_it(
     client: FlaskClient, seed_invoice: SeedInvoice
 ) -> None:
@@ -542,7 +653,23 @@ def test_bulk_update_missing_ids_returns_400(client: FlaskClient) -> None:
     """An empty ids list is rejected with 400."""
     response = client.put("/api/invoices/bulk-update", json={"ids": [], "store": "X"})
     assert response.status_code == 400
-    assert _get_json(response)["error"] == "Missing ids"
+    assert _get_json(response)["error"] == "Field 'ids' must be a non-empty list"
+
+
+def test_bulk_update_non_dict_body_returns_json_400(client: FlaskClient) -> None:
+    """A list body yields a JSON 400, not an HTML 500 from AttributeError."""
+    response = client.put("/api/invoices/bulk-update", json=[1, 2])
+    assert response.status_code == 400
+    assert _get_json(response)["error"] == "Request body must be a JSON object"
+
+
+def test_bulk_update_non_int_ids_returns_400(client: FlaskClient) -> None:
+    """Ids that are not integers are rejected with a JSON 400."""
+    response = client.put(
+        "/api/invoices/bulk-update", json={"ids": ["x"], "store": "X"}
+    )
+    assert response.status_code == 400
+    assert _get_json(response)["error"] == "Field 'ids' must contain only integers"
 
 
 def test_bulk_update_missing_fields_returns_400(
@@ -553,6 +680,30 @@ def test_bulk_update_missing_fields_returns_400(
     response = client.put("/api/invoices/bulk-update", json={"ids": [invoice_id]})
     assert response.status_code == 400
     assert _get_json(response)["error"] == "Missing store or category"
+
+
+def test_bulk_update_non_string_store_returns_400(
+    client: FlaskClient, seed_invoice: SeedInvoice
+) -> None:
+    """A non-string store on bulk-update is rejected with a JSON 400."""
+    invoice_id = seed_invoice()
+    response = client.put(
+        "/api/invoices/bulk-update", json={"ids": [invoice_id], "store": 123}
+    )
+    assert response.status_code == 400
+    assert _get_json(response)["error"] == "Field 'store' must be a string"
+
+
+def test_bulk_update_non_string_category_returns_400(
+    client: FlaskClient, seed_invoice: SeedInvoice
+) -> None:
+    """A non-string category on bulk-update is rejected with a JSON 400."""
+    invoice_id = seed_invoice()
+    response = client.put(
+        "/api/invoices/bulk-update", json={"ids": [invoice_id], "category": {"x": 1}}
+    )
+    assert response.status_code == 400
+    assert _get_json(response)["error"] == "Field 'category' must be a string"
 
 
 # --- POST /api/invoices/bulk-delete -------------------------------------------
@@ -575,7 +726,21 @@ def test_bulk_delete_missing_ids_returns_400(client: FlaskClient) -> None:
     """An empty ids list is rejected with 400."""
     response = client.post("/api/invoices/bulk-delete", json={"ids": []})
     assert response.status_code == 400
-    assert _get_json(response)["error"] == "Missing ids"
+    assert _get_json(response)["error"] == "Field 'ids' must be a non-empty list"
+
+
+def test_bulk_delete_non_dict_body_returns_json_400(client: FlaskClient) -> None:
+    """A list body yields a JSON 400, not an HTML 500 from AttributeError."""
+    response = client.post("/api/invoices/bulk-delete", json=[1, 2])
+    assert response.status_code == 400
+    assert _get_json(response)["error"] == "Request body must be a JSON object"
+
+
+def test_bulk_delete_non_int_ids_returns_400(client: FlaskClient) -> None:
+    """Ids that are not integers are rejected with a JSON 400."""
+    response = client.post("/api/invoices/bulk-delete", json={"ids": ["x"]})
+    assert response.status_code == 400
+    assert _get_json(response)["error"] == "Field 'ids' must contain only integers"
 
 
 # --- GET /api/invoices pagination ---------------------------------------------

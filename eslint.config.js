@@ -12,7 +12,7 @@ const styleRules = {
 
 export default [
   {
-    ignores: ["node_modules/**", "static/icons/**"],
+    ignores: ["node_modules/**", "static/icons/**", "static/js/vendor/**"],
   },
   {
     files: ["static/js/**/*.js"],

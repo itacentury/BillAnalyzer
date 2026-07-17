@@ -3,6 +3,8 @@ services:
     build: .
     container_name: summa
     restart: unless-stopped
+    # Serves plain HTTP only — put a TLS-terminating reverse proxy in front for
+    # any non-localhost deployment (see "Production Deployment" in README.md).
     ports:
       - "8000:8000"
     volumes:

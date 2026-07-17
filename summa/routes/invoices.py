@@ -16,8 +16,10 @@ from summa.helpers import (
     error_response,
     escape_like,
     parse_bounded_int,
+    parse_id_list,
     parse_invoice,
     parse_invoice_batch,
+    require_optional_str,
     strip_text,
 )
 
@@ -236,7 +238,7 @@ def add_invoice() -> ApiResponse:
         return jsonify({"success": True, "id": invoice_id})
     except sqlite3.Error as e:
         logger.error("Failed to create invoice: %s", e)
-        return error_response(str(e), 500)
+        return error_response("Internal server error", 500)
 
 
 @invoices_bp.route("/api/invoices/import", methods=["POST"])
@@ -260,7 +262,8 @@ def import_invoices() -> ApiResponse:
             for invoice in validation.invoices:
                 # Duplicate check: same combination of date, store and total amount
                 cursor.execute(
-                    "SELECT id FROM invoices WHERE date = ? AND store = ? AND total = ?",
+                    "SELECT id FROM invoices "
+                    "WHERE date = ? AND store = ? AND total = ? AND deleted_at IS NULL",
                     (invoice.date, invoice.store, invoice.total),
                 )
                 existing: Any = cursor.fetchone()
@@ -294,7 +297,7 @@ def import_invoices() -> ApiResponse:
         )
     except sqlite3.Error as e:
         logger.error("Import failed: %s", e)
-        return error_response(str(e), 500)
+        return error_response("Internal server error", 500)
 
 
 @invoices_bp.route("/api/invoices/<int:invoice_id>", methods=["PUT"])
@@ -309,7 +312,8 @@ def update_invoice(invoice_id: int) -> ApiResponse:
     try:
         with db_cursor() as cursor:
             cursor.execute(
-                "UPDATE invoices SET date = ?, store = ?, category = ?, total = ? WHERE id = ?",
+                "UPDATE invoices SET date = ?, store = ?, category = ?, total = ? "
+                "WHERE id = ? AND deleted_at IS NULL",
                 (
                     invoice.date,
                     invoice.store,
@@ -318,6 +322,10 @@ def update_invoice(invoice_id: int) -> ApiResponse:
                     invoice_id,
                 ),
             )
+            # A soft-deleted or unknown invoice is treated as absent: bail out
+            # before touching its items instead of silently rewriting them.
+            if cursor.rowcount == 0:
+                return error_response("Invoice not found", 404)
             # Replace all items: remove the old ones, then insert the new set
             cursor.execute(
                 "DELETE FROM invoice_items WHERE invoice_id = ?", (invoice_id,)
@@ -333,7 +341,7 @@ def update_invoice(invoice_id: int) -> ApiResponse:
         return jsonify({"success": True})
     except sqlite3.Error as e:
         logger.error("Failed to update invoice id=%d: %s", invoice_id, e)
-        return error_response(str(e), 500)
+        return error_response("Internal server error", 500)
 
 
 @invoices_bp.route("/api/invoices/<int:invoice_id>", methods=["DELETE"])
@@ -343,26 +351,34 @@ def delete_invoice(invoice_id: int) -> ApiResponse:
         with db_cursor() as cursor:
             # Soft delete: set deleted_at timestamp instead of removing from database
             cursor.execute(
-                "UPDATE invoices SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?",
+                "UPDATE invoices SET deleted_at = CURRENT_TIMESTAMP "
+                "WHERE id = ? AND deleted_at IS NULL",
                 (invoice_id,),
             )
+            if cursor.rowcount == 0:
+                return error_response("Invoice not found", 404)
         logger.info("Invoice soft-deleted: id=%d", invoice_id)
         return jsonify({"success": True})
     except sqlite3.Error as e:
         logger.error("Failed to delete invoice id=%d: %s", invoice_id, e)
-        return error_response(str(e), 500)
+        return error_response("Internal server error", 500)
 
 
 @invoices_bp.route("/api/invoices/bulk-update", methods=["PUT"])
 def bulk_update_invoices() -> ApiResponse:
     """Update store name and/or category for multiple invoices at once."""
     data: Any = request.json
-    invoice_ids: list[int] = data.get("ids", [])
-    new_store: str | None = strip_text(data.get("store"))
-    new_category: str | None = data.get("category")
-
-    if not invoice_ids:
-        return error_response("Missing ids", 400)
+    try:
+        invoice_ids: list[int] = parse_id_list(data)
+        new_store: str | None = strip_text(
+            require_optional_str(data.get("store"), "store")
+        )
+        # Keep the raw string (empty string is meaningful below); type-check only.
+        new_category: str | None = require_optional_str(
+            data.get("category"), "category"
+        )
+    except ValidationError as e:
+        return error_response(str(e), 400)
 
     if not new_store and new_category is None:
         return error_response("Missing store or category", 400)
@@ -385,7 +401,8 @@ def bulk_update_invoices() -> ApiResponse:
             for chunk in chunked(invoice_ids):
                 cursor.execute(
                     f"UPDATE invoices SET {', '.join(set_clauses)} "
-                    f"WHERE id IN ({placeholders_for(len(chunk))})",
+                    f"WHERE id IN ({placeholders_for(len(chunk))}) "
+                    "AND deleted_at IS NULL",
                     [*params, *chunk],
                 )
                 updated_count += cursor.rowcount
@@ -397,17 +414,17 @@ def bulk_update_invoices() -> ApiResponse:
         return jsonify({"success": True, "updated": updated_count})
     except sqlite3.Error as e:
         logger.error("Bulk update failed for ids=%s: %s", invoice_ids, e)
-        return error_response(str(e), 500)
+        return error_response("Internal server error", 500)
 
 
 @invoices_bp.route("/api/invoices/bulk-delete", methods=["POST"])
 def bulk_delete_invoices() -> ApiResponse:
     """Soft-delete multiple invoices at once."""
     data: Any = request.json
-    invoice_ids: list[int] = data.get("ids", [])
-
-    if not invoice_ids:
-        return error_response("Missing ids", 400)
+    try:
+        invoice_ids: list[int] = parse_id_list(data)
+    except ValidationError as e:
+        return error_response(str(e), 400)
 
     try:
         with db_cursor() as cursor:
@@ -428,4 +445,4 @@ def bulk_delete_invoices() -> ApiResponse:
         return jsonify({"success": True, "deleted": deleted_count})
     except sqlite3.Error as e:
         logger.error("Bulk delete failed for ids=%s: %s", invoice_ids, e)
-        return error_response(str(e), 500)
+        return error_response("Internal server error", 500)

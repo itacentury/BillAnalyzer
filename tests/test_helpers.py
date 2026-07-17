@@ -7,6 +7,7 @@ import pytest
 from summa.helpers import (
     ValidationError,
     escape_like,
+    parse_id_list,
     parse_invoice,
     parse_invoice_batch,
     strip_text,
@@ -100,6 +101,29 @@ def test_parse_invoice_batch_non_list_raises() -> None:
     """A non-list payload raises, so the endpoint can answer 400."""
     with pytest.raises(ValidationError, match="Expected a list of invoices"):
         parse_invoice_batch({"date": "2024-01-01"})
+
+
+def test_parse_id_list_valid() -> None:
+    """A dict with a non-empty list of ints returns that list unchanged."""
+    assert parse_id_list({"ids": [1, 2, 3]}) == [1, 2, 3]
+
+
+@pytest.mark.parametrize(
+    ("data", "match"),
+    [
+        ([1, 2], "Request body must be a JSON object"),
+        ("nope", "Request body must be a JSON object"),
+        ({}, "Field 'ids' must be a non-empty list"),
+        ({"ids": []}, "Field 'ids' must be a non-empty list"),
+        ({"ids": "abc"}, "Field 'ids' must be a non-empty list"),
+        ({"ids": [1, "x"]}, "Field 'ids' must contain only integers"),
+        ({"ids": [True]}, "Field 'ids' must contain only integers"),
+    ],
+)
+def test_parse_id_list_rejects_malformed(data: Any, match: str) -> None:
+    """Non-dict bodies and non-int-list `ids` raise ValidationError, not TypeError."""
+    with pytest.raises(ValidationError, match=match):
+        parse_id_list(data)
 
 
 def test_validation_error_exposes_field() -> None:

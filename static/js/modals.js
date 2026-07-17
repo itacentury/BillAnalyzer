@@ -149,12 +149,14 @@ export function closeImportModal() {
   document.querySelector('[data-el="json-input"]').value = "";
   document.querySelector('[data-el="file-input"]').value = "";
   state.pendingFiles = [];
-  document.querySelector('[data-el="selected-files"]').style.display = "none";
+  document
+    .querySelector('[data-el="selected-files"]')
+    .classList.add("is-hidden");
 
   // Clear any staged import errors so reopening never shows stale cards.
   const importErrors = document.querySelector('[data-el="import-errors"]');
   importErrors.innerHTML = "";
-  importErrors.style.display = "none";
+  importErrors.classList.add("is-hidden");
   state.importErrors = [];
 
   // Restore the fresh-input controls hidden while in correction mode.

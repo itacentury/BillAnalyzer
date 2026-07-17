@@ -234,7 +234,7 @@ export function updateFilterDisplay() {
 
   // Reveal the jump-to-today button only once navigated away from the current
   // period; display (not visibility) so it releases its slot in the pill.
-  todayBtn.style.display = isViewingCurrentPeriod() ? "none" : "";
+  todayBtn.classList.toggle("is-hidden", isViewingCurrentPeriod());
 }
 
 // Whether state.currentDate falls in the same period as today for the active mode
