@@ -20,7 +20,7 @@ The app is designed as a personal, single-user tool with no auth, exposed via Do
       No `Content-Security-Policy`, `X-Content-Type-Options`, `X-Frame-Options`/`frame-ancestors`, `Referrer-Policy`. A CSP would neutralize H2's exfiltration and constrain any future XSS.
       **Fix:** add an `after_request` hook in `create_app()` setting CSP (`default-src 'self'`), `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`.
 
-- [ ] **M2 — Third-party assets without SRI.**
+- [x] **M2 — Third-party assets without SRI.**
       Chart.js from jsdelivr ([templates/index.html:109-112](templates/index.html#L109-L112)) and Google Fonts, no `integrity` attribute. A CDN compromise executes arbitrary JS in an app holding all financial data; also leaks the user's IP/UA to Google/jsdelivr on every visit and breaks the PWA offline (these assets are not in the SW cache).
       **Fix:** self-host Chart.js under `static/js/vendor/` (auto-picked-up by the JS manifest/SW) and self-host the fonts; enables a strict `default-src 'self'` CSP.
 

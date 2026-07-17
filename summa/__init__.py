@@ -20,14 +20,14 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(message)s",
 )
 
-# Content-Security-Policy. Still loosened for the CDN-hosted Chart.js and Google
-# Fonts (see SECURITY-TODO M2); once those are self-hosted, drop the extra hosts
-# and tighten every directive to 'self'.
+# Content-Security-Policy. Chart.js and the web fonts are self-hosted (see
+# SECURITY-TODO M2), so every fetch directive is locked to 'self' — no external
+# origins are permitted.
 _CSP_DIRECTIVES: list[str] = [
     "default-src 'self'",
-    "script-src 'self' https://cdn.jsdelivr.net",
-    "style-src 'self' https://fonts.googleapis.com",
-    "font-src 'self' https://fonts.gstatic.com",
+    "script-src 'self'",
+    "style-src 'self'",
+    "font-src 'self'",
     "img-src 'self' data:",
     "connect-src 'self'",
     "frame-ancestors 'none'",

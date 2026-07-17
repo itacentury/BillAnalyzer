@@ -1,6 +1,7 @@
 node_modules/
 .venv/
 static/icons/
+static/js/vendor/
 uv.lock
 package-lock.json
 *.db

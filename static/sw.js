@@ -3,17 +3,21 @@
  * Provides offline support and caching strategies.
  */
 
-const CACHE_NAME = "summa-cache-v92";
-// JS modules and CSS files are not listed here: they are discovered at install
-// time from the server-rendered /static/js-manifest.json and
-// /static/css-manifest.json (which glob static/js/*.js and static/css/*.css),
-// so adding a module or stylesheet needs no edit to this file.
+const CACHE_NAME = "summa-cache-v93";
+// JS modules, CSS files and fonts are not listed here: they are discovered at
+// install time from the server-rendered /static/js-manifest.json,
+// /static/css-manifest.json and /static/fonts-manifest.json (which glob
+// static/js/*.js, static/css/*.css and static/fonts/*.woff2), so adding a
+// module, stylesheet or font needs no edit to this file. The vendored Chart.js
+// lives in a nested js/vendor/ dir the non-recursive js glob won't match, so it
+// is listed explicitly below.
 const STATIC_ASSETS = [
   "/",
   "/static/favicon.svg",
   "/static/manifest.json",
   "/static/icons/icon-192.png",
   "/static/icons/icon-512.png",
+  "/static/js/vendor/chart.umd.min.js",
 ];
 
 /**
@@ -24,13 +28,20 @@ self.addEventListener("install", (event) => {
     caches.open(CACHE_NAME).then(async (cache) => {
       console.log("[SW] Caching static assets");
       try {
-        const [jsResponse, cssResponse] = await Promise.all([
+        const [jsResponse, cssResponse, fontResponse] = await Promise.all([
           fetch("/static/js-manifest.json"),
           fetch("/static/css-manifest.json"),
+          fetch("/static/fonts-manifest.json"),
         ]);
         const jsModules = await jsResponse.json();
         const cssFiles = await cssResponse.json();
-        await cache.addAll([...STATIC_ASSETS, ...jsModules, ...cssFiles]);
+        const fontFiles = await fontResponse.json();
+        await cache.addAll([
+          ...STATIC_ASSETS,
+          ...jsModules,
+          ...cssFiles,
+          ...fontFiles,
+        ]);
       } catch (error) {
         console.log(
           "[SW] Asset manifest unavailable, caching core assets only:",

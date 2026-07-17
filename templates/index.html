@@ -32,13 +32,13 @@
       rel="manifest"
       href="{{ url_for('static', filename='manifest.json') }}"
     />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- CSS is split per component; link order matters for the cascade.
+         fonts.css declares the self-hosted @font-face rules and must precede
+         base.css, which applies the Sora family. -->
     <link
-      href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
       rel="stylesheet"
+      href="{{ url_for('static', filename='css/fonts.css') }}"
     />
-    <!-- CSS is split per component; link order matters for the cascade. -->
     <link
       rel="stylesheet"
       href="{{ url_for('static', filename='css/variables.css') }}"
@@ -107,7 +107,7 @@
     {% include "partials/toasts.html" %}
 
     <script
-      src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"
+      src="{{ url_for('static', filename='js/vendor/chart.umd.min.js') }}"
       defer
     ></script>
     <script
