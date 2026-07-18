@@ -227,11 +227,11 @@ export function setupPageSizeListeners() {
         break;
       case "Enter":
       case " ": {
+        // When closed, let the button's native click open the menu (the click
+        // delegate is the single toggle authority) — do not preventDefault, or
+        // the synthetic click never fires. When open, commit the highlight.
+        if (!isOpen()) break;
         event.preventDefault();
-        if (!isOpen()) {
-          openMenu();
-          break;
-        }
         const value = highlightedValue();
         if (value !== null) selectValue(value);
         break;
