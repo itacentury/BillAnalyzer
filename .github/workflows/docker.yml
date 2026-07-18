@@ -16,7 +16,9 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Same rationale as ci.yml: cancel superseded PR builds, but let every main
+  # commit finish so its per-commit sha image is actually pushed.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
   contents: read
