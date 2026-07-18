@@ -1,29 +1,3 @@
-# Build stage for generating icons (optional, only if icons need regeneration)
-FROM python:3.12-slim AS builder
-
-# Provide uv
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/
-
-WORKDIR /build
-
-# Install Pillow dependencies for icon generation
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    fonts-liberation \
-    && rm -rf /var/lib/apt/lists/*
-
-# Pillow is needed only to generate icons; pull it from the locked `icons`
-# group so the version stays in sync with pyproject.toml / uv.lock
-COPY pyproject.toml uv.lock generate_icons.py ./
-RUN uv sync --frozen --no-install-project --only-group icons
-
-# Use the project virtualenv for subsequent commands
-ENV PATH="/build/.venv/bin:$PATH"
-
-# Generate icons
-RUN mkdir -p static/icons && python generate_icons.py
-
-
-# Production stage
 FROM python:3.12-slim
 
 # Provide uv
@@ -52,9 +26,6 @@ ENV PATH="/app/.venv/bin:$PATH"
 COPY summa/ summa/
 COPY templates/ templates/
 COPY static/ static/
-
-# Copy generated icons from builder stage
-COPY --from=builder /build/static/icons/ static/icons/
 
 # Copy and setup entrypoint
 COPY entrypoint.sh /entrypoint.sh

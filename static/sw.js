@@ -3,7 +3,7 @@
  * Provides offline support and caching strategies.
  */
 
-const CACHE_NAME = "summa-cache-v109";
+const CACHE_NAME = "summa-cache-v111";
 // JS modules, CSS files and fonts are not listed here: they are discovered at
 // install time from the server-rendered /static/js-manifest.json,
 // /static/css-manifest.json and /static/fonts-manifest.json (which glob
@@ -13,7 +13,7 @@ const CACHE_NAME = "summa-cache-v109";
 // is listed explicitly below.
 const STATIC_ASSETS = [
   "/",
-  "/static/favicon.svg",
+  "/static/favicon.png",
   "/static/manifest.json",
   "/static/icons/icon-192.png",
   "/static/icons/icon-512.png",
