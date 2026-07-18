@@ -73,6 +73,11 @@ jobs:
             type=sha,prefix=
             type=ref,event=pr
 
+      # amd64 is built once here and loaded so the scanner can inspect the real
+      # artifact. `load` is single-platform only, so this step cannot also build
+      # arm64. The "Build and push" step below re-exports these amd64 layers from
+      # the shared build cache (a cache hit, not a recompile) and additionally
+      # builds arm64 — so amd64 is compiled only once per run.
       - name: Build local image for scan
         uses: docker/build-push-action@v6
         with:
@@ -81,6 +86,9 @@ jobs:
           load: true
           tags: summa:scan
           cache-from: type=gha
+          # Feed the amd64 layers into the gha cache so the push step's reuse is
+          # cache-backed rather than reliant on in-job builder state.
+          cache-to: type=gha,mode=max
           pull: ${{ env.REFRESH_BASE == 'true' }}
           no-cache: ${{ env.REFRESH_BASE == 'true' }}
 
