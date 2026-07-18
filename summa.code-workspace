@@ -127,11 +127,6 @@
         "type": "shell",
         "command": "docker compose down",
       },
-      {
-        "label": "Generate Icons",
-        "type": "shell",
-        "command": "python generate_icons.py",
-      },
     ],
   },
   "launch": {
