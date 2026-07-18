@@ -755,7 +755,7 @@ def test_pagination_defaults_and_totals(
 
     body = _get_json(client.get("/api/invoices"))
     assert body["page"] == 1
-    assert body["page_size"] == 50
+    assert body["page_size"] == 25
     assert body["total_count"] == 3
     assert body["total_sum"] == 30.0
     assert len(body["invoices"]) == 3
@@ -798,7 +798,7 @@ def test_pagination_non_numeric_params_fall_back_to_defaults(
     seed_invoice(store="Only")
     body = _get_json(client.get("/api/invoices?page=abc&page_size=xyz"))
     assert body["page"] == 1
-    assert body["page_size"] == 50
+    assert body["page_size"] == 25
 
 
 def test_pagination_totals_reflect_filters_not_page(

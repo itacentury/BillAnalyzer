@@ -27,7 +27,7 @@ logger: logging.Logger = logging.getLogger(__name__)
 
 invoices_bp: Blueprint = Blueprint("invoices", __name__)
 
-DEFAULT_PAGE_SIZE: Final[int] = 50
+DEFAULT_PAGE_SIZE: Final[int] = 25
 MAX_PAGE_SIZE: Final[int] = 200
 
 
