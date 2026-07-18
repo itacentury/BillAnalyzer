@@ -117,9 +117,14 @@ jobs:
       - name: Upload scan results to Security tab
         # always() so the SARIF is uploaded even when a critical finding aborts
         # the scan step above — that is exactly when the report matters most.
+        # Guard on a non-empty sarif output so a scan that errors before writing
+        # SARIF (e.g. image load failure) doesn't fail this step on an empty file.
         # Fork PRs get a read-only token and cannot upload SARIF (403), so skip
         # them instead of failing the job — matches the README caveat.
-        if: always() && github.event.pull_request.head.repo.fork != true
+        if: >-
+          always()
+          && steps.scan.outputs.sarif != ''
+          && github.event.pull_request.head.repo.fork != true
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: ${{ steps.scan.outputs.sarif }}
