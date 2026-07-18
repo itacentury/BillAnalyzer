@@ -42,9 +42,9 @@ Stylelint (`.stylelintrc.json`) enforces the `docs/code-style.md` CSS rules
 Functions called only from inline HTML handlers are listed in a top-of-file
 `/* exported … */` directive in `app.js` so `no-unused-vars` does not flag them.
 
-CI (`.github/workflows/ci.yml`) has two jobs that must pass: `lint` (`ruff check
-.`, `ruff format --check .`, `mypy`) and `frontend` (`npm run lint`). Run both
-before pushing.
+CI (`.github/workflows/ci.yml`) has three jobs that must pass: `lint` (`ruff
+check .`, `ruff format --check .`, `mypy`), `test` (`pytest`) and `frontend`
+(`npm run lint`). Run them before pushing.
 
 Docker: `docker compose up -d` serves on `http://localhost:8000` with the DB
 persisted in the `summa_data` volume.
