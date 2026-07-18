@@ -28,6 +28,11 @@ jobs:
     # (PR, schedule, manual dispatch) always run.
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
 
+    env:
+      # Scheduled + manual runs exist purely to refresh the base image / apt packages
+      # for CVE fixes; bust the layer cache so those layers are actually rebuilt.
+      REFRESH_BASE: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -75,6 +80,8 @@ jobs:
           load: true
           tags: summa:scan
           cache-from: type=gha
+          pull: ${{ env.REFRESH_BASE == 'true' }}
+          no-cache: ${{ env.REFRESH_BASE == 'true' }}
 
       - name: Generate SBOM
         uses: anchore/sbom-action@v0
@@ -100,3 +107,5 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          pull: ${{ env.REFRESH_BASE == 'true' }}
+          no-cache: ${{ env.REFRESH_BASE == 'true' }}
