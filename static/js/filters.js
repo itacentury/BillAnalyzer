@@ -232,9 +232,14 @@ export function updateFilterDisplay() {
       break;
   }
 
-  // Reveal the jump-to-today button only once navigated away from the current
-  // period; display (not visibility) so it releases its slot in the pill.
-  todayBtn.classList.toggle("is-hidden", isViewingCurrentPeriod());
+  // The jump-to-today button is hidden only where navigation is meaningless
+  // (all/custom); otherwise it stays visible but disabled on the current period.
+  const navigationActive =
+    state.filterMode !== "all" && state.filterMode !== "custom";
+  todayBtn.classList.toggle("is-hidden", !navigationActive);
+  if (navigationActive) {
+    todayBtn.disabled = isViewingCurrentPeriod();
+  }
 }
 
 // Whether state.currentDate falls in the same period as today for the active mode
