@@ -91,6 +91,11 @@ jobs:
       # cache hit, not a recompile). This holds on refresh runs too: the fresh
       # pull/no-cache rebuilds happen in these two build steps, so the push step
       # carries no build-wide no-cache that would rebuild amd64 a second time.
+      # Each warming build uses its own gha cache scope (amd64 / arm64): gha
+      # cache keys are immutable, so two exports to the shared default scope
+      # would collide (the second returns 409 "Cache already exists") and the
+      # arm64 layers would be dropped — silently reintroducing a second, emulated
+      # arm64 compile in the push step. Keep the scopes distinct.
       - name: Build local image for scan
         uses: docker/build-push-action@v6
         with:
@@ -98,10 +103,10 @@ jobs:
           platforms: linux/amd64
           load: true
           tags: summa:scan
-          cache-from: type=gha
+          cache-from: type=gha,scope=amd64
           # Feed the amd64 layers into the gha cache so the push step's reuse is
           # cache-backed rather than reliant on in-job builder state.
-          cache-to: type=gha,mode=max
+          cache-to: type=gha,mode=max,scope=amd64
           pull: ${{ env.REFRESH_BASE == 'true' }}
           no-cache: ${{ env.REFRESH_BASE == 'true' }}
 
@@ -140,8 +145,10 @@ jobs:
         with:
           context: .
           platforms: linux/arm64
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # Own scope (see the scan-build step) so this export doesn't collide
+          # with amd64's on the immutable default gha cache key.
+          cache-from: type=gha,scope=arm64
+          cache-to: type=gha,mode=max,scope=arm64
           pull: ${{ env.REFRESH_BASE == 'true' }}
           no-cache: ${{ env.REFRESH_BASE == 'true' }}
 
@@ -159,5 +166,8 @@ jobs:
           # Both platforms are already built and exported to the cache by the two
           # steps above, so this step only re-exports them (a cache hit), attaches
           # the SBOM and pushes — no pull/no-cache here, which is what kept amd64
-          # from being recompiled a second time on refresh runs.
-          cache-from: type=gha
+          # from being recompiled a second time on refresh runs. Read both
+          # per-platform scopes so each platform hits its own warming export.
+          cache-from: |
+            type=gha,scope=amd64
+            type=gha,scope=arm64
