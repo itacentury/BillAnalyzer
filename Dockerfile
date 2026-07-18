@@ -42,8 +42,6 @@ COPY static/ static/
 COPY --chmod=755 entrypoint.sh /entrypoint.sh
 
 ENV PATH="/app/.venv/bin:$PATH" \
-    FLASK_APP=summa.wsgi \
-    FLASK_ENV=production \
     PYTHONUNBUFFERED=1 \
     DATABASE_PATH=/data/invoices.db
 
