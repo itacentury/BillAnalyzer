@@ -29,9 +29,9 @@ export const selectedInvoices = new Set();
 // Selectable invoice-per-page counts offered by the pagination size selector.
 export const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
-// Sentinel page size for the "All" option: larger than any realistic result set,
-// so the server clamps it to MAX_PAGE_SIZE (200) and returns a single page.
-export const ALL_PAGE_SIZE = 100000;
+// Wire value for the "All" page-size option: the server returns every matching
+// row on one page instead of clamping to a numeric maximum.
+export const ALL_PAGE_SIZE = "all";
 
 // localStorage key persisting the chosen page size across sessions.
 export const PAGE_SIZE_STORAGE_KEY = "summa.pageSize";

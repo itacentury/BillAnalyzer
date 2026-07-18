@@ -1,8 +1,8 @@
 /**
  * Page-size dropdown for the invoice pagination: a custom, accessible listbox
  * (button + floating panel) replacing the native `<select>`, so it looks the
- * same on every platform. Options are 10/25/50/100/All; "All" is a sentinel
- * page size the server clamps to its max.
+ * same on every platform. Options are 10/25/50/100/All; "All" sends a token the
+ * server expands to every matching row on one page.
  *
  * The pagination markup (and this control) is regenerated on every list render,
  * so all interaction is wired via event delegation on the stable
@@ -26,7 +26,7 @@ function optionValues() {
 
 /** The value string matching the current state ("all" or a numeric string). */
 function currentValue() {
-  return state.pageSize >= ALL_PAGE_SIZE ? ALL_VALUE : String(state.pageSize);
+  return state.pageSize === ALL_PAGE_SIZE ? ALL_VALUE : String(state.pageSize);
 }
 
 /** Human label for an option value: "25 / page" for numbers, "All" otherwise. */
