@@ -219,7 +219,10 @@ function renderPagination() {
     return;
   }
 
-  const totalPages = Math.max(1, Math.ceil(state.totalCount / state.pageSize));
+  const totalPages = Math.max(
+    1,
+    Math.ceil(state.totalCount / state.effectivePageSize),
+  );
   container.innerHTML = `
     <button class="btn btn-secondary btn-sm" data-action="page-prev" ${
       state.page <= 1 ? "disabled" : ""

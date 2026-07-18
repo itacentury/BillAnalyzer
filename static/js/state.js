@@ -10,6 +10,7 @@ export const state = {
   invoices: [],
   page: 1, // Current invoice-list page (1-based)
   pageSize: 25, // Invoices requested per page
+  effectivePageSize: 25, // Server-clamped page size from the last response; drives totalPages
   totalCount: 0, // Total invoices matching the active filters
   totalSum: 0, // Sum of totals across all matching invoices
   currentDate: new Date(), // Current date for navigation reference
