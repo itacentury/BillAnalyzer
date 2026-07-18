@@ -9,7 +9,7 @@
 export const state = {
   invoices: [],
   page: 1, // Current invoice-list page (1-based)
-  pageSize: 50, // Invoices requested per page
+  pageSize: 25, // Invoices requested per page
   totalCount: 0, // Total invoices matching the active filters
   totalSum: 0, // Sum of totals across all matching invoices
   currentDate: new Date(), // Current date for navigation reference
@@ -24,6 +24,16 @@ export const state = {
 
 // Track selected invoice IDs for bulk operations (mutated, never reassigned).
 export const selectedInvoices = new Set();
+
+// Selectable invoice-per-page counts offered by the pagination size selector.
+export const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
+
+// Sentinel page size for the "All" option: larger than any realistic result set,
+// so the server clamps it to MAX_PAGE_SIZE (200) and returns a single page.
+export const ALL_PAGE_SIZE = 100000;
+
+// localStorage key persisting the chosen page size across sessions.
+export const PAGE_SIZE_STORAGE_KEY = "summa.pageSize";
 
 // Chart.js color palette: warm-sand chart tones (--chart-1…8), donut/bar order.
 export const chartColors = [

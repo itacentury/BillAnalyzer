@@ -28,6 +28,29 @@ import { setupKeyboardListeners } from "./keyboard.js";
 import { setupDrawerListeners } from "./drawer.js";
 import { setupSheetGestures } from "./sheet.js";
 import { setupViewportListeners } from "./viewport.js";
+import { setupPageSizeListeners } from "./pagesize.js";
+import {
+  state,
+  PAGE_SIZE_OPTIONS,
+  ALL_PAGE_SIZE,
+  PAGE_SIZE_STORAGE_KEY,
+} from "./state.js";
+
+/**
+ * Restore the persisted page size into state before the first load, so the
+ * initial fetch already uses the user's chosen size. Invalid or missing values
+ * keep the default.
+ */
+function restorePageSize() {
+  const stored = localStorage.getItem(PAGE_SIZE_STORAGE_KEY);
+  if (stored === null) return;
+  if (stored === "all") {
+    state.pageSize = ALL_PAGE_SIZE;
+    return;
+  }
+  const parsed = parseInt(stored, 10);
+  if (PAGE_SIZE_OPTIONS.includes(parsed)) state.pageSize = parsed;
+}
 
 // Register Service Worker for PWA
 if ("serviceWorker" in navigator) {
@@ -44,6 +67,8 @@ if ("serviceWorker" in navigator) {
 }
 
 function init() {
+  restorePageSize();
+
   // Instantiate the comboboxes before the first data load, so loadStores() and
   // loadCategories() have live instances to feed options into.
   const reloadOnFilterChange = () => {
@@ -62,6 +87,7 @@ function init() {
   setupModalListeners();
   setupInvoiceListListeners();
   setupPaginationListeners();
+  setupPageSizeListeners();
   setupBulkListeners();
   setupStatsListeners();
   setupImportListeners();
