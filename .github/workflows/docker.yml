@@ -20,6 +20,7 @@ concurrency:
 
 permissions:
   contents: read
+  security-events: write # required by github/codeql-action/upload-sarif
 
 jobs:
   docker:
@@ -83,19 +84,22 @@ jobs:
           pull: ${{ env.REFRESH_BASE == 'true' }}
           no-cache: ${{ env.REFRESH_BASE == 'true' }}
 
-      - name: Generate SBOM
-        uses: anchore/sbom-action@v0
-        with:
-          image: summa:scan
-          format: cyclonedx-json
-          artifact-name: sbom-docker.cdx.json
-
       - name: Scan for vulnerabilities
+        id: scan
         uses: anchore/scan-action@v6
         with:
           image: summa:scan
-          fail-build: false
+          # A critical CVE gates the push; the report is still uploaded below.
+          fail-build: true
           severity-cutoff: critical
+
+      - name: Upload scan results to Security tab
+        # always() so the SARIF is uploaded even when a critical finding aborts
+        # the scan step above — that is exactly when the report matters most.
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: ${{ steps.scan.outputs.sarif }}
 
       - name: Build and push with cache
         uses: docker/build-push-action@v6
@@ -103,6 +107,9 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
+          # Generate an SPDX SBOM and attach it to the pushed image as an OCI
+          # attestation (only takes effect when push is true).
+          sbom: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
