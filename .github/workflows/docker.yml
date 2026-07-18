@@ -1,12 +1,18 @@
 name: Docker build & push
 
 on:
-  push:
+  # Publish only after the CI workflow has succeeded on main, so a commit that
+  # fails lint/tests never ships an image. "CI" must match the name: in ci.yml.
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
     branches: ["main"]
   pull_request:
     branches: ["main"]
   schedule:
     - cron: "0 0 * * 0" # every Sunday at midnight
+  # Manual escape hatch: rebuild and push the current main without a new commit.
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -18,10 +24,17 @@ permissions:
 jobs:
   docker:
     runs-on: ubuntu-latest
+    # For workflow_run, only proceed when CI actually succeeded; other events
+    # (PR, schedule, manual dispatch) always run.
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          # Build the exact commit CI validated; empty on other events, so
+          # checkout falls back to its default ref there.
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -39,6 +52,10 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
+      - name: Read version
+        id: ver
+        run: echo "v=$(python3 -c "import tomllib;print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")" >> "$GITHUB_OUTPUT"
+
       - name: Extract metadata for Docker
         id: meta
         uses: docker/metadata-action@v5
@@ -46,8 +63,32 @@ jobs:
           images: ${{ secrets.DOCKER_USERNAME }}/summa
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ steps.ver.outputs.v }},enable={{is_default_branch}}
             type=sha,prefix=
             type=ref,event=pr
+
+      - name: Build local image for scan
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          load: true
+          tags: summa:scan
+          cache-from: type=gha
+
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          image: summa:scan
+          format: cyclonedx-json
+          artifact-name: sbom-docker.cdx.json
+
+      - name: Scan for vulnerabilities
+        uses: anchore/scan-action@v6
+        with:
+          image: summa:scan
+          fail-build: false
+          severity-cutoff: critical
 
       - name: Build and push with cache
         uses: docker/build-push-action@v6
