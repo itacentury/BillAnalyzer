@@ -85,9 +85,12 @@ jobs:
 
       # amd64 is built once here and loaded so the scanner can inspect the real
       # artifact. `load` is single-platform only, so this step cannot also build
-      # arm64. The "Build and push" step below re-exports these amd64 layers from
-      # the shared build cache (a cache hit, not a recompile) and additionally
-      # builds arm64 — so amd64 is compiled only once per run.
+      # arm64 (that gets its own build-to-cache step below). Each platform is
+      # therefore compiled exactly once — amd64 here, arm64 there — and the
+      # "Build and push" step only re-exports both from the shared build cache (a
+      # cache hit, not a recompile). This holds on refresh runs too: the fresh
+      # pull/no-cache rebuilds happen in these two build steps, so the push step
+      # carries no build-wide no-cache that would rebuild amd64 a second time.
       - name: Build local image for scan
         uses: docker/build-push-action@v6
         with:
@@ -121,6 +124,22 @@ jobs:
         with:
           sarif_file: ${{ steps.scan.outputs.sarif }}
 
+      # arm64 has no native runner and is never loaded for the scan, so build it
+      # once here straight into the shared build cache; the push step then reuses
+      # these layers instead of compiling arm64 itself. Runs after the scan so a
+      # critical-CVE failure aborts before this (emulated, slow) build. Mirrors
+      # the amd64 scan-build step's refresh semantics so arm64 is genuinely
+      # rebuilt on schedule/manual runs.
+      - name: Build arm64 for cache
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/arm64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          pull: ${{ env.REFRESH_BASE == 'true' }}
+          no-cache: ${{ env.REFRESH_BASE == 'true' }}
+
       - name: Build and push with cache
         uses: docker/build-push-action@v6
         with:
@@ -132,7 +151,8 @@ jobs:
           sbom: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          # Both platforms are already built and exported to the cache by the two
+          # steps above, so this step only re-exports them (a cache hit), attaches
+          # the SBOM and pushes — no pull/no-cache here, which is what kept amd64
+          # from being recompiled a second time on refresh runs.
           cache-from: type=gha
-          cache-to: type=gha,mode=max
-          pull: ${{ env.REFRESH_BASE == 'true' }}
-          no-cache: ${{ env.REFRESH_BASE == 'true' }}
