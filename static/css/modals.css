@@ -371,7 +371,7 @@
 
     /* Bound to the visible region above the keyboard; dvh fallback without the
        visualViewport API. */
-    max-height: var(--visual-viewport-height, 85dvh);
+    max-height: min(var(--visual-viewport-height, 85dvh), 90dvh);
     border-radius: 20px 20px 0 0;
     box-shadow: 0 -12px 40px rgb(58 51 42 / 30%);
     animation: modal-slide-up 0.3s ease;
