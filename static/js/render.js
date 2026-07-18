@@ -19,6 +19,7 @@ import { editInvoice } from "./modals.js";
 import { deleteInvoice } from "./invoices.js";
 import { fetchInvoiceItems } from "./api.js";
 import { toggleInvoiceSelection } from "./bulk.js";
+import { renderPageSizeControl } from "./pagesize.js";
 
 /**
  * Build the line-item rows for an invoice's expanded detail view. Shared by the
@@ -205,8 +206,9 @@ export function renderInvoices() {
 }
 
 /**
- * Render the Prev/Next pagination control. The container is a sibling of the
- * invoice list (which is fully replaced on each render), so it persists.
+ * Render the Prev/Next pagination control plus the page-size selector. The
+ * container is a sibling of the invoice list (which is fully replaced on each
+ * render), so it persists.
  */
 function renderPagination() {
   const container = document.querySelector('[data-el="pagination"]');
@@ -217,15 +219,22 @@ function renderPagination() {
     return;
   }
 
-  const totalPages = Math.max(1, Math.ceil(state.totalCount / state.pageSize));
+  const totalPages = Math.max(
+    1,
+    Math.ceil(state.totalCount / state.effectivePageSize),
+  );
   container.innerHTML = `
     <button class="btn btn-secondary btn-sm" data-action="page-prev" ${
       state.page <= 1 ? "disabled" : ""
     }>Previous</button>
-    <span class="pagination-info">Page ${state.page} of ${totalPages}</span>
+    <span class="pagination-info">
+      <span class="pagination-info-long">Page ${state.page} of ${totalPages}</span>
+      <span class="pagination-info-short">${state.page} / ${totalPages}</span>
+    </span>
     <button class="btn btn-secondary btn-sm" data-action="page-next" ${
       state.page >= totalPages ? "disabled" : ""
     }>Next</button>
+    ${renderPageSizeControl()}
   `;
 }
 

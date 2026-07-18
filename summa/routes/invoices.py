@@ -27,8 +27,9 @@ logger: logging.Logger = logging.getLogger(__name__)
 
 invoices_bp: Blueprint = Blueprint("invoices", __name__)
 
-DEFAULT_PAGE_SIZE: Final[int] = 50
+DEFAULT_PAGE_SIZE: Final[int] = 25
 MAX_PAGE_SIZE: Final[int] = 200
+ALL_PAGE_SIZE_TOKEN: Final[str] = "all"
 
 
 def _build_invoice_filter(args: Any) -> tuple[str, list[str]]:
@@ -89,12 +90,15 @@ def get_invoices() -> Response:
     else:
         order = " ORDER BY id DESC"
 
-    # Pagination
+    # Pagination. "all" is an explicit request for every matching row on a single
+    # page; numeric page sizes are clamped to MAX_PAGE_SIZE.
+    fetch_all: bool = request.args.get("page_size") == ALL_PAGE_SIZE_TOKEN
     page: int = parse_bounded_int(request.args.get("page"), 1, 1, 1_000_000)
     page_size: int = parse_bounded_int(
         request.args.get("page_size"), DEFAULT_PAGE_SIZE, 1, MAX_PAGE_SIZE
     )
-    offset: int = (page - 1) * page_size
+    if fetch_all:
+        page = 1
 
     with db_cursor() as cursor:
         cursor.execute(
@@ -106,10 +110,17 @@ def get_invoices() -> Response:
         total_count: int = totals["total_count"]
         total_sum: float = totals["total_sum"]
 
-        cursor.execute(
-            f"SELECT * FROM invoices {where}{order} LIMIT ? OFFSET ?",
-            [*params, page_size, offset],
-        )
+        if fetch_all:
+            # Report the served size so the client's ceil(total/size) collapses to
+            # one page. max(..., 1) avoids a zero page_size on an empty result set.
+            page_size = max(total_count, 1)
+            cursor.execute(f"SELECT * FROM invoices {where}{order}", params)
+        else:
+            offset: int = (page - 1) * page_size
+            cursor.execute(
+                f"SELECT * FROM invoices {where}{order} LIMIT ? OFFSET ?",
+                [*params, page_size, offset],
+            )
         invoices: list[sqlite3.Row] = cursor.fetchall()
 
     # The list is intentionally compact: line items are loaded on demand via

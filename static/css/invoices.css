@@ -47,6 +47,7 @@
 }
 
 .pagination {
+  position: relative;
   display: flex;
   gap: 1rem;
   align-items: center;
@@ -61,6 +62,121 @@
 .pagination-info {
   font-size: 0.875rem;
   color: var(--text-secondary);
+}
+
+/* Compact "1 / 3" form is mobile-only; desktop shows the full "Page 1 of 3". */
+.pagination-info-short {
+  display: none;
+}
+
+/* Page-size dropdown: pill button anchored right (Prev/Next stay centered) with
+   a custom floating panel. The panel opens upward because .invoices-section is
+   overflow:hidden — a downward panel would be clipped at the card edge. */
+.page-size {
+  position: absolute;
+  right: 1rem;
+}
+
+.page-size-button {
+  display: flex;
+  align-items: center;
+  padding: 7px 11px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap; /* keep "/ page" from wrapping */
+  cursor: pointer;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  transition:
+    border-color var(--transition),
+    box-shadow var(--transition);
+}
+
+.page-size.is-open .page-size-button {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-subtle);
+}
+
+.page-size em {
+  font-style: normal;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.page-size-caret {
+  margin-left: 6px;
+  color: var(--text-muted);
+  transition: transform var(--transition);
+}
+
+.page-size.is-open .page-size-caret {
+  transform: rotate(180deg);
+}
+
+/* Floating panel. Fixed (not absolute) so it escapes the .invoices-section
+   overflow:hidden that would otherwise clip it against the card edge on a short
+   list; JS anchors it to the button's top-right at open time. */
+.page-size-menu {
+  position: fixed;
+  z-index: 700;
+  display: none;
+  min-width: 130px;
+  max-height: 260px;
+  padding: 6px;
+  margin: 0;
+  overflow-y: auto;
+  list-style: none;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-dropdown);
+}
+
+.page-size.is-open .page-size-menu {
+  display: block;
+}
+
+.page-size-option {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  padding: 8px 11px;
+  font-size: 0.8125rem;
+  color: var(--text-primary);
+  white-space: nowrap;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+
+.page-size-option.is-highlighted,
+.page-size-option:hover {
+  background: var(--bg-hover);
+}
+
+.page-size-option.is-active {
+  font-weight: 600;
+  background: var(--bg-selected);
+}
+
+.page-size-option-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.page-size-check {
+  flex: none;
+  margin-left: auto;
+  font-size: 0.6875rem;
+  color: var(--accent);
+}
+
+/* "All" is set off from the numeric options by a 1px divider. */
+.page-size-option-all {
+  padding-top: 10px;
+  margin-top: 5px;
+  border-top: 1px solid var(--border-subtle);
 }
 
 .invoice-item {
@@ -84,6 +200,7 @@
 
 .invoice-header {
   display: flex;
+  gap: 1rem;
   align-items: center;
   justify-content: space-between;
   padding: 1rem 1.25rem;
@@ -584,5 +701,59 @@
     width: 28px;
     height: 28px;
     border-radius: 999px;
+  }
+
+  /* Compact pagination row: full-width Prev/Next with 44px touch targets and a
+     tight page-size button ("25 ⌄") sharing the same line. The right padding
+     keeps it clear of the floating New-Invoice FAB (56px pinned bottom-right). */
+  .pagination {
+    gap: 8px;
+    padding-right: 60px;
+  }
+
+  .pagination .btn {
+    flex: 1;
+    min-width: 0; /* let both buttons share width equally regardless of label */
+    min-height: 44px;
+  }
+
+  .pagination-info {
+    white-space: nowrap;
+  }
+
+  .pagination-info-long {
+    display: none;
+  }
+
+  .pagination-info-short {
+    display: inline;
+  }
+
+  /* Static wrapper keeps the button in the flex row; relative anchors the panel,
+     which still opens upward (the row sits at the viewport bottom). */
+  .page-size {
+    position: relative;
+    flex: none;
+
+    /* Prev/Next are flex:1 and absorb free space, so a gap alone collapses here;
+       this margin sets the actual breathing room from the "Next" button. */
+    margin-left: 18px;
+  }
+
+  .page-size-button {
+    justify-content: center;
+    min-height: 44px;
+  }
+
+  .page-size em {
+    display: none;
+  }
+
+  .page-size-menu {
+    min-width: 160px;
+  }
+
+  .page-size-option {
+    min-height: 44px;
   }
 }

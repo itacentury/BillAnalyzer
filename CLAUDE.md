@@ -97,9 +97,9 @@ when an existing cached asset's content changes.
 
 ## Deployment
 
-Multi-stage `Dockerfile`: the builder stage generates PWA icons via
-`generate_icons.py` (Pillow, from the locked `icons` dependency group); the
-runtime stage installs prod-only deps and runs `gunicorn` (2 workers, 4 threads)
-as a non-root `appuser`. `entrypoint.sh` fixes `/data` volume ownership via
-`gosu` before dropping privileges. In the container the DB lives at
-`/data/invoices.db`.
+Single-stage `Dockerfile` (from `python:3.12-slim`): installs runtime-only
+dependencies via `uv sync --frozen --no-dev --no-install-project`, then copies
+the app together with the pre-generated PWA icons committed under `static/icons/`
+(no build-time icon generation). Runs `gunicorn` (2 workers, 4 threads) as a
+non-root `appuser`. `entrypoint.sh` fixes `/data` volume ownership via `gosu`
+before dropping privileges. In the container the DB lives at `/data/invoices.db`.

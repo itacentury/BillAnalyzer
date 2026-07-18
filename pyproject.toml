@@ -14,10 +14,8 @@ dev = [
     "ruff>=0.14.0,<1",
     "mypy>=1.13.0,<2",
     "types-flask-cors>=6.0.0.20250809,<7",
-    {include-group = "icons"},
     {include-group = "test"},
 ]
-icons = ["pillow>=11.0.0,<12"]
 test = ["pytest>=8.3,<9"]
 
 [tool.ruff]
@@ -35,5 +33,5 @@ testpaths = ["tests"]
 
 [tool.mypy]
 python_version = "3.12"
-files = ["summa", "generate_icons.py", "tests"]
+files = ["summa", "tests"]
 strict = true

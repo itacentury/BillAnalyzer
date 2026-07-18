@@ -755,7 +755,7 @@ def test_pagination_defaults_and_totals(
 
     body = _get_json(client.get("/api/invoices"))
     assert body["page"] == 1
-    assert body["page_size"] == 50
+    assert body["page_size"] == 25
     assert body["total_count"] == 3
     assert body["total_sum"] == 30.0
     assert len(body["invoices"]) == 3
@@ -791,6 +791,20 @@ def test_pagination_clamps_page_size_to_maximum(
     assert body["page_size"] == 200
 
 
+def test_pagination_all_returns_every_row_on_one_page(
+    client: FlaskClient, seed_invoice: SeedInvoice
+) -> None:
+    """page_size=all returns the whole filtered set on page 1, sized to the count."""
+    for day in range(1, 6):
+        seed_invoice(date=f"2024-01-0{day}", store=f"Store {day}")
+
+    body = _get_json(client.get("/api/invoices?page_size=all"))
+    assert body["page"] == 1
+    assert body["total_count"] == 5
+    assert body["page_size"] == 5
+    assert len(body["invoices"]) == 5
+
+
 def test_pagination_non_numeric_params_fall_back_to_defaults(
     client: FlaskClient, seed_invoice: SeedInvoice
 ) -> None:
@@ -798,7 +812,7 @@ def test_pagination_non_numeric_params_fall_back_to_defaults(
     seed_invoice(store="Only")
     body = _get_json(client.get("/api/invoices?page=abc&page_size=xyz"))
     assert body["page"] == 1
-    assert body["page_size"] == 50
+    assert body["page_size"] == 25
 
 
 def test_pagination_totals_reflect_filters_not_page(

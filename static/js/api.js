@@ -51,7 +51,10 @@ export async function goToPage(page) {
  */
 export async function reloadCurrentPage() {
   await fetchInvoices();
-  const totalPages = Math.max(1, Math.ceil(state.totalCount / state.pageSize));
+  const totalPages = Math.max(
+    1,
+    Math.ceil(state.totalCount / state.effectivePageSize),
+  );
   if (state.page > totalPages) {
     state.page = totalPages;
     await fetchInvoices();
@@ -124,6 +127,7 @@ async function fetchInvoices() {
     const data = await response.json();
     state.invoices = data.invoices;
     state.page = data.page;
+    state.effectivePageSize = data.page_size;
     state.totalCount = data.total_count;
     state.totalSum = data.total_sum;
     renderInvoices();
