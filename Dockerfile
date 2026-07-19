@@ -23,10 +23,10 @@ LABEL org.opencontainers.image.source="https://github.com/itacentury/summa"
 
 WORKDIR /app
 
-# Install gosu for proper user switching, create the non-root user and the
-# data directory for the SQLite database
-RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
-    gosu \
+# Upgrade base packages for CVE fixes, create the non-root user and the data
+# directory for the SQLite database. Privilege dropping at startup uses setpriv
+# (from util-linux, already in the base image) — no extra package needed.
+RUN apt-get update && apt-get upgrade -y \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --create-home --shell /bin/bash appuser \
     && mkdir -p /data && chown appuser:appuser /data

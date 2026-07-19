@@ -104,7 +104,7 @@ final stage copies just the built virtualenv (`COPY --from=builder /app/.venv`)
 and the app together with the pre-generated PWA icons committed under
 `static/icons/` (no build-time icon generation). Runs `gunicorn` (2 workers,
 4 threads) as a non-root `appuser`. `entrypoint.sh` fixes `/data` volume
-ownership via `gosu` before dropping privileges. In the container the DB lives at
+ownership via `setpriv` before dropping privileges. In the container the DB lives at
 `/data/invoices.db`.
 
 Image build, vulnerability scan and push live in a separate
