@@ -108,6 +108,11 @@ def _reject_future_date(date_value: str | None) -> None:
         # Keep the parser's existing tolerance for non-ISO date strings; the
         # future guard only applies to recognizable ISO dates.
         return
+    # `date.today()` resolves in the server's timezone. A client ahead of the
+    # server (e.g. UTC+10 near local midnight) may briefly have a local "today"
+    # that the server still sees as tomorrow, yielding a false rejection. This
+    # is an accepted trade-off for same-zone self-hosted deployments; we keep
+    # the rule strict rather than granting a grace day.
     if parsed > date.today():
         raise ValidationError("Invoice date cannot be in the future", field="date")
 
