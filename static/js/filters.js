@@ -41,6 +41,7 @@ export function navigateToPrevious() {
 // Navigate to next period based on filter mode
 export function navigateToNext() {
   if (state.filterMode === "all" || state.filterMode === "custom") return;
+  if (isViewingCurrentPeriod()) return;
 
   switch (state.filterMode) {
     case "week":
@@ -126,6 +127,10 @@ export function setupFilterListeners() {
   const { searchInput, dateFrom, dateTo } = els();
 
   searchInput.addEventListener("input", debounce(loadInvoices, 300));
+  // Cap both date pickers at today — there are no future invoices to filter for.
+  const today = new Date().toLocaleString("sv").split(" ")[0];
+  dateFrom.max = today;
+  dateTo.max = today;
   // Manually changing a date filter switches to custom mode
   dateFrom.addEventListener("change", switchToCustomMode);
   dateTo.addEventListener("change", switchToCustomMode);
@@ -202,6 +207,7 @@ export function updateFilterDisplay() {
 
   const navButtons = document.querySelectorAll(".month-nav-btn");
   const todayBtn = document.querySelector('[data-action="nav-today"]');
+  const nextBtn = document.querySelector('[data-action="nav-next"]');
 
   switch (state.filterMode) {
     case "week": {
@@ -237,6 +243,8 @@ export function updateFilterDisplay() {
   const navigationActive =
     state.filterMode !== "all" && state.filterMode !== "custom";
   todayBtn.classList.toggle("is-hidden", !navigationActive);
+  // The forward arrow stops at the current period — there are no future invoices.
+  nextBtn.disabled = navigationActive && isViewingCurrentPeriod();
   if (navigationActive) {
     todayBtn.disabled = isViewingCurrentPeriod();
   }
