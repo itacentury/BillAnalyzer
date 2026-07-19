@@ -1,5 +1,6 @@
 """Unit tests for the pure helper functions in :mod:`summa.helpers`."""
 
+from datetime import date, timedelta
 from typing import Any
 
 import pytest
@@ -83,6 +84,47 @@ def test_parse_invoice_non_list_items_raises() -> None:
     with pytest.raises(ValidationError, match="Field 'items' must be a list") as info:
         parse_invoice({"date": "2024-01-01", "store": "A", "total": 1.0, "items": 5})
     assert info.value.field == "items"
+
+
+def test_parse_invoice_rejects_future_date() -> None:
+    """A date after today raises ValidationError flagged on the date field."""
+    tomorrow: str = (date.today() + timedelta(days=1)).isoformat()
+    with pytest.raises(
+        ValidationError, match="Invoice date cannot be in the future"
+    ) as info:
+        parse_invoice({"date": tomorrow, "store": "A", "total": 1.0, "items": []})
+    assert info.value.field == "date"
+
+
+@pytest.mark.parametrize("offset", [0, -1, -365])
+def test_parse_invoice_accepts_today_and_past_dates(offset: int) -> None:
+    """Today and any past date parse without error (no future bound violated)."""
+    day: str = (date.today() + timedelta(days=offset)).isoformat()
+    assert (
+        parse_invoice({"date": day, "store": "A", "total": 1.0, "items": []}).date
+        == day
+    )
+
+
+def test_parse_invoice_tolerates_non_iso_date() -> None:
+    """A non-ISO date string keeps the parser's existing tolerance (no future guard)."""
+    invoice = parse_invoice(
+        {"date": "not-a-date", "store": "A", "total": 1.0, "items": []}
+    )
+    assert invoice.date == "not-a-date"
+
+
+def test_parse_invoice_batch_collects_future_date_error() -> None:
+    """A future-dated entry is collected per-entry; sibling valid entries still parse."""
+    tomorrow: str = (date.today() + timedelta(days=1)).isoformat()
+    result = parse_invoice_batch(
+        [
+            {"date": "2024-01-01", "store": "Good", "total": 1.0, "items": []},
+            {"date": tomorrow, "store": "Future", "total": 2.0, "items": []},
+        ]
+    )
+    assert [invoice.store for invoice in result.invoices] == ["Good"]
+    assert [(error.index, error.field) for error in result.errors] == [(1, "date")]
 
 
 def test_parse_invoice_batch_non_list_items_does_not_abort_batch() -> None:

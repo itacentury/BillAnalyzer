@@ -23,7 +23,16 @@
               data-el="invoice-date"
               data-autofocus
               required
+              aria-describedby="invoice-date-error"
             />
+            <p
+              class="field-error is-hidden"
+              data-el="invoice-date-error"
+              id="invoice-date-error"
+              role="alert"
+            >
+              Invoice date cannot be in the future.
+            </p>
           </div>
           <div class="form-group">
             <label class="form-label">Store</label>

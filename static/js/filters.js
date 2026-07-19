@@ -4,7 +4,7 @@
  */
 
 import { state } from "./state.js";
-import { els, debounce } from "./dom.js";
+import { els, debounce, dateToIso, capAtToday } from "./dom.js";
 import { loadInvoices } from "./api.js";
 import { getCombobox } from "./combobox.js";
 
@@ -41,6 +41,7 @@ export function navigateToPrevious() {
 // Navigate to next period based on filter mode
 export function navigateToNext() {
   if (state.filterMode === "all" || state.filterMode === "custom") return;
+  if (isViewingCurrentPeriod()) return;
 
   switch (state.filterMode) {
     case "week":
@@ -126,6 +127,13 @@ export function setupFilterListeners() {
   const { searchInput, dateFrom, dateTo } = els();
 
   searchInput.addEventListener("input", debounce(loadInvoices, 300));
+  // Cap both date pickers at today — there are no future invoices to filter for.
+  // These inputs stay mounted, so also refresh `max` on focus: a session left
+  // open across midnight would otherwise cap at yesterday until reload.
+  capAtToday(dateFrom);
+  capAtToday(dateTo);
+  dateFrom.addEventListener("focus", () => capAtToday(dateFrom));
+  dateTo.addEventListener("focus", () => capAtToday(dateTo));
   // Manually changing a date filter switches to custom mode
   dateFrom.addEventListener("change", switchToCustomMode);
   dateTo.addEventListener("change", switchToCustomMode);
@@ -202,6 +210,7 @@ export function updateFilterDisplay() {
 
   const navButtons = document.querySelectorAll(".month-nav-btn");
   const todayBtn = document.querySelector('[data-action="nav-today"]');
+  const nextBtn = document.querySelector('[data-action="nav-next"]');
 
   switch (state.filterMode) {
     case "week": {
@@ -237,6 +246,8 @@ export function updateFilterDisplay() {
   const navigationActive =
     state.filterMode !== "all" && state.filterMode !== "custom";
   todayBtn.classList.toggle("is-hidden", !navigationActive);
+  // The forward arrow stops at the current period — there are no future invoices.
+  nextBtn.disabled = navigationActive && isViewingCurrentPeriod();
   if (navigationActive) {
     todayBtn.disabled = isViewingCurrentPeriod();
   }
@@ -331,8 +342,8 @@ function setDateFiltersForWeek(date) {
   const sunday = new Date(monday);
   sunday.setDate(monday.getDate() + 6);
 
-  dateFrom.value = monday.toLocaleString("sv").split(" ")[0];
-  dateTo.value = sunday.toLocaleString("sv").split(" ")[0];
+  dateFrom.value = dateToIso(monday);
+  dateTo.value = dateToIso(sunday);
 }
 
 // Set date filters for a month
@@ -343,11 +354,11 @@ function setDateFiltersForMonth(date) {
 
   // First day of the month
   const firstDay = new Date(year, month, 1);
-  const firstDayStr = firstDay.toLocaleString("sv").split(" ")[0];
+  const firstDayStr = dateToIso(firstDay);
 
   // Last day of the month
   const lastDay = new Date(year, month + 1, 0);
-  const lastDayStr = lastDay.toLocaleString("sv").split(" ")[0];
+  const lastDayStr = dateToIso(lastDay);
 
   dateFrom.value = firstDayStr;
   dateTo.value = lastDayStr;
@@ -361,6 +372,6 @@ function setDateFiltersForYear(date) {
   const firstDay = new Date(year, 0, 1);
   const lastDay = new Date(year, 11, 31);
 
-  dateFrom.value = firstDay.toLocaleString("sv").split(" ")[0];
-  dateTo.value = lastDay.toLocaleString("sv").split(" ")[0];
+  dateFrom.value = dateToIso(firstDay);
+  dateTo.value = dateToIso(lastDay);
 }

@@ -1,6 +1,7 @@
 """Shared types and helper functions for the Summa backend."""
 
 from dataclasses import dataclass
+from datetime import date
 from typing import Any, Final
 
 from flask import Response, jsonify
@@ -97,6 +98,25 @@ def _parse_float(value: Any, field: str) -> float:
         ) from None
 
 
+def _reject_future_date(date_value: str | None) -> None:
+    """Reject invoice dates in the future — the app has no future invoices."""
+    if date_value is None:
+        return
+    try:
+        parsed: date = date.fromisoformat(date_value[:10])
+    except ValueError:
+        # Keep the parser's existing tolerance for non-ISO date strings; the
+        # future guard only applies to recognizable ISO dates.
+        return
+    # `date.today()` resolves in the server's timezone. A client ahead of the
+    # server (e.g. UTC+10 near local midnight) may briefly have a local "today"
+    # that the server still sees as tomorrow, yielding a false rejection. This
+    # is an accepted trade-off for same-zone self-hosted deployments; we keep
+    # the rule strict rather than granting a grace day.
+    if parsed > date.today():
+        raise ValidationError("Invoice date cannot be in the future", field="date")
+
+
 def parse_invoice(data: Any) -> Invoice:
     """Validate and parse a single invoice payload into an Invoice."""
     if not isinstance(data, dict):
@@ -113,8 +133,11 @@ def parse_invoice(data: Any) -> Invoice:
         price: float = _parse_float(_require(raw_item, "item_price"), "item_price")
         items.append(InvoiceItem(item_name=name, item_price=price))
 
+    invoice_date: str | None = strip_text(_require(data, "date"))
+    _reject_future_date(invoice_date)
+
     return Invoice(
-        date=strip_text(_require(data, "date")),
+        date=invoice_date,
         store=strip_text(require_optional_str(_require(data, "store"), "store")),
         category=strip_text(require_optional_str(data.get("category"), "category")),
         total=_parse_float(_require(data, "total"), "total"),

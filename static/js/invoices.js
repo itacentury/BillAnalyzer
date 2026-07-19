@@ -13,7 +13,7 @@ import {
   loadStores,
   reloadCurrentPage,
 } from "./api.js";
-import { closeAddModal } from "./modals.js";
+import { closeAddModal, validateInvoiceDate } from "./modals.js";
 import { getCombobox } from "./combobox.js";
 import {
   showUndoToast,
@@ -31,6 +31,13 @@ export async function saveInvoice() {
 
   if (!date || !store) {
     showErrorToast("Please fill in date and store");
+    return;
+  }
+
+  // A legacy invoice can carry a future date the picker's `max` now forbids;
+  // the inline hint explains why, so block the save rather than round-trip a 400.
+  if (validateInvoiceDate()) {
+    document.querySelector('[data-el="invoice-date"]').focus();
     return;
   }
 

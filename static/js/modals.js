@@ -4,7 +4,7 @@
  */
 
 import { state } from "./state.js";
-import { escapeHtml, formatCurrency } from "./dom.js";
+import { escapeHtml, formatCurrency, todayIso, capAtToday } from "./dom.js";
 import { showErrorToast } from "./toast.js";
 import { saveInvoice } from "./invoices.js";
 import { fetchInvoiceItems } from "./api.js";
@@ -66,9 +66,25 @@ export function openAddModal() {
     .classList.add("active");
   lockScroll();
   resetAddForm();
-  document.querySelector('[data-el="invoice-date"]').value = new Date()
-    .toLocaleString("sv")
-    .split(" ")[0];
+  const dateInput = document.querySelector('[data-el="invoice-date"]');
+  capAtToday(dateInput);
+  dateInput.value = todayIso();
+  validateInvoiceDate();
+}
+
+/**
+ * Toggle the inline "future date" hint under the date field and report whether
+ * the field currently holds a future (out-of-range) date. Legacy rows created
+ * before the future-date guard can carry a date beyond `max`; this surfaces that
+ * invalid state instead of letting a save fail silently with a generic toast.
+ */
+export function validateInvoiceDate() {
+  const dateInput = document.querySelector('[data-el="invoice-date"]');
+  const hint = document.querySelector('[data-el="invoice-date-error"]');
+  const isFuture = dateInput.validity.rangeOverflow;
+  hint.classList.toggle("is-hidden", !isFuture);
+  dateInput.setAttribute("aria-invalid", String(isFuture));
+  return isFuture;
 }
 
 export function closeAddModal() {
@@ -94,7 +110,10 @@ export async function editInvoice(id) {
   ).textContent = "Edit Invoice";
 
   // Fill in the form
-  document.querySelector('[data-el="invoice-date"]').value = invoice.date;
+  const dateInput = document.querySelector('[data-el="invoice-date"]');
+  capAtToday(dateInput);
+  dateInput.value = invoice.date;
+  validateInvoiceDate();
   document.querySelector('[data-el="invoice-store"]').value = invoice.store;
   getCombobox("invoice-type").setValue(invoice.category || "");
 
@@ -204,6 +223,8 @@ export function setupModalListeners() {
 
   // Add/edit invoice modal
   const addModal = document.querySelector('[data-el="add-invoice-modal"]');
+  // The date picker's `max` is capped at today on modal open (see openAddModal /
+  // editInvoice) so it stays fresh across midnight in long-lived PWA sessions.
   addModal
     .querySelector(".modal-close")
     .addEventListener("click", closeAddModal);
@@ -216,6 +237,9 @@ export function setupModalListeners() {
   addModal
     .querySelector('[data-action="save"]')
     .addEventListener("click", saveInvoice);
+  addModal
+    .querySelector('[data-el="invoice-date"]')
+    .addEventListener("input", validateInvoiceDate);
 
   // Item rows are rebuilt at runtime, so delegate from the stable container
   const itemsContainer = document.querySelector('[data-el="items-container"]');
