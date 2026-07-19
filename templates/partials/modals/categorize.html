@@ -1,0 +1,60 @@
+{% from "partials/_macros.html" import modal_close_button %}
+<!-- AI Category Suggestions review modal / bottom sheet -->
+<div class="modal-overlay categorize-overlay" data-el="categorize-modal">
+  <div
+    class="modal categorize-modal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="categorize-title"
+  >
+    <div class="modal-header categorize-header">
+      <div class="categorize-heading">
+        <svg
+          class="categorize-heading-icon"
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="currentColor"
+          aria-hidden="true"
+        >
+          <path
+            d="M12 2l2.2 6.2L20.5 10l-6.3 1.8L12 18l-2.2-6.2L3.5 10l6.3-1.8z"
+          />
+        </svg>
+        <div class="categorize-heading-text">
+          <h3 class="modal-title" id="categorize-title">
+            AI Category Suggestions
+          </h3>
+          <p class="categorize-subtitle" data-el="categorize-subtitle"></p>
+        </div>
+      </div>
+      {{ modal_close_button() }}
+    </div>
+
+    <div class="categorize-content" data-el="categorize-content"></div>
+
+    <div
+      class="modal-footer categorize-footer"
+      data-el="categorize-footer"
+      hidden
+    >
+      <span
+        class="categorize-summary-text"
+        data-el="categorize-summary-text"
+      ></span>
+      <div class="categorize-footer-actions">
+        <button
+          class="btn btn-secondary"
+          data-action="categorize-cancel-footer"
+          title="Cancel (Esc)"
+        >
+          Cancel
+        </button>
+        <button class="btn btn-primary" data-action="categorize-apply" disabled>
+          Apply <span data-el="categorize-apply-count">0</span
+          ><span class="categorize-apply-suffix">&nbsp;categories</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

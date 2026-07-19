@@ -72,6 +72,10 @@
     />
     <link
       rel="stylesheet"
+      href="{{ url_for('static', filename='css/categorize.css') }}"
+    />
+    <link
+      rel="stylesheet"
       href="{{ url_for('static', filename='css/shortcuts-help.css') }}"
     />
     <link
@@ -106,6 +110,7 @@
     {% include "partials/modals/add-invoice.html" %}
     {% include "partials/modals/import.html" %}
     {% include "partials/modals/bulk-edit.html" %}
+    {% include "partials/modals/categorize.html" %}
     {% include "partials/modals/shortcuts-help.html" %}
     {% include "partials/bulk-toolbar.html" %}
 

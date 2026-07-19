@@ -7,6 +7,7 @@ from typing import Any, Final
 
 from flask import Blueprint, Response, jsonify, request
 
+from summa.ai import AiCategorizationError, api_key_configured, suggest_categories
 from summa.db import chunked, db_cursor, insert_invoice_items, placeholders_for
 from summa.helpers import (
     ApiResponse,
@@ -30,6 +31,9 @@ invoices_bp: Blueprint = Blueprint("invoices", __name__)
 DEFAULT_PAGE_SIZE: Final[int] = 25
 MAX_PAGE_SIZE: Final[int] = 200
 ALL_PAGE_SIZE_TOKEN: Final[str] = "all"
+# Cap per categorize-suggest run to bound Claude token use and cost; the rest are
+# reported via the response `total` so the client can prompt a re-run.
+CATEGORIZE_SUGGEST_LIMIT: Final[int] = 100
 
 
 def _build_invoice_filter(args: Any) -> tuple[str, list[str]]:
@@ -102,13 +106,16 @@ def get_invoices() -> Response:
 
     with db_cursor() as cursor:
         cursor.execute(
-            f"SELECT COUNT(*) AS total_count, COALESCE(SUM(total), 0) AS total_sum "
+            f"SELECT COUNT(*) AS total_count, COALESCE(SUM(total), 0) AS total_sum, "
+            f"SUM(CASE WHEN category IS NULL THEN 1 ELSE 0 END) AS uncategorized_count "
             f"FROM invoices {where}",
             params,
         )
         totals: sqlite3.Row = cursor.fetchone()
         total_count: int = totals["total_count"]
         total_sum: float = totals["total_sum"]
+        # Backs the "AI Categories" trigger badge: uncategorized invoices in view.
+        uncategorized_count: int = totals["uncategorized_count"] or 0
 
         if fetch_all:
             # Report the served size so the client's ceil(total/size) collapses to
@@ -142,6 +149,7 @@ def get_invoices() -> Response:
             "page_size": page_size,
             "total_count": total_count,
             "total_sum": total_sum,
+            "uncategorized_count": uncategorized_count,
         }
     )
 
@@ -220,6 +228,106 @@ def get_categories() -> Response:
         )
         categories: list[str] = [row["category"] for row in cursor.fetchall()]
     return jsonify(categories)
+
+
+@invoices_bp.route("/api/invoices/categorize-suggest", methods=["POST"])
+def categorize_suggest() -> ApiResponse:
+    """Suggest categories for the uncategorized invoices in the current filter.
+
+    Read-only: this collects the uncategorized invoices (with items) matching the
+    same query params as the list endpoint, asks Claude for one category each, and
+    returns the suggestions for review. The actual write goes through the existing
+    ``/api/invoices/bulk-update`` path once the user confirms.
+    """
+    if not api_key_configured():
+        return error_response("AI categorization not configured", 503)
+
+    # Reuse the shared filter, restricted to uncategorized invoices only.
+    where, params = _build_invoice_filter(request.args)
+    where += " AND category IS NULL"
+
+    try:
+        with db_cursor() as cursor:
+            cursor.execute(f"SELECT COUNT(*) AS total FROM invoices {where}", params)
+            total: int = cursor.fetchone()["total"]
+
+            cursor.execute(
+                f"SELECT id, store, total FROM invoices {where} ORDER BY id LIMIT ?",
+                [*params, CATEGORIZE_SUGGEST_LIMIT],
+            )
+            rows: list[sqlite3.Row] = cursor.fetchall()
+
+            # Full per-invoice info for the response (store, amount, items); the
+            # items double as the model input and the client's summary/accordion.
+            invoices: list[dict[str, Any]] = []
+            for row in rows:
+                cursor.execute(
+                    "SELECT item_name, item_price FROM invoice_items "
+                    "WHERE invoice_id = ?",
+                    (row["id"],),
+                )
+                items: list[dict[str, Any]] = [
+                    {"item_name": item["item_name"], "item_price": item["item_price"]}
+                    for item in cursor.fetchall()
+                ]
+                invoices.append(
+                    {
+                        "id": row["id"],
+                        "store": row["store"],
+                        "total": row["total"],
+                        "items": items,
+                    }
+                )
+
+            cursor.execute(
+                "SELECT DISTINCT category FROM invoices "
+                "WHERE deleted_at IS NULL AND category IS NOT NULL ORDER BY category"
+            )
+            existing_categories: list[str] = [
+                row["category"] for row in cursor.fetchall()
+            ]
+    except sqlite3.Error as e:
+        logger.error("Failed to load invoices for categorization: %s", e)
+        return error_response(str(e), 500)
+
+    if not invoices:
+        return jsonify({"suggestions": [], "count": 0, "total": 0})
+
+    try:
+        results = suggest_categories(invoices, existing_categories)
+    except AiCategorizationError as error:
+        logger.error("AI categorization failed: %s", error)
+        return error_response(str(error), 502)
+
+    # Merge each suggestion with the invoice's display info (store, amount, items).
+    invoice_by_id: dict[int, dict[str, Any]] = {
+        invoice["id"]: invoice for invoice in invoices
+    }
+    suggestions: list[dict[str, Any]] = []
+    for result in results:
+        invoice = invoice_by_id.get(result.invoice_id)
+        if invoice is None:
+            # The model returned an id we did not send — skip it defensively.
+            continue
+        suggestions.append(
+            {
+                "invoice_id": result.invoice_id,
+                "store": invoice["store"],
+                "total": invoice["total"],
+                "items": invoice["items"],
+                "category": result.category,
+                "is_new": result.is_new,
+            }
+        )
+
+    logger.info(
+        "Categorization suggested: %d of %d uncategorized invoices",
+        len(suggestions),
+        total,
+    )
+    return jsonify(
+        {"suggestions": suggestions, "count": len(suggestions), "total": total}
+    )
 
 
 @invoices_bp.route("/api/invoices", methods=["POST"])
