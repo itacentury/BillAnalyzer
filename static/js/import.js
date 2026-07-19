@@ -4,7 +4,7 @@
  */
 
 import { state } from "./state.js";
-import { escapeHtml } from "./dom.js";
+import { escapeHtml, todayIso } from "./dom.js";
 import { showNoticeToast, showErrorToast } from "./toast.js";
 import { refreshAllData } from "./api.js";
 import { closeImportModal } from "./modals.js";
@@ -343,7 +343,7 @@ function downloadInvalid() {
     type: "application/json",
   });
   const url = URL.createObjectURL(blob);
-  const today = new Date().toLocaleString("sv").split(" ")[0];
+  const today = todayIso();
   const link = document.createElement("a");
   link.href = url;
   link.download = `invalid-invoices-${today}.json`;

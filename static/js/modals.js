@@ -4,7 +4,7 @@
  */
 
 import { state } from "./state.js";
-import { escapeHtml, formatCurrency } from "./dom.js";
+import { escapeHtml, formatCurrency, todayIso } from "./dom.js";
 import { showErrorToast } from "./toast.js";
 import { saveInvoice } from "./invoices.js";
 import { fetchInvoiceItems } from "./api.js";
@@ -66,9 +66,7 @@ export function openAddModal() {
     .classList.add("active");
   lockScroll();
   resetAddForm();
-  document.querySelector('[data-el="invoice-date"]').value = new Date()
-    .toLocaleString("sv")
-    .split(" ")[0];
+  document.querySelector('[data-el="invoice-date"]').value = todayIso();
 }
 
 export function closeAddModal() {
@@ -205,7 +203,7 @@ export function setupModalListeners() {
   // Add/edit invoice modal
   const addModal = document.querySelector('[data-el="add-invoice-modal"]');
   // Cap the date picker at today — there are no future invoices to record.
-  const today = new Date().toLocaleString("sv").split(" ")[0];
+  const today = todayIso();
   addModal.querySelector('[data-el="invoice-date"]').max = today;
   addModal
     .querySelector(".modal-close")

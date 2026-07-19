@@ -87,6 +87,24 @@ export function formatDateShort(dateStr) {
 }
 
 /**
+ * Format a Date as a local-time ISO day string (YYYY-MM-DD).
+ *
+ * The Swedish locale renders as `YYYY-MM-DD HH:mm:ss`, so taking the part
+ * before the space yields the date in *local* time — unlike `toISOString()`,
+ * which is UTC and can land on the wrong calendar day.
+ */
+export function dateToIso(date) {
+  return date.toLocaleString("sv").split(" ")[0];
+}
+
+/**
+ * Return today's local date as an ISO day string (YYYY-MM-DD).
+ */
+export function todayIso() {
+  return dateToIso(new Date());
+}
+
+/**
  * Escape text for safe insertion into innerHTML, including HTML attribute
  * values (encodes quotes, unlike the textContent trick).
  */

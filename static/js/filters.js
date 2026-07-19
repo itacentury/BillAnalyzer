@@ -4,7 +4,7 @@
  */
 
 import { state } from "./state.js";
-import { els, debounce } from "./dom.js";
+import { els, debounce, todayIso, dateToIso } from "./dom.js";
 import { loadInvoices } from "./api.js";
 import { getCombobox } from "./combobox.js";
 
@@ -128,7 +128,7 @@ export function setupFilterListeners() {
 
   searchInput.addEventListener("input", debounce(loadInvoices, 300));
   // Cap both date pickers at today — there are no future invoices to filter for.
-  const today = new Date().toLocaleString("sv").split(" ")[0];
+  const today = todayIso();
   dateFrom.max = today;
   dateTo.max = today;
   // Manually changing a date filter switches to custom mode
@@ -339,8 +339,8 @@ function setDateFiltersForWeek(date) {
   const sunday = new Date(monday);
   sunday.setDate(monday.getDate() + 6);
 
-  dateFrom.value = monday.toLocaleString("sv").split(" ")[0];
-  dateTo.value = sunday.toLocaleString("sv").split(" ")[0];
+  dateFrom.value = dateToIso(monday);
+  dateTo.value = dateToIso(sunday);
 }
 
 // Set date filters for a month
@@ -351,11 +351,11 @@ function setDateFiltersForMonth(date) {
 
   // First day of the month
   const firstDay = new Date(year, month, 1);
-  const firstDayStr = firstDay.toLocaleString("sv").split(" ")[0];
+  const firstDayStr = dateToIso(firstDay);
 
   // Last day of the month
   const lastDay = new Date(year, month + 1, 0);
-  const lastDayStr = lastDay.toLocaleString("sv").split(" ")[0];
+  const lastDayStr = dateToIso(lastDay);
 
   dateFrom.value = firstDayStr;
   dateTo.value = lastDayStr;
@@ -369,6 +369,6 @@ function setDateFiltersForYear(date) {
   const firstDay = new Date(year, 0, 1);
   const lastDay = new Date(year, 11, 31);
 
-  dateFrom.value = firstDay.toLocaleString("sv").split(" ")[0];
-  dateTo.value = lastDay.toLocaleString("sv").split(" ")[0];
+  dateFrom.value = dateToIso(firstDay);
+  dateTo.value = dateToIso(lastDay);
 }
