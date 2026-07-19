@@ -113,46 +113,57 @@ jobs:
         id: grype
         uses: anchore/scan-action/download-grype@v6
 
-      # Human-readable listing of every vulnerability (with its FIXED IN column,
-      # so a blocking *fixable* critical is distinguishable from unfixable base
-      # CVEs) directly in the job log. This is the step to read when a critical
-      # blocks the push. A direct grype run is required because anchore/scan-action
-      # always writes its report to a file, never to stdout. Non-blocking
-      # (|| true) — the gating step below decides pass/fail.
-      - name: List vulnerabilities
-        run: ${{ steps.grype.outputs.cmd }} summa:scan -o table || true
-
-      - name: Scan for vulnerabilities
+      # One grype run over the loaded amd64 image, emitting three outputs from a
+      # single scan (no second catalog pass): a full-inventory table to stdout
+      # (the step to read when a critical blocks the push — every finding with
+      # its FIXED IN column, incl. unfixable base CVEs), plus JSON and SARIF
+      # files. A direct grype run is required because anchore/scan-action emits
+      # neither a stdout table nor multiple formats, and only a full (not
+      # only-fixed) scan keeps the table complete. grype exits 0 without
+      # --fail-on, so this step is non-blocking and always produces the files;
+      # the gate below decides pass/fail.
+      - name: Scan image with grype
         id: scan
-        uses: anchore/scan-action@v6
-        with:
-          image: summa:scan
-          # A critical CVE gates the push; the report is still uploaded below.
-          fail-build: true
-          severity-cutoff: critical
-          # Gate only on *actionable* findings: a critical CVE with no released
-          # fix can't be remediated by a rebuild, so it must not block the push
-          # indefinitely. The moment Debian ships a fix, this re-activates and
-          # forces a refreshed image. only-fixed filters every output of this
-          # run (SARIF included), so the Security-tab upload below carries the
-          # actionable set; the full inventory incl. unfixable criticals stays in
-          # the "List critical vulnerabilities" step above.
-          only-fixed: true
+        run: |
+          ${{ steps.grype.outputs.cmd }} summa:scan \
+            -o table \
+            -o json=grype-results.json \
+            -o sarif=grype-results.sarif
+
+      # Gate on *actionable* findings only: a critical CVE with a released fix.
+      # An unfixable critical (common for base-image OS packages Debian marks
+      # "won't fix") can't be remediated by a rebuild, so it must not block the
+      # push indefinitely — the moment a fix ships, fix.state flips to "fixed"
+      # and this re-activates. Built on the JSON, not the SARIF: grype's SARIF
+      # carries no machine-readable fix field (fix state is free text there),
+      # while the JSON exposes matches[].vulnerability.fix.state. .matches[]?
+      # tolerates an empty/absent matches array.
+      - name: Fail on fixable critical CVEs
+        run: |
+          count=$(jq '[.matches[]?
+            | select(.vulnerability.severity == "Critical")
+            | select(.vulnerability.fix.state == "fixed")] | length' grype-results.json)
+          if [ "$count" -gt 0 ]; then
+            echo "::error::$count fixable critical vulnerability(ies) — see the grype table above"
+            exit 1
+          fi
 
       - name: Upload scan results to Security tab
-        # always() so the SARIF is uploaded even when a critical finding aborts
-        # the scan step above — that is exactly when the report matters most.
-        # Guard on a non-empty sarif output so a scan that errors before writing
-        # SARIF (e.g. image load failure) doesn't fail this step on an empty file.
+        # always() so the SARIF is uploaded even when the gate above fails on a
+        # fixable critical — that is exactly when the report matters most. The
+        # uploaded SARIF is the *full* inventory (incl. unfixable criticals), so
+        # the Security tab lists them too; the push gate stays fixable-only.
+        # hashFiles guards against a scan that errored before writing the file
+        # (e.g. image load failure) so this step doesn't fail on a missing SARIF.
         # Fork PRs get a read-only token and cannot upload SARIF (403), so skip
         # them instead of failing the job — matches the README caveat.
         if: >-
           always()
-          && steps.scan.outputs.sarif != ''
+          && hashFiles('grype-results.sarif') != ''
           && github.event.pull_request.head.repo.fork != true
         uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: ${{ steps.scan.outputs.sarif }}
+          sarif_file: grype-results.sarif
 
       # arm64 has no native runner and is never loaded for the scan, so build it
       # once here straight into the shared build cache; the push step then reuses

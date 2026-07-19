@@ -109,6 +109,7 @@ ownership via `gosu` before dropping privileges. In the container the DB lives a
 
 Image build, vulnerability scan and push live in a separate
 [`docker` workflow](.github/workflows/docker.yml) (distinct from CI's three
-jobs): it builds both `linux/amd64` and `linux/arm64`, gates the push on
-_fixable_ critical CVEs via `anchore/scan-action` (`only-fixed: true`), uploads
-the scan SARIF to the Security tab and attaches an SPDX SBOM to the pushed image.
+jobs): it builds both `linux/amd64` and `linux/arm64`, scans the image once with
+`grype` and gates the push on _fixable_ critical CVEs (a `jq` step reads the
+scan's JSON `fix.state`), uploads the full scan SARIF to the Security tab and
+attaches an SPDX SBOM to the pushed image.
