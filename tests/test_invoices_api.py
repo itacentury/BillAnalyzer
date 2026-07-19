@@ -1,5 +1,6 @@
 """Integration tests for the invoice CRUD, bulk and lookup endpoints."""
 
+from datetime import date, timedelta
 from typing import Any
 
 from flask.testing import FlaskClient
@@ -179,6 +180,20 @@ def test_add_invoice_non_string_category_returns_400(client: FlaskClient) -> Non
     body = _get_json(response)
     assert body["success"] is False
     assert body["error"] == "Field 'category' must be a string"
+
+
+def test_add_invoice_future_date_returns_400(client: FlaskClient) -> None:
+    """A future invoice date is rejected — the app has no future invoices."""
+    tomorrow: str = (date.today() + timedelta(days=1)).isoformat()
+    response = client.post(
+        "/api/invoices",
+        json={"date": tomorrow, "store": "Shop", "total": 1.0},
+    )
+    assert response.status_code == 400
+    body = _get_json(response)
+    assert body["success"] is False
+    assert body["error"] == "Invoice date cannot be in the future"
+    assert _list(client) == []
 
 
 # --- GET /api/invoices --------------------------------------------------------
@@ -466,6 +481,29 @@ def test_import_non_list_payload_returns_400(client: FlaskClient) -> None:
     assert response.status_code == 400
     assert _get_json(response)["error"] == "Expected a list of invoices"
     assert _list(client) == []
+
+
+def test_import_future_dated_entry_reported_and_not_persisted(
+    client: FlaskClient,
+) -> None:
+    """A future-dated entry is collected as a per-entry error; valid siblings import."""
+    tomorrow: str = (date.today() + timedelta(days=1)).isoformat()
+    response = client.post(
+        "/api/invoices/import",
+        json=[
+            {"date": "2024-01-02", "store": "Good", "total": 5.0, "items": []},
+            {"date": tomorrow, "store": "Future", "total": 2.0, "items": []},
+        ],
+    )
+    assert response.status_code == 200
+    body = _get_json(response)
+    assert body["imported"] == 1
+    assert body["failed"] == 1
+    assert body["errors"][0]["index"] == 1
+    assert body["errors"][0]["field"] == "date"
+    assert body["errors"][0]["message"] == "Invoice date cannot be in the future"
+    stores = [invoice["store"] for invoice in _list(client)]
+    assert stores == ["Good"]
 
 
 # --- PUT /api/invoices/<id> ---------------------------------------------------

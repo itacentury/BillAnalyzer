@@ -204,6 +204,9 @@ export function setupModalListeners() {
 
   // Add/edit invoice modal
   const addModal = document.querySelector('[data-el="add-invoice-modal"]');
+  // Cap the date picker at today — there are no future invoices to record.
+  const today = new Date().toLocaleString("sv").split(" ")[0];
+  addModal.querySelector('[data-el="invoice-date"]').max = today;
   addModal
     .querySelector(".modal-close")
     .addEventListener("click", closeAddModal);
