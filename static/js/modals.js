@@ -4,7 +4,7 @@
  */
 
 import { state } from "./state.js";
-import { escapeHtml, formatCurrency, todayIso } from "./dom.js";
+import { escapeHtml, formatCurrency, todayIso, capAtToday } from "./dom.js";
 import { showErrorToast } from "./toast.js";
 import { saveInvoice } from "./invoices.js";
 import { fetchInvoiceItems } from "./api.js";
@@ -66,7 +66,9 @@ export function openAddModal() {
     .classList.add("active");
   lockScroll();
   resetAddForm();
-  document.querySelector('[data-el="invoice-date"]').value = todayIso();
+  const dateInput = document.querySelector('[data-el="invoice-date"]');
+  capAtToday(dateInput);
+  dateInput.value = todayIso();
 }
 
 export function closeAddModal() {
@@ -92,7 +94,9 @@ export async function editInvoice(id) {
   ).textContent = "Edit Invoice";
 
   // Fill in the form
-  document.querySelector('[data-el="invoice-date"]').value = invoice.date;
+  const dateInput = document.querySelector('[data-el="invoice-date"]');
+  capAtToday(dateInput);
+  dateInput.value = invoice.date;
   document.querySelector('[data-el="invoice-store"]').value = invoice.store;
   getCombobox("invoice-type").setValue(invoice.category || "");
 
@@ -202,9 +206,8 @@ export function setupModalListeners() {
 
   // Add/edit invoice modal
   const addModal = document.querySelector('[data-el="add-invoice-modal"]');
-  // Cap the date picker at today — there are no future invoices to record.
-  const today = todayIso();
-  addModal.querySelector('[data-el="invoice-date"]').max = today;
+  // The date picker's `max` is capped at today on modal open (see openAddModal /
+  // editInvoice) so it stays fresh across midnight in long-lived PWA sessions.
   addModal
     .querySelector(".modal-close")
     .addEventListener("click", closeAddModal);

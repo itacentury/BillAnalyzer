@@ -105,6 +105,15 @@ export function todayIso() {
 }
 
 /**
+ * Cap a date input's selectable range at today (there are no future invoices).
+ * Reads `todayIso()` at call time so long-lived PWA sessions don't go stale
+ * across midnight, when a once-set `max` would still hold yesterday.
+ */
+export function capAtToday(input) {
+  input.max = todayIso();
+}
+
+/**
  * Escape text for safe insertion into innerHTML, including HTML attribute
  * values (encodes quotes, unlike the textContent trick).
  */

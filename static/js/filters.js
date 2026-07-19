@@ -4,7 +4,7 @@
  */
 
 import { state } from "./state.js";
-import { els, debounce, todayIso, dateToIso } from "./dom.js";
+import { els, debounce, dateToIso, capAtToday } from "./dom.js";
 import { loadInvoices } from "./api.js";
 import { getCombobox } from "./combobox.js";
 
@@ -128,9 +128,12 @@ export function setupFilterListeners() {
 
   searchInput.addEventListener("input", debounce(loadInvoices, 300));
   // Cap both date pickers at today — there are no future invoices to filter for.
-  const today = todayIso();
-  dateFrom.max = today;
-  dateTo.max = today;
+  // These inputs stay mounted, so also refresh `max` on focus: a session left
+  // open across midnight would otherwise cap at yesterday until reload.
+  capAtToday(dateFrom);
+  capAtToday(dateTo);
+  dateFrom.addEventListener("focus", () => capAtToday(dateFrom));
+  dateTo.addEventListener("focus", () => capAtToday(dateTo));
   // Manually changing a date filter switches to custom mode
   dateFrom.addEventListener("change", switchToCustomMode);
   dateTo.addEventListener("change", switchToCustomMode);
