@@ -24,6 +24,7 @@ class ValidationError(Exception):
     def __init__(self, message: str, field: str | None = None) -> None:
         """:param field: the offending field name, if the error is field-specific."""
         super().__init__(message)
+        self.message: str = message
         self.field: str | None = field
 
 
@@ -170,5 +171,5 @@ def parse_invoice_batch(data: Any) -> ImportValidation:
         try:
             invoices.append(parse_invoice(item))
         except ValidationError as error:
-            errors.append(ImportEntryError(index, error.field, str(error), item))
+            errors.append(ImportEntryError(index, error.field, error.message, item))
     return ImportValidation(invoices=invoices, errors=errors)
