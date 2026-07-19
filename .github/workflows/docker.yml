@@ -44,6 +44,16 @@ jobs:
           # checkout falls back to its default ref there.
           ref: ${{ github.event.workflow_run.head_sha }}
 
+      - name: Resolve built commit SHA
+        id: buildsha
+        # metadata-action's type=sha / revision label read github.sha, which on
+        # workflow_run is the default branch HEAD, not the commit we checked out
+        # and built. Derive both forms from the checked-out HEAD so tag and label
+        # match the exact source commit CI validated.
+        run: |
+          echo "short=$(git rev-parse --short=7 HEAD)" >> "$GITHUB_OUTPUT"
+          echo "long=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
         with:
@@ -67,8 +77,10 @@ jobs:
           images: ${{ secrets.DOCKER_USERNAME }}/summa
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
-            type=sha,prefix=
+            type=raw,value=${{ steps.buildsha.outputs.short }}
             type=ref,event=pr
+          labels: |
+            org.opencontainers.image.revision=${{ steps.buildsha.outputs.long }}
 
       # amd64 is built once here and loaded so the scanner can inspect the real
       # artifact. `load` is single-platform only, so this step cannot also build
