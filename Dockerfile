@@ -25,7 +25,7 @@ WORKDIR /app
 
 # Install gosu for proper user switching, create the non-root user and the
 # data directory for the SQLite database
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
     gosu \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --create-home --shell /bin/bash appuser \

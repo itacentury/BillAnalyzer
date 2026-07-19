@@ -109,17 +109,18 @@ jobs:
           pull: ${{ env.REFRESH_BASE == 'true' }}
           no-cache: ${{ env.REFRESH_BASE == 'true' }}
 
-      # Human-readable listing of every critical CVE (fixable or not) in the job
-      # log. Non-blocking: the gate below decides pass/fail. This is the step to
-      # read when you need the actual CVE IDs — the SARIF gate writes to a file
-      # and prints nothing legible.
-      - name: List critical vulnerabilities
-        uses: anchore/scan-action@v6
-        with:
-          image: summa:scan
-          output-format: table
-          severity-cutoff: critical
-          fail-build: false
+      - name: Install grype
+        id: grype
+        uses: anchore/scan-action/download-grype@v6
+
+      # Human-readable listing of every vulnerability (with its FIXED IN column,
+      # so a blocking *fixable* critical is distinguishable from unfixable base
+      # CVEs) directly in the job log. This is the step to read when a critical
+      # blocks the push. A direct grype run is required because anchore/scan-action
+      # always writes its report to a file, never to stdout. Non-blocking
+      # (|| true) — the gating step below decides pass/fail.
+      - name: List vulnerabilities
+        run: ${{ steps.grype.outputs.cmd }} summa:scan -o table || true
 
       - name: Scan for vulnerabilities
         id: scan
