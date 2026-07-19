@@ -1,6 +1,28 @@
 # Git
 .git/
 .gitignore
+.gitattributes
+
+# Frontend tooling (no build step — only lint/format config)
+node_modules/
+package.json
+package-lock.json
+eslint.config.js
+.stylelintrc.json
+.prettierrc.json
+.prettierignore
+
+# Not needed at runtime
+tests/
+docs/
+assets/
+scripts/
+.claude/
+
+# Docker itself (not part of the image)
+Dockerfile
+docker-compose.yml
+.dockerignore
 
 # Python cache
 __pycache__/
@@ -8,6 +30,7 @@ __pycache__/
 *$py.class
 .mypy_cache/
 .pytest_cache/
+.ruff_cache/
 
 # Virtual environments
 .env

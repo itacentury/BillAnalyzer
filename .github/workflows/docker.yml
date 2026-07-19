@@ -1,0 +1,212 @@
+name: Docker build & push
+
+on:
+  # Publish only after the CI workflow has succeeded on main, so a commit that
+  # fails lint/tests never ships an image. "CI" must match the name: in ci.yml.
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  schedule:
+    - cron: "0 0 * * 0" # every Sunday at midnight
+  # Manual escape hatch: rebuild and push the current main without a new commit.
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # Same rationale as ci.yml: cancel superseded PR builds, but let every main
+  # commit finish so its per-commit sha image is actually pushed.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+  security-events: write # required by github/codeql-action/upload-sarif
+
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    # For workflow_run, only proceed when CI actually succeeded; other events
+    # (PR, schedule, manual dispatch) always run.
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+
+    env:
+      # Scheduled + manual runs exist purely to refresh the base image / apt packages
+      # for CVE fixes; bust the layer cache so those layers are actually rebuilt.
+      REFRESH_BASE: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Build the exact commit CI validated; empty on other events, so
+          # checkout falls back to its default ref there.
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Resolve built commit SHA
+        id: buildsha
+        # metadata-action's type=sha / revision label read github.sha, which on
+        # workflow_run is the default branch HEAD, not the commit we checked out
+        # and built. Derive both forms from the checked-out HEAD so tag and label
+        # match the exact source commit CI validated.
+        run: |
+          echo "short=$(git rev-parse --short=7 HEAD)" >> "$GITHUB_OUTPUT"
+          echo "long=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          # Only linux/arm64 is cross-built; amd64 runs natively on the runner
+          platforms: arm64
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.DOCKER_USERNAME }}/summa
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ steps.buildsha.outputs.short }}
+            type=ref,event=pr
+          labels: |
+            org.opencontainers.image.revision=${{ steps.buildsha.outputs.long }}
+
+      # amd64 is built once here and loaded so the scanner can inspect the real
+      # artifact. `load` is single-platform only, so this step cannot also build
+      # arm64 (that gets its own build-to-cache step below). Each platform is
+      # therefore compiled exactly once — amd64 here, arm64 there — and the
+      # "Build and push" step only re-exports both from the shared build cache (a
+      # cache hit, not a recompile). This holds on refresh runs too: the fresh
+      # pull/no-cache rebuilds happen in these two build steps, so the push step
+      # carries no build-wide no-cache that would rebuild amd64 a second time.
+      # Each warming build uses its own gha cache scope (amd64 / arm64): gha
+      # cache keys are immutable, so two exports to the shared default scope
+      # would collide (the second returns 409 "Cache already exists") and the
+      # arm64 layers would be dropped — silently reintroducing a second, emulated
+      # arm64 compile in the push step. Keep the scopes distinct.
+      - name: Build local image for scan
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          load: true
+          tags: summa:scan
+          cache-from: type=gha,scope=amd64
+          # Feed the amd64 layers into the gha cache so the push step's reuse is
+          # cache-backed rather than reliant on in-job builder state.
+          cache-to: type=gha,mode=max,scope=amd64
+          pull: ${{ env.REFRESH_BASE == 'true' }}
+          no-cache: ${{ env.REFRESH_BASE == 'true' }}
+
+      - name: Install grype
+        id: grype
+        uses: anchore/scan-action/download-grype@v6
+
+      # One grype run over the loaded amd64 image, emitting three outputs from a
+      # single scan (no second catalog pass): a full-inventory table (the report
+      # to read when a critical blocks the push — every finding with its FIXED IN
+      # column, incl. unfixable base CVEs), plus JSON and SARIF files. A direct
+      # grype run is required because anchore/scan-action emits neither a table
+      # nor multiple formats, and only a full (not only-fixed) scan keeps the
+      # table complete. grype exits 0 without --fail-on, so this step is
+      # non-blocking and always produces the files; the gate below decides
+      # pass/fail. The table is written to a file, then echoed to stdout (this
+      # step's log) *and* appended to the job summary, so a blocking critical is
+      # visible on the job overview page without expanding this step's log.
+      - name: Scan image with grype
+        run: |
+          ${{ steps.grype.outputs.cmd }} summa:scan \
+            -o table=grype-table.txt \
+            -o json=grype-results.json \
+            -o sarif=grype-results.sarif
+          cat grype-table.txt
+          {
+            echo '### Grype vulnerability scan'
+            echo '```'
+            cat grype-table.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Gate on *actionable* findings only: a critical CVE with a released fix.
+      # An unfixable critical (common for base-image OS packages Debian marks
+      # "won't fix") can't be remediated by a rebuild, so it must not block the
+      # push indefinitely — the moment a fix ships, fix.state flips to "fixed"
+      # and this re-activates. Built on the JSON, not the SARIF: grype's SARIF
+      # carries no machine-readable fix field (fix state is free text there),
+      # while the JSON exposes matches[].vulnerability.fix.state. .matches[]?
+      # tolerates an empty/absent matches array.
+      - name: Fail on fixable critical CVEs
+        run: |
+          count=$(jq '[.matches[]?
+            | select(.vulnerability.severity == "Critical")
+            | select(.vulnerability.fix.state == "fixed")] | length' grype-results.json)
+          if [ "$count" -gt 0 ]; then
+            echo "::error::$count fixable critical vulnerability(ies) — see the grype table in the job summary"
+            exit 1
+          fi
+
+      - name: Upload scan results to Security tab
+        # always() so the SARIF is uploaded even when the gate above fails on a
+        # fixable critical — that is exactly when the report matters most. The
+        # uploaded SARIF is the *full* inventory (incl. unfixable criticals), so
+        # the Security tab lists them too; the push gate stays fixable-only.
+        # hashFiles guards against a scan that errored before writing the file
+        # (e.g. image load failure) so this step doesn't fail on a missing SARIF.
+        # Fork PRs get a read-only token and cannot upload SARIF (403), so skip
+        # them instead of failing the job — matches the README caveat.
+        if: >-
+          always()
+          && hashFiles('grype-results.sarif') != ''
+          && github.event.pull_request.head.repo.fork != true
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: grype-results.sarif
+
+      # arm64 has no native runner and is never loaded for the scan, so build it
+      # once here straight into the shared build cache; the push step then reuses
+      # these layers instead of compiling arm64 itself. Runs after the scan so a
+      # critical-CVE failure aborts before this (emulated, slow) build. Mirrors
+      # the amd64 scan-build step's refresh semantics so arm64 is genuinely
+      # rebuilt on schedule/manual runs.
+      - name: Build arm64 for cache
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/arm64
+          # Own scope (see the scan-build step) so this export doesn't collide
+          # with amd64's on the immutable default gha cache key.
+          cache-from: type=gha,scope=arm64
+          cache-to: type=gha,mode=max,scope=arm64
+          pull: ${{ env.REFRESH_BASE == 'true' }}
+          no-cache: ${{ env.REFRESH_BASE == 'true' }}
+
+      - name: Build and push with cache
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name != 'pull_request' }}
+          # Generate an SPDX SBOM and attach it to the pushed image as an OCI
+          # attestation (only takes effect when push is true).
+          sbom: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # Both platforms are already built and exported to the cache by the two
+          # steps above, so this step only re-exports them (a cache hit), attaches
+          # the SBOM and pushes — no pull/no-cache here, which is what kept amd64
+          # from being recompiled a second time on refresh runs. Read both
+          # per-platform scopes so each platform hits its own warming export.
+          cache-from: |
+            type=gha,scope=amd64
+            type=gha,scope=arm64

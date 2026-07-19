@@ -229,7 +229,7 @@ def add_invoice() -> ApiResponse:
     try:
         invoice: Invoice = parse_invoice(data)
     except ValidationError as e:
-        return error_response(str(e), 400)
+        return error_response(e.message, 400)
 
     try:
         with db_cursor() as cursor:
@@ -263,7 +263,7 @@ def import_invoices() -> ApiResponse:
         validation: ImportValidation = parse_invoice_batch(data)
     except ValidationError as e:
         # Only a wholly wrong payload type (not a list) aborts with 400.
-        return error_response(str(e), 400)
+        return error_response(e.message, 400)
 
     imported_count: int = 0
     skipped_count: int = 0
@@ -318,7 +318,7 @@ def update_invoice(invoice_id: int) -> ApiResponse:
     try:
         invoice: Invoice = parse_invoice(data)
     except ValidationError as e:
-        return error_response(str(e), 400)
+        return error_response(e.message, 400)
 
     try:
         with db_cursor() as cursor:
@@ -389,7 +389,7 @@ def bulk_update_invoices() -> ApiResponse:
             data.get("category"), "category"
         )
     except ValidationError as e:
-        return error_response(str(e), 400)
+        return error_response(e.message, 400)
 
     if not new_store and new_category is None:
         return error_response("Missing store or category", 400)
@@ -435,7 +435,7 @@ def bulk_delete_invoices() -> ApiResponse:
     try:
         invoice_ids: list[int] = parse_id_list(data)
     except ValidationError as e:
-        return error_response(str(e), 400)
+        return error_response(e.message, 400)
 
     try:
         with db_cursor() as cursor:

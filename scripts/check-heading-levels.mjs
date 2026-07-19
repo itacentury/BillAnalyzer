@@ -23,7 +23,7 @@ const templatesDir = join(projectRoot, "templates");
 const entryTemplate = join(templatesDir, "index.html");
 
 const includePattern = /{%-?\s*include\s+["']([^"']+)["'][^%]*%}/g;
-const commentPattern = /<!--[\s\S]*?-->/g;
+const commentPattern = /<!--[\s\S]*?(?:-->|$)/g;
 const headingPattern = /<h([1-6])\b/gi;
 
 /**

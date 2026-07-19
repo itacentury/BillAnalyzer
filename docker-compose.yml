@@ -11,18 +11,7 @@ services:
       - summa_data:/data
     environment:
       - DATABASE_PATH=/data/invoices.db
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "python",
-          "-c",
-          "import urllib.request; urllib.request.urlopen('http://localhost:8000/')",
-        ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
+    # Healthcheck is inherited from the Dockerfile's HEALTHCHECK instruction.
 
 volumes:
   summa_data:

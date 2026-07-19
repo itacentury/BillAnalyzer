@@ -7,5 +7,5 @@ if [ -d "/data" ]; then
     chown -R appuser:appuser /data 2>/dev/null || true
 fi
 
-# Switch to appuser and run the command
-exec gosu appuser "$@"
+# Drop from root to appuser (with its supplementary groups) and run the command
+exec setpriv --reuid appuser --regid appuser --init-groups "$@"
