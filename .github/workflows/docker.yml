@@ -114,20 +114,29 @@ jobs:
         uses: anchore/scan-action/download-grype@v6
 
       # One grype run over the loaded amd64 image, emitting three outputs from a
-      # single scan (no second catalog pass): a full-inventory table to stdout
-      # (the step to read when a critical blocks the push — every finding with
-      # its FIXED IN column, incl. unfixable base CVEs), plus JSON and SARIF
-      # files. A direct grype run is required because anchore/scan-action emits
-      # neither a stdout table nor multiple formats, and only a full (not
-      # only-fixed) scan keeps the table complete. grype exits 0 without
-      # --fail-on, so this step is non-blocking and always produces the files;
-      # the gate below decides pass/fail.
+      # single scan (no second catalog pass): a full-inventory table (the report
+      # to read when a critical blocks the push — every finding with its FIXED IN
+      # column, incl. unfixable base CVEs), plus JSON and SARIF files. A direct
+      # grype run is required because anchore/scan-action emits neither a table
+      # nor multiple formats, and only a full (not only-fixed) scan keeps the
+      # table complete. grype exits 0 without --fail-on, so this step is
+      # non-blocking and always produces the files; the gate below decides
+      # pass/fail. The table is written to a file, then echoed to stdout (this
+      # step's log) *and* appended to the job summary, so a blocking critical is
+      # visible on the job overview page without expanding this step's log.
       - name: Scan image with grype
         run: |
           ${{ steps.grype.outputs.cmd }} summa:scan \
-            -o table \
+            -o table=grype-table.txt \
             -o json=grype-results.json \
             -o sarif=grype-results.sarif
+          cat grype-table.txt
+          {
+            echo '### Grype vulnerability scan'
+            echo '```'
+            cat grype-table.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       # Gate on *actionable* findings only: a critical CVE with a released fix.
       # An unfixable critical (common for base-image OS packages Debian marks
@@ -143,7 +152,7 @@ jobs:
             | select(.vulnerability.severity == "Critical")
             | select(.vulnerability.fix.state == "fixed")] | length' grype-results.json)
           if [ "$count" -gt 0 ]; then
-            echo "::error::$count fixable critical vulnerability(ies) — see the grype table above"
+            echo "::error::$count fixable critical vulnerability(ies) — see the grype table in the job summary"
             exit 1
           fi
 
