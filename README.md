@@ -82,14 +82,15 @@ uv run mypy            # type check (files are configured in pyproject.toml)
 
 The [`docker` workflow](.github/workflows/docker.yml) builds the image and runs two supply-chain checks against it before publishing:
 
-- **Vulnerability gate** — [`anchore/scan-action`](https://github.com/anchore/scan-action) scans the image and **fails the build on any critical CVE** (`fail-build: true`, `severity-cutoff: critical`), so a critical finding blocks the push.
-- **Scan visibility** — the scan's SARIF report is uploaded via `github/codeql-action/upload-sarif`, so findings appear under **Security → Code scanning** and as annotations on pull requests.
+- **Vulnerability gate** — [`anchore/scan-action`](https://github.com/anchore/scan-action) scans the image and **fails the build on any _fixable_ critical CVE** (`fail-build: true`, `severity-cutoff: critical`, `only-fixed: true`). Gating only on findings that have a released fix keeps the pipeline actionable: a critical CVE with no upstream fix (common for base-image OS packages Debian marks _won't fix_) can't be remediated by a rebuild, so it must not block the push indefinitely — the gate re-activates automatically once a fix ships.
+- **Scan visibility** — a preceding non-blocking `List critical vulnerabilities` step prints every critical CVE (fixable or not) as a table in the job log, since the gating scan writes SARIF to a file and logs nothing legible. The SARIF report is also uploaded via `github/codeql-action/upload-sarif`, so findings appear under **Security → Code scanning** and as annotations on pull requests.
 - **SBOM** — the published image carries an SPDX SBOM attached as an OCI attestation (`sbom: true` on the build-and-push step), so the bill of materials ships with the image rather than as a throwaway job artifact. Inspect it with `docker buildx imagetools inspect <user>/summa:latest --format '{{ json .SBOM }}'`.
 
 Two operational caveats:
 
 - **Pull requests from forks cannot upload SARIF.** GitHub grants fork PRs only a read-only token, so `upload-sarif` (which needs `security-events: write`) fails on them. The scan and its critical-CVE gate still run — only the Security-tab upload is skipped. Same-repo PRs are unaffected.
 - **Code scanning must be enabled** for the repository, otherwise the SARIF upload succeeds but no alerts are surfaced. It is free on public repositories; private repositories require GitHub Advanced Security.
+- **Pull-request findings are filtered by branch.** The **Security → Code scanning** view defaults to the default branch (`main`); a scan that ran on a PR only appears after switching the **Branch** filter to that PR's branch (or via the PR's own file annotations).
 
 ## Configuration
 

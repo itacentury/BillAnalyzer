@@ -109,6 +109,18 @@ jobs:
           pull: ${{ env.REFRESH_BASE == 'true' }}
           no-cache: ${{ env.REFRESH_BASE == 'true' }}
 
+      # Human-readable listing of every critical CVE (fixable or not) in the job
+      # log. Non-blocking: the gate below decides pass/fail. This is the step to
+      # read when you need the actual CVE IDs — the SARIF gate writes to a file
+      # and prints nothing legible.
+      - name: List critical vulnerabilities
+        uses: anchore/scan-action@v6
+        with:
+          image: summa:scan
+          output-format: table
+          severity-cutoff: critical
+          fail-build: false
+
       - name: Scan for vulnerabilities
         id: scan
         uses: anchore/scan-action@v6
@@ -117,6 +129,14 @@ jobs:
           # A critical CVE gates the push; the report is still uploaded below.
           fail-build: true
           severity-cutoff: critical
+          # Gate only on *actionable* findings: a critical CVE with no released
+          # fix can't be remediated by a rebuild, so it must not block the push
+          # indefinitely. The moment Debian ships a fix, this re-activates and
+          # forces a refreshed image. only-fixed filters every output of this
+          # run (SARIF included), so the Security-tab upload below carries the
+          # actionable set; the full inventory incl. unfixable criticals stays in
+          # the "List critical vulnerabilities" step above.
+          only-fixed: true
 
       - name: Upload scan results to Security tab
         # always() so the SARIF is uploaded even when a critical finding aborts

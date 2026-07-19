@@ -97,9 +97,18 @@ when an existing cached asset's content changes.
 
 ## Deployment
 
-Single-stage `Dockerfile` (from `python:3.12-slim`): installs runtime-only
-dependencies via `uv sync --frozen --no-dev --no-install-project`, then copies
-the app together with the pre-generated PWA icons committed under `static/icons/`
-(no build-time icon generation). Runs `gunicorn` (2 workers, 4 threads) as a
-non-root `appuser`. `entrypoint.sh` fixes `/data` volume ownership via `gosu`
-before dropping privileges. In the container the DB lives at `/data/invoices.db`.
+Multi-stage `Dockerfile` (both stages from `python:3.12-slim`): a `builder` stage
+installs runtime-only dependencies via `uv sync --frozen --no-dev
+--no-install-project` (uv pinned by copying it from `ghcr.io/astral-sh/uv`); the
+final stage copies just the built virtualenv (`COPY --from=builder /app/.venv`)
+and the app together with the pre-generated PWA icons committed under
+`static/icons/` (no build-time icon generation). Runs `gunicorn` (2 workers,
+4 threads) as a non-root `appuser`. `entrypoint.sh` fixes `/data` volume
+ownership via `gosu` before dropping privileges. In the container the DB lives at
+`/data/invoices.db`.
+
+Image build, vulnerability scan and push live in a separate
+[`docker` workflow](.github/workflows/docker.yml) (distinct from CI's three
+jobs): it builds both `linux/amd64` and `linux/arm64`, gates the push on
+_fixable_ critical CVEs via `anchore/scan-action` (`only-fixed: true`), uploads
+the scan SARIF to the Security tab and attaches an SPDX SBOM to the pushed image.
