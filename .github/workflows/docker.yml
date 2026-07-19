@@ -123,7 +123,6 @@ jobs:
       # --fail-on, so this step is non-blocking and always produces the files;
       # the gate below decides pass/fail.
       - name: Scan image with grype
-        id: scan
         run: |
           ${{ steps.grype.outputs.cmd }} summa:scan \
             -o table \
