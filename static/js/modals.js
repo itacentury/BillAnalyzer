@@ -69,6 +69,22 @@ export function openAddModal() {
   const dateInput = document.querySelector('[data-el="invoice-date"]');
   capAtToday(dateInput);
   dateInput.value = todayIso();
+  validateInvoiceDate();
+}
+
+/**
+ * Toggle the inline "future date" hint under the date field and report whether
+ * the field currently holds a future (out-of-range) date. Legacy rows created
+ * before the future-date guard can carry a date beyond `max`; this surfaces that
+ * invalid state instead of letting a save fail silently with a generic toast.
+ */
+export function validateInvoiceDate() {
+  const dateInput = document.querySelector('[data-el="invoice-date"]');
+  const hint = document.querySelector('[data-el="invoice-date-error"]');
+  const isFuture = dateInput.validity.rangeOverflow;
+  hint.classList.toggle("is-hidden", !isFuture);
+  dateInput.setAttribute("aria-invalid", String(isFuture));
+  return isFuture;
 }
 
 export function closeAddModal() {
@@ -97,6 +113,7 @@ export async function editInvoice(id) {
   const dateInput = document.querySelector('[data-el="invoice-date"]');
   capAtToday(dateInput);
   dateInput.value = invoice.date;
+  validateInvoiceDate();
   document.querySelector('[data-el="invoice-store"]').value = invoice.store;
   getCombobox("invoice-type").setValue(invoice.category || "");
 
@@ -220,6 +237,9 @@ export function setupModalListeners() {
   addModal
     .querySelector('[data-action="save"]')
     .addEventListener("click", saveInvoice);
+  addModal
+    .querySelector('[data-el="invoice-date"]')
+    .addEventListener("input", validateInvoiceDate);
 
   // Item rows are rebuilt at runtime, so delegate from the stable container
   const itemsContainer = document.querySelector('[data-el="items-container"]');

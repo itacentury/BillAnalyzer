@@ -118,6 +118,11 @@ body {
   color: var(--text-muted);
 }
 
+.field-error {
+  font-size: 0.8125rem;
+  color: var(--danger);
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
