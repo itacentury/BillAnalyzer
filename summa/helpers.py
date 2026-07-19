@@ -24,6 +24,9 @@ class ValidationError(Exception):
     def __init__(self, message: str, field: str | None = None) -> None:
         """:param field: the offending field name, if the error is field-specific."""
         super().__init__(message)
+        # Expose the message as a plain attribute (read via `e.message`, never
+        # `str(e)`): CodeQL py/stack-trace-exposure treats str(exception) flowing
+        # into an HTTP response as tainted, and a plain attribute breaks that chain.
         self.message: str = message
         self.field: str | None = field
 
