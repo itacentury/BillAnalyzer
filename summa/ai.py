@@ -9,9 +9,14 @@ import json
 import logging
 import os
 from dataclasses import dataclass
-from typing import Any, Final
+from typing import Any, Final, Literal
 
 import anthropic
+from anthropic.types import (
+    OutputConfigParam,
+    ThinkingConfigAdaptiveParam,
+    ThinkingConfigDisabledParam,
+)
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -26,9 +31,19 @@ MODELS: Final[dict[str, str]] = {
     "opus": "claude-opus-4-8",
 }
 DEFAULT_MODEL_KEY: Final[str] = "haiku"
-# The output is tiny (one id + category per invoice), so a non-streaming request
-# stays well under the SDK's timeout guard even for a full 100-invoice batch.
-MAX_TOKENS: Final[int] = 8000
+
+# Models supporting adaptive thinking + the effort parameter (4.6+). The default
+# claude-haiku-4-5 is an older model that rejects both, so it runs with thinking
+# disabled instead.
+ADAPTIVE_MODELS: Final[frozenset[str]] = frozenset({MODELS["sonnet"], MODELS["opus"]})
+
+# The output is one id + category per invoice, so it stays tiny; the budget is
+# sized to the batch mostly to leave room for thinking tokens (which count
+# against max_tokens) without truncating the JSON. The cap keeps the request
+# under the SDK's ~10-minute non-streaming timeout guard, so no streaming needed.
+_TOKEN_BUDGET_BASE: Final[int] = 4096
+_TOKENS_PER_INVOICE: Final[int] = 64
+_TOKEN_BUDGET_CAP: Final[int] = 15000
 
 SYSTEM_PROMPT: Final[str] = (
     "You assign exactly one spending category to each invoice, based on its store "
@@ -91,6 +106,28 @@ def resolve_model(key: str | None) -> str:
     return MODELS.get(key or DEFAULT_MODEL_KEY, MODELS[DEFAULT_MODEL_KEY])
 
 
+def _max_tokens_for(invoice_count: int) -> int:
+    """Size the output budget to the batch so thinking + JSON don't truncate."""
+    budget: int = _TOKEN_BUDGET_BASE + invoice_count * _TOKENS_PER_INVOICE
+    return min(_TOKEN_BUDGET_CAP, budget)
+
+
+def _thinking_config(
+    model: str,
+) -> tuple[
+    ThinkingConfigAdaptiveParam | ThinkingConfigDisabledParam, Literal["low"] | None
+]:
+    """Return the ``(thinking, effort)`` pair tuned to the model's capabilities.
+
+    :param model: the resolved model id (see :func:`resolve_model`).
+    :returns: the ``thinking`` request value and an optional ``effort`` level;
+        adaptive models get low effort, others run with thinking disabled.
+    """
+    if model in ADAPTIVE_MODELS:
+        return {"type": "adaptive"}, "low"
+    return {"type": "disabled"}, None
+
+
 def _extract_text(message: anthropic.types.Message) -> str:
     """Return the first text block of a response, or raise if none is present."""
     for block in message.content:
@@ -120,18 +157,33 @@ def suggest_categories(
         "invoices": invoices,
     }
 
+    thinking, effort = _thinking_config(model)
+    output_config: OutputConfigParam = {
+        "format": {"type": "json_schema", "schema": OUTPUT_SCHEMA}
+    }
+    if effort is not None:
+        output_config["effort"] = effort
+
     try:
         message: anthropic.types.Message = client.messages.create(
             model=model,
-            max_tokens=MAX_TOKENS,
-            thinking={"type": "adaptive"},
+            max_tokens=_max_tokens_for(len(invoices)),
+            thinking=thinking,
             system=SYSTEM_PROMPT,
-            output_config={"format": {"type": "json_schema", "schema": OUTPUT_SCHEMA}},
+            output_config=output_config,
             messages=[{"role": "user", "content": json.dumps(user_payload)}],
         )
     except anthropic.APIError as error:
         logger.error("Claude categorization request failed: %s", error)
         raise AiCategorizationError(str(error)) from error
+
+    # A truncated response would otherwise fail JSON parsing below with a
+    # misleading "not valid JSON"; surface the real cause instead.
+    if message.stop_reason == "max_tokens":
+        raise AiCategorizationError(
+            "Claude response was truncated (token budget exceeded) — "
+            "try a smaller batch"
+        )
 
     raw: str = _extract_text(message)
     try:

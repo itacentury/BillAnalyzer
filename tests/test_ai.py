@@ -23,16 +23,23 @@ class _FakeBlock:
 class _FakeMessage:
     """Minimal stand-in for an Anthropic message response."""
 
-    def __init__(self, text: str) -> None:
+    def __init__(self, text: str, stop_reason: str = "end_turn") -> None:
         self.content: list[_FakeBlock] = [_FakeBlock(text)]
+        self.stop_reason: str = stop_reason
 
 
 class _FakeMessages:
     """Records the create() call and returns a canned response (or raises)."""
 
-    def __init__(self, response_text: str | None, error: Exception | None) -> None:
+    def __init__(
+        self,
+        response_text: str | None,
+        error: Exception | None,
+        stop_reason: str = "end_turn",
+    ) -> None:
         self._response_text: str | None = response_text
         self._error: Exception | None = error
+        self._stop_reason: str = stop_reason
         self.last_kwargs: dict[str, Any] = {}
 
     def create(self, **kwargs: Any) -> _FakeMessage:
@@ -40,7 +47,7 @@ class _FakeMessages:
         if self._error is not None:
             raise self._error
         assert self._response_text is not None
-        return _FakeMessage(self._response_text)
+        return _FakeMessage(self._response_text, self._stop_reason)
 
 
 class _FakeClient:
@@ -55,9 +62,10 @@ def _patch_client(
     *,
     response_text: str | None = None,
     error: Exception | None = None,
+    stop_reason: str = "end_turn",
 ) -> _FakeMessages:
     """Patch anthropic.Anthropic to return a fake client; return its messages stub."""
-    fake_messages: _FakeMessages = _FakeMessages(response_text, error)
+    fake_messages: _FakeMessages = _FakeMessages(response_text, error, stop_reason)
     monkeypatch.setattr(anthropic, "Anthropic", lambda: _FakeClient(fake_messages))
     return fake_messages
 
@@ -141,3 +149,54 @@ def test_empty_invoices_short_circuits(monkeypatch: pytest.MonkeyPatch) -> None:
 
     assert ai.suggest_categories([], [], _MODEL) == []
     assert fake_messages.last_kwargs == {}
+
+
+def test_truncated_response_is_wrapped(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A max_tokens stop is reported as truncation, not as invalid JSON."""
+    # Valid JSON body, but the model stopped on the token ceiling.
+    response: str = json.dumps({"suggestions": []})
+    _patch_client(monkeypatch, response_text=response, stop_reason="max_tokens")
+
+    with pytest.raises(ai.AiCategorizationError, match="truncated"):
+        ai.suggest_categories([{"id": 1, "store": "A", "items": []}], [], _MODEL)
+
+
+def test_haiku_disables_thinking_and_omits_effort(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The default (older) model runs with thinking disabled and no effort."""
+    fake_messages = _patch_client(
+        monkeypatch, response_text=json.dumps({"suggestions": []})
+    )
+
+    ai.suggest_categories(
+        [{"id": 1, "store": "A", "items": []}], [], ai.MODELS["haiku"]
+    )
+
+    assert fake_messages.last_kwargs["thinking"] == {"type": "disabled"}
+    assert "effort" not in fake_messages.last_kwargs["output_config"]
+
+
+def test_adaptive_model_uses_low_effort_thinking(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A 4.6+ model gets adaptive thinking and low effort."""
+    fake_messages = _patch_client(
+        monkeypatch, response_text=json.dumps({"suggestions": []})
+    )
+
+    ai.suggest_categories(
+        [{"id": 1, "store": "A", "items": []}], [], ai.MODELS["sonnet"]
+    )
+
+    assert fake_messages.last_kwargs["thinking"] == {"type": "adaptive"}
+    assert fake_messages.last_kwargs["output_config"]["effort"] == "low"
+
+
+def test_max_tokens_scales_with_batch_and_is_capped() -> None:
+    """The token budget grows with the batch but never exceeds the cap."""
+    small: int = ai._max_tokens_for(1)
+    large: int = ai._max_tokens_for(100)
+    assert small < large
+    assert large == ai._TOKEN_BUDGET_BASE + 100 * ai._TOKENS_PER_INVOICE
+    assert ai._max_tokens_for(100_000) == ai._TOKEN_BUDGET_CAP
