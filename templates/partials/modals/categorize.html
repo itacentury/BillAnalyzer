@@ -28,7 +28,136 @@
           <p class="categorize-subtitle" data-el="categorize-subtitle"></p>
         </div>
       </div>
-      {{ modal_close_button() }}
+      <div class="categorize-header-actions">
+        <div class="model-picker" data-el="model-picker">
+          <button
+            type="button"
+            class="model-picker-trigger"
+            data-el="model-picker-trigger"
+            aria-haspopup="true"
+            aria-expanded="false"
+            aria-label="Choose AI model"
+          >
+            <svg
+              class="model-picker-gear"
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              aria-hidden="true"
+            >
+              <circle cx="12" cy="12" r="3" />
+              <path
+                d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"
+              />
+            </svg>
+            <span
+              class="model-picker-label"
+              data-el="model-picker-label"
+            ></span>
+            <svg
+              class="model-picker-chevron"
+              width="10"
+              height="10"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              aria-hidden="true"
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
+          <div
+            class="model-picker-menu"
+            data-el="model-picker-menu"
+            role="menu"
+          >
+            <span class="model-picker-section-label">Model</span>
+            <button
+              type="button"
+              class="model-picker-option"
+              data-model-option="haiku"
+              role="menuitemradio"
+            >
+              <span class="model-picker-option-text">
+                <span class="model-picker-option-name">Claude Haiku</span>
+                <span class="model-picker-option-desc"
+                  >Fast &amp; low-cost · default</span
+                >
+              </span>
+              <svg
+                class="model-picker-check"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                aria-hidden="true"
+              >
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              class="model-picker-option"
+              data-model-option="sonnet"
+              role="menuitemradio"
+            >
+              <span class="model-picker-option-text">
+                <span class="model-picker-option-name">Claude Sonnet</span>
+                <span class="model-picker-option-desc"
+                  >More accurate on ambiguous stores</span
+                >
+              </span>
+              <svg
+                class="model-picker-check"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                aria-hidden="true"
+              >
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              class="model-picker-option"
+              data-model-option="opus"
+              role="menuitemradio"
+            >
+              <span class="model-picker-option-text">
+                <span class="model-picker-option-name">Claude Opus</span>
+                <span class="model-picker-option-desc"
+                  >Best quality · slowest</span
+                >
+              </span>
+              <svg
+                class="model-picker-check"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                aria-hidden="true"
+              >
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </button>
+            <span class="model-picker-note"
+              >Applies to future suggestion runs. Stored on this device.</span
+            >
+          </div>
+        </div>
+        {{ modal_close_button() }}
+      </div>
     </div>
 
     <div class="categorize-content" data-el="categorize-content"></div>

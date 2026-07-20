@@ -15,6 +15,7 @@ import { showUndoToast, showErrorToast } from "./toast.js";
 import { renderInvoices, restoreRows } from "./render.js";
 import { lockScroll, unlockScroll } from "./modals.js";
 import { createCombobox } from "./combobox.js";
+import { getAiModel, setupModelPicker } from "./ai-model.js";
 
 // Per-open review state, reset every time the modal opens.
 let controller = null; // aborts the in-flight suggest request on cancel
@@ -343,10 +344,13 @@ async function openCategorize() {
   const current = controller;
   try {
     const [suggestResponse, categoriesResponse] = await Promise.all([
-      fetch(`/api/invoices/categorize-suggest?${buildFilterParams()}`, {
-        method: "POST",
-        signal: current.signal,
-      }),
+      fetch(
+        `/api/invoices/categorize-suggest?${buildFilterParams()}&model=${encodeURIComponent(getAiModel())}`,
+        {
+          method: "POST",
+          signal: current.signal,
+        },
+      ),
       fetch("/api/categories"),
     ]);
 
@@ -463,6 +467,8 @@ function applyCategories() {
  * deselect-all, cancel) and the footer actions.
  */
 export function setupCategorizeListeners() {
+  setupModelPicker();
+
   document
     .querySelectorAll('[data-action="open-categorize"]')
     .forEach((button) => button.addEventListener("click", openCategorize));

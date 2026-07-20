@@ -202,7 +202,6 @@
   display: flex;
   gap: 1rem;
   align-items: center;
-  justify-content: space-between;
   padding: 1rem 1.25rem;
   cursor: pointer;
 }
@@ -263,10 +262,12 @@
 }
 
 .invoice-total {
+  min-width: 72px;
   font-family: "JetBrains Mono", monospace;
   font-size: 1rem;
   font-weight: 500;
   color: var(--amount);
+  text-align: right;
 }
 
 .invoice-total::before {

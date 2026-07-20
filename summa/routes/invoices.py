@@ -7,7 +7,12 @@ from typing import Any, Final
 
 from flask import Blueprint, Response, jsonify, request
 
-from summa.ai import AiCategorizationError, api_key_configured, suggest_categories
+from summa.ai import (
+    AiCategorizationError,
+    api_key_configured,
+    resolve_model,
+    suggest_categories,
+)
 from summa.db import chunked, db_cursor, insert_invoice_items, placeholders_for
 from summa.helpers import (
     ApiResponse,
@@ -293,8 +298,9 @@ def categorize_suggest() -> ApiResponse:
     if not invoices:
         return jsonify({"suggestions": [], "count": 0, "total": 0})
 
+    model: str = resolve_model(request.args.get("model"))
     try:
-        results = suggest_categories(invoices, existing_categories)
+        results = suggest_categories(invoices, existing_categories, model=model)
     except AiCategorizationError as error:
         logger.error("AI categorization failed: %s", error)
         return error_response(str(error), 502)

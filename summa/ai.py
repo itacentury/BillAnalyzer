@@ -16,7 +16,16 @@ import anthropic
 logger: logging.Logger = logging.getLogger(__name__)
 
 API_KEY_ENV: Final[str] = "ANTHROPIC_API_KEY"
-MODEL: Final[str] = "claude-opus-4-8"
+
+# User-selectable models, keyed by the short identifier the client sends. The
+# resolver below maps a key to its real model id, so an arbitrary client string
+# never reaches the API.
+MODELS: Final[dict[str, str]] = {
+    "haiku": "claude-haiku-4-5",
+    "sonnet": "claude-sonnet-5",
+    "opus": "claude-opus-4-8",
+}
+DEFAULT_MODEL_KEY: Final[str] = "haiku"
 # The output is tiny (one id + category per invoice), so a non-streaming request
 # stays well under the SDK's timeout guard even for a full 100-invoice batch.
 MAX_TOKENS: Final[int] = 8000
@@ -73,6 +82,15 @@ def api_key_configured() -> bool:
     return bool(os.environ.get(API_KEY_ENV))
 
 
+def resolve_model(key: str | None) -> str:
+    """Map a user-selected model key to its real model id.
+
+    :param key: the short key from the client (``haiku`` / ``sonnet`` / ``opus``).
+    :returns: the model id, falling back to the default for unknown or missing keys.
+    """
+    return MODELS.get(key or DEFAULT_MODEL_KEY, MODELS[DEFAULT_MODEL_KEY])
+
+
 def _extract_text(message: anthropic.types.Message) -> str:
     """Return the first text block of a response, or raise if none is present."""
     for block in message.content:
@@ -82,7 +100,7 @@ def _extract_text(message: anthropic.types.Message) -> str:
 
 
 def suggest_categories(
-    invoices: list[dict[str, Any]], existing_categories: list[str]
+    invoices: list[dict[str, Any]], existing_categories: list[str], model: str
 ) -> list[CategorySuggestion]:
     """Ask Claude to categorize each invoice in a single structured request.
 
@@ -90,6 +108,7 @@ def suggest_categories(
         (``item_name`` / ``item_price``), as assembled by the route.
     :param existing_categories: the categories already in use, given to the model
         as context and used to compute :attr:`CategorySuggestion.is_new`.
+    :param model: the resolved model id (see :func:`resolve_model`).
     :raises AiCategorizationError: on any API error or an unparseable response.
     """
     if not invoices:
@@ -103,7 +122,7 @@ def suggest_categories(
 
     try:
         message: anthropic.types.Message = client.messages.create(
-            model=MODEL,
+            model=model,
             max_tokens=MAX_TOKENS,
             thinking={"type": "adaptive"},
             system=SYSTEM_PROMPT,

@@ -2,16 +2,21 @@
    Warm-Sand tokens from variables.css; a few terracotta/purple accents from the
    handoff have no exact token and are kept as literals. */
 
-/* Trigger (design 9c) — secondary pill next to the Filter button */
+/* Trigger (design 9c) — secondary pill, a peer of the Filter button (fixed 42px
+   height, single line) rather than a hero button. */
 .ai-trigger {
+  box-sizing: border-box;
   display: inline-flex;
+  flex: none;
   gap: 7px;
   align-items: center;
-  padding: 9px 14px;
+  height: 42px;
+  padding: 0 14px;
   font-family: inherit;
-  font-size: 0.8125rem;
+  font-size: 12.5px;
   font-weight: 600;
   color: #a5643c;
+  white-space: nowrap;
   cursor: pointer;
   background: var(--bg-card);
   border: 1px solid #d9b8a2;
@@ -34,6 +39,137 @@
   color: var(--cat-baecker-text);
   background: var(--cat-baecker);
   border-radius: 999px;
+}
+
+/* Model picker (design 11a) — compact select in the modal header, grouped with
+   the close button on the right. */
+.categorize-header-actions {
+  display: flex;
+  flex: none;
+  gap: 12px;
+  align-items: center;
+}
+
+.model-picker {
+  position: relative;
+}
+
+.model-picker-trigger {
+  box-sizing: border-box;
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  padding: 7px 11px;
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #6b5f4a;
+  white-space: nowrap;
+  cursor: pointer;
+  background: #faf5e9;
+  border: 1px solid #e2d8c2;
+  border-radius: 9px;
+  transition: all var(--transition-fast);
+}
+
+.model-picker-trigger:hover {
+  background: var(--bg-hover);
+}
+
+.model-picker-gear,
+.model-picker-chevron {
+  flex: none;
+  color: #a3947a;
+}
+
+/* Dropdown — hidden until the trigger toggles `.is-open` on the root. */
+.model-picker-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 10;
+  display: none;
+  width: 280px;
+  padding: 5px;
+  background: #fdf9f1;
+  border: 1px solid #e2d8c2;
+  border-radius: 12px;
+  box-shadow: 0 14px 36px rgb(58 51 42 / 20%);
+}
+
+.model-picker.is-open .model-picker-menu {
+  display: block;
+}
+
+.model-picker-section-label {
+  display: block;
+  padding: 6px 10px 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #a3947a;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.model-picker-option {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 9px 10px;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  background: none;
+  border: none;
+  border-radius: 8px;
+}
+
+.model-picker-option:hover {
+  background: var(--bg-hover);
+}
+
+.model-picker-option.is-selected {
+  background: #f6ecda;
+}
+
+.model-picker-option-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.model-picker-option-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.model-picker-option-desc {
+  font-size: 10.5px;
+  color: #8a7c62;
+}
+
+.model-picker-check {
+  flex: none;
+  color: #a5643c;
+  opacity: 0;
+}
+
+.model-picker-option.is-selected .model-picker-check {
+  opacity: 1;
+}
+
+.model-picker-note {
+  display: block;
+  padding: 8px 10px;
+  margin-top: 4px;
+  font-size: 10.5px;
+  color: #8a7c62;
+  background: #faf5e9;
+  border-radius: 8px;
 }
 
 /* Modal shell — fixed header/footer with a scrolling body */
@@ -451,6 +587,15 @@
     content: "";
     background: var(--border-strong);
     border-radius: 2px;
+  }
+
+  /* Keep the trigger's tap target at least 44px without enlarging the visual. */
+  .model-picker-trigger {
+    min-height: 44px;
+  }
+
+  .model-picker-menu {
+    width: min(280px, calc(100vw - 32px));
   }
 
   .categorize-row {
