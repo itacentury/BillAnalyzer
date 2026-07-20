@@ -264,25 +264,34 @@ def categorize_suggest() -> ApiResponse:
 
             # Full per-invoice info for the response (store, amount, items); the
             # items double as the model input and the client's summary/accordion.
+            # Load every row's items in one query (ids are already capped at
+            # CATEGORIZE_SUGGEST_LIMIT, well under SQLite's variable limit) and
+            # group them in Python, avoiding a per-invoice round-trip.
             invoices: list[dict[str, Any]] = []
-            for row in rows:
+            if rows:
+                ids: list[int] = [row["id"] for row in rows]
                 cursor.execute(
-                    "SELECT item_name, item_price FROM invoice_items "
-                    "WHERE invoice_id = ?",
-                    (row["id"],),
+                    f"SELECT invoice_id, item_name, item_price FROM invoice_items "
+                    f"WHERE invoice_id IN ({placeholders_for(len(ids))})",
+                    ids,
                 )
-                items: list[dict[str, Any]] = [
-                    {"item_name": item["item_name"], "item_price": item["item_price"]}
-                    for item in cursor.fetchall()
-                ]
-                invoices.append(
-                    {
-                        "id": row["id"],
-                        "store": row["store"],
-                        "total": row["total"],
-                        "items": items,
-                    }
-                )
+                items_by_invoice: dict[int, list[dict[str, Any]]] = {}
+                for item in cursor.fetchall():
+                    items_by_invoice.setdefault(item["invoice_id"], []).append(
+                        {
+                            "item_name": item["item_name"],
+                            "item_price": item["item_price"],
+                        }
+                    )
+                for row in rows:
+                    invoices.append(
+                        {
+                            "id": row["id"],
+                            "store": row["store"],
+                            "total": row["total"],
+                            "items": items_by_invoice.get(row["id"], []),
+                        }
+                    )
 
             cursor.execute(
                 "SELECT DISTINCT category FROM invoices "
