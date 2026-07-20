@@ -21,7 +21,7 @@ def _stub_suggestions(
     captured: list[list[dict[str, Any]]] = []
 
     def _fake(
-        invoices: list[dict[str, Any]], existing_categories: list[str]
+        invoices: list[dict[str, Any]], existing_categories: list[str], model: str
     ) -> list[ai.CategorySuggestion]:
         captured.append(invoices)
         return [

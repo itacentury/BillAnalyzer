@@ -9,6 +9,8 @@ import pytest
 
 from summa import ai
 
+_MODEL: str = ai.MODELS[ai.DEFAULT_MODEL_KEY]
+
 
 class _FakeBlock:
     """Minimal stand-in for an Anthropic text content block."""
@@ -78,14 +80,14 @@ def test_suggest_categories_builds_request_with_all_invoices(
         {"id": 1, "store": "Bakery", "items": [{"item_name": "Bread"}]},
         {"id": 2, "store": "PlayStation", "items": []},
     ]
-    ai.suggest_categories(invoices, ["Groceries"])
+    ai.suggest_categories(invoices, ["Groceries"], _MODEL)
 
     sent: dict[str, Any] = json.loads(
         fake_messages.last_kwargs["messages"][0]["content"]
     )
     assert sent["existing_categories"] == ["Groceries"]
     assert [invoice["id"] for invoice in sent["invoices"]] == [1, 2]
-    assert fake_messages.last_kwargs["model"] == ai.MODEL
+    assert fake_messages.last_kwargs["model"] == _MODEL
 
 
 def test_is_new_is_computed_case_insensitively(
@@ -105,6 +107,7 @@ def test_is_new_is_computed_case_insensitively(
     results = ai.suggest_categories(
         [{"id": 1, "store": "A", "items": []}, {"id": 2, "store": "B", "items": []}],
         ["Groceries"],
+        _MODEL,
     )
 
     by_id = {result.invoice_id: result for result in results}
@@ -121,7 +124,7 @@ def test_api_error_is_wrapped(monkeypatch: pytest.MonkeyPatch) -> None:
     )
 
     with pytest.raises(ai.AiCategorizationError):
-        ai.suggest_categories([{"id": 1, "store": "A", "items": []}], [])
+        ai.suggest_categories([{"id": 1, "store": "A", "items": []}], [], _MODEL)
 
 
 def test_invalid_json_is_wrapped(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -129,12 +132,12 @@ def test_invalid_json_is_wrapped(monkeypatch: pytest.MonkeyPatch) -> None:
     _patch_client(monkeypatch, response_text="not json")
 
     with pytest.raises(ai.AiCategorizationError):
-        ai.suggest_categories([{"id": 1, "store": "A", "items": []}], [])
+        ai.suggest_categories([{"id": 1, "store": "A", "items": []}], [], _MODEL)
 
 
 def test_empty_invoices_short_circuits(monkeypatch: pytest.MonkeyPatch) -> None:
     """No invoices means no request is made and the result is empty."""
     fake_messages = _patch_client(monkeypatch, response_text="{}")
 
-    assert ai.suggest_categories([], []) == []
+    assert ai.suggest_categories([], [], _MODEL) == []
     assert fake_messages.last_kwargs == {}
