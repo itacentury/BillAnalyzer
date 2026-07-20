@@ -15,7 +15,7 @@ import { getCombobox } from "./combobox.js";
  * Build the inner markup for one add/edit item row (name, price, remove button).
  * Pre-fills the inputs when an existing item is passed.
  */
-function itemRowInnerHtml(item = null) {
+export function itemRowInnerHtml(item = null) {
   const nameValue = item ? ` value="${escapeHtml(item.item_name)}"` : "";
   const priceValue = item ? ` value="${item.item_price}"` : "";
   return `

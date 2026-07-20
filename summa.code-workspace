@@ -93,7 +93,7 @@
       {
         "label": "Test: All",
         "type": "shell",
-        "command": "uv run pytest",
+        "command": "uv run pytest && npm run test",
         "group": "build",
         "presentation": {
           "panel": "shared",

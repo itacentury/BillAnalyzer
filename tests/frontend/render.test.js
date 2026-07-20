@@ -1,0 +1,147 @@
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+
+import { mountListFixture } from "./helpers.js";
+
+// The page-size control lives in pagesize.js and needs its own DOM; stub it out
+// so the render fixture can stay minimal — renderPagination only interpolates
+// its string result.
+vi.mock("../../static/js/pagesize.js", () => ({
+  renderPageSizeControl: () => "",
+}));
+
+import {
+  captureRows,
+  itemRowsHtml,
+  reinsertRows,
+  renderInvoices,
+  restoreRows,
+} from "../../static/js/render.js";
+import { state, selectedInvoices } from "../../static/js/state.js";
+
+const listEl = () => document.querySelector('[data-el="invoice-list"]');
+
+beforeAll(() => {
+  mountListFixture();
+});
+
+beforeEach(() => {
+  Object.assign(state, {
+    invoices: [],
+    page: 1,
+    effectivePageSize: 25,
+    totalCount: 0,
+    totalSum: 0,
+  });
+  selectedInvoices.clear();
+});
+
+describe("renderInvoices", () => {
+  it("renders the empty state when there are no invoices", () => {
+    renderInvoices();
+
+    expect(listEl().querySelector(".empty-state")).not.toBeNull();
+    expect(listEl().textContent).toContain("No invoices found");
+    expect(
+      document.querySelector('[data-el="results-count"]').textContent,
+    ).toBe("0 invoices");
+  });
+
+  it("renders one row per invoice with escaped, formatted fields", () => {
+    state.invoices = [
+      {
+        id: 1,
+        date: "2026-01-05",
+        store: "<b>Aldi</b>",
+        category: "Food",
+        total: "12.50",
+      },
+      { id: 2, date: "2026-02-10", store: "Rewe", category: "", total: "3.00" },
+    ];
+    state.totalCount = 2;
+    state.totalSum = 15.5;
+    selectedInvoices.add(1);
+
+    renderInvoices();
+
+    const rows = listEl().querySelectorAll(".invoice-item");
+    expect(rows).toHaveLength(2);
+
+    // Store names are escaped, not injected as markup.
+    expect(rows[0].querySelector(".invoice-store").textContent).toBe(
+      "<b>Aldi</b>",
+    );
+    expect(rows[0].querySelector(".invoice-store b")).toBeNull();
+
+    expect(rows[0].querySelector(".invoice-date-full").textContent).toBe(
+      "05/01/2026",
+    );
+    expect(rows[0].querySelector(".invoice-total").textContent).toBe("12.50");
+
+    // Selection is reflected on the row and its checkbox.
+    expect(rows[0].classList.contains("selected")).toBe(true);
+    expect(rows[0].querySelector('input[type="checkbox"]').checked).toBe(true);
+    expect(rows[1].classList.contains("selected")).toBe(false);
+
+    // Roving tab stop starts on the first row only.
+    expect(rows[0].tabIndex).toBe(0);
+    expect(rows[1].tabIndex).toBe(-1);
+
+    expect(
+      document.querySelector('[data-el="results-total"]').textContent,
+    ).toBe("15.50");
+  });
+});
+
+describe("itemRowsHtml", () => {
+  it("escapes the item name and formats the price to two decimals", () => {
+    const html = itemRowsHtml([{ item_name: "A & B", item_price: "3.5" }]);
+
+    expect(html).toContain("A &amp; B");
+    expect(html).toContain("€3.50");
+  });
+});
+
+describe("row reconciliation", () => {
+  it("captureRows records removed rows with their positions", () => {
+    state.invoices = [{ id: 1 }, { id: 2 }, { id: 3 }];
+
+    const captured = captureRows(new Set([2]));
+
+    expect(captured).toEqual([{ invoice: { id: 2 }, index: 1 }]);
+  });
+
+  it("reinsertRows restores rows at their captured index and re-adds count/sum", () => {
+    state.invoices = [{ id: 1 }, { id: 3 }];
+    state.totalCount = 2;
+    state.totalSum = 10;
+
+    reinsertRows([{ invoice: { id: 2, total: "5" }, index: 1 }], 2);
+
+    expect(state.invoices.map((invoice) => invoice.id)).toEqual([1, 2, 3]);
+    expect(state.totalCount).toBe(5); // 2 existing + 1 reinserted + 2 extra
+    expect(state.totalSum).toBe(15);
+  });
+
+  it("reinsertRows skips an id a concurrent action already kept", () => {
+    state.invoices = [{ id: 1 }, { id: 2 }];
+    state.totalCount = 2;
+    state.totalSum = 10;
+
+    reinsertRows([{ invoice: { id: 2, total: "5" }, index: 1 }]);
+
+    expect(state.invoices.map((invoice) => invoice.id)).toEqual([1, 2]);
+    expect(state.totalCount).toBe(2);
+    expect(state.totalSum).toBe(10);
+  });
+
+  it("restoreRows replaces a present row and never resurrects a removed one", () => {
+    state.invoices = [{ id: 1, store: "New" }];
+
+    restoreRows([
+      { id: 1, store: "Old" },
+      { id: 9, store: "Ghost" },
+    ]);
+
+    expect(state.invoices).toEqual([{ id: 1, store: "Old" }]);
+  });
+});

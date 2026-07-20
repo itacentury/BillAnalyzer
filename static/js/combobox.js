@@ -21,7 +21,7 @@ const allComboboxes = [];
  * `query` in <b>. Matching happens on the raw text; each slice is escaped
  * independently so the emitted markup can never inject the raw category name.
  */
-function highlightMatch(text, query) {
+export function highlightMatch(text, query) {
   if (!query) return escapeHtml(text);
   const index = text.toLowerCase().indexOf(query.toLowerCase());
   if (index === -1) return escapeHtml(text);

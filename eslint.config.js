@@ -16,7 +16,6 @@ export default [
   },
   {
     files: ["static/js/**/*.js"],
-    ...js.configs.recommended,
     languageOptions: {
       sourceType: "module",
       globals: { ...globals.browser, Chart: "readonly" },
@@ -25,7 +24,6 @@ export default [
   },
   {
     files: ["static/sw.js"],
-    ...js.configs.recommended,
     languageOptions: {
       sourceType: "script",
       globals: { ...globals.serviceworker, ...globals.browser },
@@ -33,11 +31,22 @@ export default [
     rules: { ...js.configs.recommended.rules, ...styleRules },
   },
   {
-    files: ["eslint.config.js"],
+    files: ["eslint.config.js", "vitest.config.js"],
     languageOptions: {
       sourceType: "module",
       globals: { ...globals.node },
     },
+  },
+  {
+    // Vitest globals (describe/it/expect/vi) are imported explicitly in each
+    // test file, so only node + browser globals are needed here. The suites run
+    // under happy-dom, hence the browser globals for window/document.
+    files: ["tests/frontend/**/*.js"],
+    languageOptions: {
+      sourceType: "module",
+      globals: { ...globals.node, ...globals.browser },
+    },
+    rules: { ...js.configs.recommended.rules, ...styleRules },
   },
   {
     ...html.configs["flat/recommended"],

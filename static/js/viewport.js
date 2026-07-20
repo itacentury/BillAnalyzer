@@ -19,7 +19,7 @@ const SHEET_SELECTOR = ".modal-sheet, .filters-collapsible";
 /**
  * Whether the element is a field that raises the on-screen keyboard.
  */
-function isEditable(element) {
+export function isEditable(element) {
   if (!(element instanceof HTMLElement)) return false;
   const tag = element.tagName;
   return tag === "INPUT" || tag === "TEXTAREA" || element.isContentEditable;
