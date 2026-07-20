@@ -74,3 +74,6 @@ jobs:
 
       - name: Lint and format check
         run: npm run lint
+
+      - name: Unit tests
+        run: npm run test

@@ -307,7 +307,7 @@ function setDateFiltersForMode() {
 }
 
 // Calculate ISO week number (weeks start on Monday)
-function getISOWeek(date) {
+export function getISOWeek(date) {
   const d = new Date(
     Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()),
   );
@@ -318,7 +318,7 @@ function getISOWeek(date) {
 }
 
 // Get the year that the ISO week belongs to
-function getISOWeekYear(date) {
+export function getISOWeekYear(date) {
   const d = new Date(
     Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()),
   );
@@ -328,7 +328,7 @@ function getISOWeekYear(date) {
 }
 
 // Get Monday of the week for a given date
-function getMonday(date) {
+export function getMonday(date) {
   const d = new Date(date);
   const day = d.getDay();
   const diff = d.getDate() - day + (day === 0 ? -6 : 1);
