@@ -16,7 +16,6 @@ export default [
   },
   {
     files: ["static/js/**/*.js"],
-    ...js.configs.recommended,
     languageOptions: {
       sourceType: "module",
       globals: { ...globals.browser, Chart: "readonly" },
@@ -25,7 +24,6 @@ export default [
   },
   {
     files: ["static/sw.js"],
-    ...js.configs.recommended,
     languageOptions: {
       sourceType: "script",
       globals: { ...globals.serviceworker, ...globals.browser },
@@ -44,7 +42,6 @@ export default [
     // test file, so only node + browser globals are needed here. The suites run
     // under happy-dom, hence the browser globals for window/document.
     files: ["tests/frontend/**/*.js"],
-    ...js.configs.recommended,
     languageOptions: {
       sourceType: "module",
       globals: { ...globals.node, ...globals.browser },
