@@ -14,14 +14,6 @@ export function jsonResponse(data, { ok = true, status = 200 } = {}) {
 }
 
 /**
- * Resolve after the current microtask/timer queue drains, so assertions can run
- * once in-flight promise chains (e.g. an aborted fetch) have settled.
- */
-export function flushPromises() {
-  return new Promise((resolve) => setTimeout(resolve, 0));
-}
-
-/**
  * Mount the persistent filter inputs `els()` and `buildFilterParams()` read.
  * Every control is a plain input so `.value` is directly settable in a test.
  */
