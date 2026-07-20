@@ -51,11 +51,21 @@ export function setupModelPicker() {
     const current = getAiModel();
     label.textContent = modelByKey(current).name;
     menu.querySelectorAll("[data-model-option]").forEach((option) => {
-      option.classList.toggle(
-        "is-selected",
-        option.dataset.modelOption === current,
-      );
+      const isSelected = option.dataset.modelOption === current;
+      option.classList.toggle("is-selected", isSelected);
+      option.setAttribute("aria-checked", isSelected ? "true" : "false");
+      // Roving tabindex: the selected option is the menu's single tab stop.
+      option.tabIndex = isSelected ? 0 : -1;
     });
+  };
+
+  // Move keyboard focus onto an option without committing a selection (arrow
+  // navigation): only the focused option stays in the tab order.
+  const focusOption = (option) => {
+    menu.querySelectorAll("[data-model-option]").forEach((other) => {
+      other.tabIndex = other === option ? 0 : -1;
+    });
+    option.focus();
   };
 
   const closeMenu = () => {
@@ -73,6 +83,10 @@ export function setupModelPicker() {
     root.classList.add("is-open");
     trigger.setAttribute("aria-expanded", "true");
     document.addEventListener("pointerdown", onOutside, true);
+    const selected = menu.querySelector(
+      `[data-model-option="${getAiModel()}"]`,
+    );
+    if (selected) focusOption(selected);
   };
 
   trigger.addEventListener("click", () => {
@@ -86,6 +100,28 @@ export function setupModelPicker() {
     localStorage.setItem(STORAGE_KEY, option.dataset.modelOption);
     syncSelection();
     closeMenu();
+  });
+
+  // Arrow / Home / End move focus between options (roving tabindex). Enter and
+  // Space need no handling: the options are native buttons, so activation fires
+  // the click handler above.
+  menu.addEventListener("keydown", (event) => {
+    const options = [...menu.querySelectorAll("[data-model-option]")];
+    const current = options.indexOf(document.activeElement);
+    if (current === -1) return;
+
+    const lastIndex = options.length - 1;
+    let next;
+    if (event.key === "ArrowDown")
+      next = current === lastIndex ? 0 : current + 1;
+    else if (event.key === "ArrowUp")
+      next = current === 0 ? lastIndex : current - 1;
+    else if (event.key === "Home") next = 0;
+    else if (event.key === "End") next = lastIndex;
+    else return;
+
+    event.preventDefault();
+    focusOption(options[next]);
   });
 
   // Consume Esc while open so the first Esc closes the picker rather than the
