@@ -46,7 +46,7 @@ function refreshInert() {
 /**
  * Whether the event target is a field where single-key shortcuts must not fire.
  */
-function isTypingContext(target) {
+export function isTypingContext(target) {
   if (!(target instanceof HTMLElement)) return false;
   const tag = target.tagName;
   return (

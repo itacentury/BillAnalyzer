@@ -25,7 +25,7 @@ import { renderPageSizeControl } from "./pagesize.js";
  * Build the line-item rows for an invoice's expanded detail view. Shared by the
  * empty initial render and the lazy on-expand injection.
  */
-function itemRowsHtml(items) {
+export function itemRowsHtml(items) {
   return items
     .map(
       (item) => `

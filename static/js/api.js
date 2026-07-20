@@ -65,7 +65,7 @@ export async function reloadCurrentPage() {
  * Assemble the active filter/search/sort params shared by the list endpoint and
  * the filtered-ids endpoint, so both always see the same query.
  */
-function buildFilterParams() {
+export function buildFilterParams() {
   const { storeFilter, typeFilter, dateFrom, dateTo, sortBy, sortOrder } =
     els();
   return new URLSearchParams({
