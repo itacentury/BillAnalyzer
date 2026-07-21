@@ -6,7 +6,6 @@
 /* Fluid header (Design 7a): wraps at all widths > 640px — search + filter drop
    to a second line when the row gets tight instead of overflowing the container. */
 .filters-row {
-  position: relative; /* containing block for the search overlay (12a) */
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -291,8 +290,8 @@
   border-color: var(--accent);
 }
 
-/* Mobile-only chrome (search ✕, sheet scrim/header) and the overlay-only hint
-   are hidden by default; the desktop overlay (12a) re-shows ✕ + hint. */
+/* Mobile-only chrome (search ✕, sheet scrim/header) and the open-only hint
+   are hidden by default; the desktop open state (12a) re-shows ✕ + hint. */
 .filter-search-close,
 .filter-search-hint,
 .filter-sheet-scrim,

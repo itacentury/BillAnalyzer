@@ -79,7 +79,7 @@
      Re-tune these if that chrome is resized; consumed in invoices.css. */
   --list-chrome-desktop: 291px;
   --list-chrome-mobile: 329px; /* mobile top bar makes the chrome taller */
-  --search-overlay-chrome: 84px; /* desktop search 2nd row: gap + field + spacing */
+  --search-row-chrome: 84px; /* desktop search 2nd row: gap + field + spacing */
 
   /* Legacy compatibility shim — remapped to warm equivalents so component
      stylesheets keep rendering until each is restyled in its own milestone.

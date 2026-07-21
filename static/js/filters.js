@@ -173,16 +173,16 @@ function setupToolbarSearch() {
   const collapseBelow = 210; // box width under which the input is unusable
   const expandAbove = 260; // re-expand only past this (hysteresis band top)
   const closeAnimationMs = 200; // keep in sync with --transition (0.2s)
-  let closeOverlayTimer = null;
+  let closeRowTimer = null;
 
-  const clearCloseOverlayTimer = () => {
-    if (closeOverlayTimer === null) return;
-    clearTimeout(closeOverlayTimer);
-    closeOverlayTimer = null;
+  const clearCloseRowTimer = () => {
+    if (closeRowTimer === null) return;
+    clearTimeout(closeRowTimer);
+    closeRowTimer = null;
   };
 
   const finishClosing = (restoreFocus = false) => {
-    clearCloseOverlayTimer();
+    clearCloseRowTimer();
     group.classList.remove("search-closing");
     group.classList.remove("search-open");
     toggleButton.setAttribute("aria-expanded", "false");
@@ -193,7 +193,7 @@ function setupToolbarSearch() {
 
   // restoreFocus returns focus to the toggle button after an explicit close
   // (Esc, ✕, second toggle click) so keyboard users are not stranded.
-  const closeOverlay = (restoreFocus = false, immediate = false) => {
+  const closeSearchRow = (restoreFocus = false, immediate = false) => {
     if (
       !group.classList.contains("search-open") &&
       !group.classList.contains("search-closing")
@@ -206,16 +206,16 @@ function setupToolbarSearch() {
       return;
     }
 
-    clearCloseOverlayTimer();
+    clearCloseRowTimer();
     group.classList.add("search-closing");
     toggleButton.setAttribute("aria-expanded", "false");
-    closeOverlayTimer = setTimeout(() => {
+    closeRowTimer = setTimeout(() => {
       finishClosing(restoreFocus);
     }, closeAnimationMs);
   };
 
-  const openOverlay = () => {
-    clearCloseOverlayTimer();
+  const openSearchRow = () => {
+    clearCloseRowTimer();
     group.classList.remove("search-closing");
     group.classList.add("search-open");
     toggleButton.setAttribute("aria-expanded", "true");
@@ -257,14 +257,14 @@ function setupToolbarSearch() {
   const syncState = () => {
     if (window.innerWidth <= 640) {
       group.classList.remove("search-compact");
-      closeOverlay(false, true);
+      closeSearchRow(false, true);
       return;
     }
     const compact = group.classList.contains("search-compact");
     const available = availableForSearch();
     if (compact && available > expandAbove) {
       group.classList.remove("search-compact");
-      closeOverlay(false, true);
+      closeSearchRow(false, true);
     } else if (!compact && available < collapseBelow) {
       group.classList.add("search-compact");
     }
@@ -272,14 +272,14 @@ function setupToolbarSearch() {
 
   toggleButton.addEventListener("click", () => {
     if (group.classList.contains("search-open")) {
-      closeOverlay(true);
+      closeSearchRow(true);
     } else {
-      openOverlay();
+      openSearchRow();
     }
   });
-  closeButton.addEventListener("click", () => closeOverlay(true));
+  closeButton.addEventListener("click", () => closeSearchRow(true));
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") closeOverlay(true);
+    if (event.key === "Escape") closeSearchRow(true);
   });
 
   // Observe the AI trigger too: it is unhidden asynchronously once the

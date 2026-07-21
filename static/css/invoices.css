@@ -49,13 +49,13 @@
   overflow-y: auto;
 }
 
-/* Desktop compact-search overlay opens a second row, so add its chrome to the
-   budget to keep any page-level mini scrollbar away. */
+/* The compact search opens a second row, so add its chrome to the budget to
+   keep any page-level mini scrollbar away. */
 @media (width > 640px) {
   body:has(.search-filter-group.search-open) .invoice-list {
     max-height: min(
       600px,
-      calc(100dvh - var(--list-chrome-desktop) - var(--search-overlay-chrome))
+      calc(100dvh - var(--list-chrome-desktop) - var(--search-row-chrome))
     );
   }
 }
