@@ -399,7 +399,7 @@
     max-height: var(--mobile-search-height);
     padding-block: 9px;
     margin-bottom: 8px;
-    border-color: #d9b8a2;
+    border-color: var(--border-search-open);
     border-block-width: 1px;
     border-radius: 12px;
     opacity: 1;

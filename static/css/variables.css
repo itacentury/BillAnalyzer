@@ -15,6 +15,7 @@
   --border-strong: #ddd2ba; /* sidebar separation */
   --border-subtle: #efe7d5; /* row dividers */
   --border-dashed: #cdbfa3; /* checkboxes, dropzone */
+  --border-search-open: #d9b8a2; /* active desktop open-search row outline */
 
   /* Text */
   --text-primary: #3a332a;
