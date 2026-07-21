@@ -205,11 +205,14 @@ def suggest_categories(
 
     suggestions: list[CategorySuggestion] = []
     for entry in parsed.get("suggestions", []):
+        invoice_id: Any = entry.get("invoice_id")
+        if invoice_id is None:
+            continue
         category: str | None = clean_category(entry.get("category"))
         is_new: bool = category is not None and category.lower() not in existing_lower
         suggestions.append(
             CategorySuggestion(
-                invoice_id=entry["invoice_id"],
+                invoice_id=invoice_id,
                 category=category,
                 is_new=is_new,
             )

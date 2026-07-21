@@ -144,6 +144,25 @@ def test_category_is_sanitized_and_capped(
     assert results[0].is_new is True
 
 
+def test_entry_without_invoice_id_is_skipped(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A suggestion missing invoice_id is dropped, not fatal to the batch."""
+    response: str = json.dumps(
+        {
+            "suggestions": [
+                {"category": "Orphan"},
+                {"invoice_id": 2, "category": "Gaming"},
+            ]
+        }
+    )
+    _patch_client(monkeypatch, response_text=response)
+
+    results = ai.suggest_categories([{"id": 2, "store": "B", "items": []}], [], _MODEL)
+
+    assert [result.invoice_id for result in results] == [2]
+
+
 def test_api_error_is_wrapped(monkeypatch: pytest.MonkeyPatch) -> None:
     """An Anthropic APIError surfaces as AiCategorizationError."""
     request: httpx.Request = httpx.Request("POST", "https://api.anthropic.com")
