@@ -41,6 +41,25 @@
   border-radius: 999px;
 }
 
+/* Mobile (13a): drop the label and become a sparkle-icon + count-badge button,
+   matching the Filter button beside it, so it no longer wraps onto its own row. */
+@media (width <= 640px) {
+  .ai-trigger {
+    box-sizing: border-box;
+    height: 46px;
+    padding: 0 13px;
+    border-radius: 12px;
+  }
+
+  .ai-trigger-label {
+    display: none;
+  }
+
+  .ai-trigger-badge {
+    font-size: 10.5px;
+  }
+}
+
 /* Model picker (design 11a) — compact select in the modal header, grouped with
    the close button on the right. */
 .categorize-header-actions {

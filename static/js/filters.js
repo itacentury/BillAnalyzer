@@ -139,7 +139,91 @@ export function setupFilterListeners() {
   dateTo.addEventListener("change", switchToCustomMode);
 
   setupSortPills();
+  setupToolbarSearch();
   updateFilterBadge();
+}
+
+/**
+ * Two-state toolbar search (12a), desktop only: the field is either a full
+ * input or a 42x42 icon button that opens an overlay spanning the toolbar row.
+ * A ResizeObserver on the toolbar switches states by the width actually left
+ * for the field; at <= 640px the mobile slide-in (drawer.js) owns the search.
+ */
+function setupToolbarSearch() {
+  const row = document.querySelector(".filters-row");
+  const group = document.querySelector(".search-filter-group");
+  const searchBox = document.querySelector(".filter-search");
+  const aiTrigger = document.querySelector('[data-el="ai-categories-trigger"]');
+  const filterButton = document.querySelector('[data-el="filters-toggle"]');
+  const closeButton = document.querySelector('[data-el="search-close"]');
+  const { searchInput } = els();
+
+  const groupGap = 8; // .search-filter-group column gap
+  const collapseBelow = 210; // box width under which the input is unusable
+  const expandAbove = 260; // re-expand only past this (hysteresis)
+
+  const onOutsidePointer = (event) => {
+    if (!searchBox.contains(event.target)) closeOverlay();
+  };
+
+  const closeOverlay = () => {
+    if (!group.classList.contains("search-open")) return;
+    group.classList.remove("search-open");
+    document.removeEventListener("pointerdown", onOutsidePointer, true);
+  };
+
+  const openOverlay = () => {
+    group.classList.add("search-open");
+    document.addEventListener("pointerdown", onOutsidePointer, true);
+    searchInput.focus();
+  };
+
+  // Space the field could occupy = the group box (it stays flex:1 in both
+  // states, so this reflects the same width whether the field is full or an
+  // icon) minus the peer buttons and the gaps between the present children.
+  const availableForSearch = () => {
+    const aiWidth = aiTrigger.hidden ? 0 : aiTrigger.offsetWidth;
+    const peerGaps = aiTrigger.hidden ? groupGap : groupGap * 2;
+    return group.clientWidth - aiWidth - filterButton.offsetWidth - peerGaps;
+  };
+
+  const syncState = () => {
+    if (window.innerWidth <= 640) {
+      group.classList.remove("search-compact");
+      closeOverlay();
+      return;
+    }
+    const compact = group.classList.contains("search-compact");
+    const available = availableForSearch();
+    if (compact && available > expandAbove) {
+      group.classList.remove("search-compact");
+      closeOverlay();
+    } else if (!compact && available < collapseBelow) {
+      group.classList.add("search-compact");
+    }
+  };
+
+  searchBox.addEventListener("click", () => {
+    if (!group.classList.contains("search-compact")) return;
+    openOverlay();
+  });
+  // Stop the click from bubbling to the box handler above, which would reopen
+  // the overlay in the same tick.
+  closeButton.addEventListener("click", (event) => {
+    event.stopPropagation();
+    closeOverlay();
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") closeOverlay();
+  });
+
+  // Observe the AI trigger too: it is unhidden asynchronously once the
+  // uncategorized count arrives, which shrinks the field's room without
+  // changing the row's own size (so observing the row alone would miss it).
+  const observer = new ResizeObserver(syncState);
+  observer.observe(row);
+  observer.observe(aiTrigger);
+  syncState();
 }
 
 // Sort/order are rendered as pill groups backed by hidden inputs (data-el

@@ -6,6 +6,7 @@
 /* Fluid header (Design 7a): wraps at all widths > 640px — search + filter drop
    to a second line when the row gets tight instead of overflowing the container. */
 .filters-row {
+  position: relative; /* containing block for the search overlay (12a) */
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -283,11 +284,101 @@
   border-color: var(--accent);
 }
 
-/* Mobile-only chrome (search ✕, sheet scrim/header) is hidden on desktop. */
+/* Mobile-only chrome (search ✕, sheet scrim/header) and the overlay-only hint
+   are hidden by default; the desktop overlay (12a) re-shows ✕ + hint. */
 .filter-search-close,
+.filter-search-hint,
 .filter-sheet-scrim,
 .filters-collapsible .sheet-header {
   display: none;
+}
+
+/* Search two-state behavior (12a), desktop only. setupToolbarSearch() toggles
+   .search-compact / .search-open on .search-filter-group by available toolbar
+   width; below 640px the mobile slide-in (drawer.js) owns the search instead. */
+@media (width > 640px) {
+  /* Let the group shrink inline (Design 7a wrapped it to its own line instead):
+     12a keeps it on one row and collapses the search to an icon when tight.
+     min-content is the icon + AI + Filter cluster, so once the search is an icon
+     the group stops shrinking and wraps as a whole rather than overflowing. */
+  .search-filter-group {
+    min-width: min-content;
+  }
+
+  /* Icon state: the field would otherwise shrink to a truncated sliver, so it
+     collapses to a 42x42 icon button matching the ⊙ jump-to-current chip. */
+  .search-compact .filter-search {
+    box-sizing: border-box;
+    flex: none;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    padding: 0;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-radius: 12px;
+  }
+
+  .search-compact .filter-search svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .search-compact .filter-search-input {
+    display: none;
+  }
+
+  /* Overlay state: clicking the icon expands the field over the whole toolbar
+     row (absolute, full width, row height). */
+  .search-open .filter-search {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    box-sizing: border-box;
+    justify-content: flex-start;
+    width: 100%;
+    height: 100%;
+    padding: 0 14px;
+    cursor: text;
+    border-color: #d9b8a2;
+    border-radius: 12px;
+    box-shadow: 0 10px 28px rgb(58 51 42 / 14%);
+  }
+
+  .search-open .filter-search svg {
+    width: 14px;
+    height: 14px;
+    color: #a5643c;
+  }
+
+  .search-open .filter-search-input {
+    display: block;
+    flex: 1;
+    font-size: 13px;
+  }
+
+  .search-open .filter-search-hint {
+    display: block;
+    flex: none;
+    font-size: 11px;
+    color: var(--text-faint);
+    white-space: nowrap;
+  }
+
+  .search-open .filter-search-close {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    color: var(--text-muted);
+    cursor: pointer;
+    background: #faf5e9;
+    border: none;
+    border-radius: var(--radius-sm);
+  }
 }
 
 /* Stats view: only the period controls remain; search + filter panel hidden. */
@@ -315,7 +406,7 @@ body.stats-mode .filters-collapsible {
   .filters-row {
     display: flex;
     flex-wrap: wrap;
-    gap: 0 8px;
+    gap: 0 10px;
   }
 
   /* Dissolve the wrapper so search and filter button reflow as direct children
@@ -341,7 +432,9 @@ body.stats-mode .filters-collapsible {
   .month-navigator {
     display: flex;
     flex: 1;
-    border-radius: 10px;
+    min-width: 0;
+    min-height: 46px;
+    border-radius: 12px;
   }
 
   /* The label absorbs the flexible width so the nav buttons stay compact at
@@ -352,22 +445,23 @@ body.stats-mode .filters-collapsible {
   }
 
   .month-nav-btn {
-    width: 31px;
-    height: 31px;
+    width: 36px;
+    height: 36px;
   }
 
-  /* Match the navigator/filter boxes, which round to 10px on mobile. */
+  /* Toolbar row targets are >= 44px on mobile (13a); the boxes round to 12px. */
   .today-button {
-    border-radius: 10px;
+    width: 46px;
+    height: 46px;
+    border-radius: 12px;
   }
 
-  /* The row's align-items: center would collapse the button to its content
-     height; stretch it to match the month navigator instead. */
   .filter-button {
+    box-sizing: border-box;
     gap: 6px;
-    align-self: stretch;
+    height: 46px;
     padding: 0 13px;
-    border-radius: 10px;
+    border-radius: 12px;
   }
 
   .filter-button-label {

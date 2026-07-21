@@ -83,6 +83,12 @@
           data-el="search"
           placeholder="Search store or item…"
         />
+        <span
+          class="filter-search-hint"
+          data-el="search-hint"
+          aria-hidden="true"
+          >Esc to close</span
+        >
         <button
           class="filter-search-close"
           data-el="search-close"
@@ -102,27 +108,15 @@
         </button>
       </div>
 
-      <!-- Filter panel toggle -->
-      <button class="filter-button" data-el="filters-toggle">
-        <svg
-          width="13"
-          height="13"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-        >
-          <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
-        </svg>
-        <span class="filter-button-label">Filter</span>
-        <span class="filter-badge" data-el="filter-badge" hidden>0</span>
-      </button>
-
-      <!-- AI category suggestions trigger; hidden when nothing is uncategorized -->
+      <!-- AI category suggestions trigger; hidden when nothing is uncategorized.
+           aria-label + title carry the name/tooltip when the label is hidden on
+           mobile. -->
       <button
         class="ai-trigger"
         data-el="ai-categories-trigger"
         data-action="open-categorize"
+        aria-label="AI Categories"
+        title="AI Categories"
         hidden
       >
         <svg
@@ -139,6 +133,22 @@
         </svg>
         <span class="ai-trigger-label">AI Categories</span>
         <span class="ai-trigger-badge" data-el="ai-categories-badge">0</span>
+      </button>
+
+      <!-- Filter panel toggle -->
+      <button class="filter-button" data-el="filters-toggle">
+        <svg
+          width="13"
+          height="13"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+        </svg>
+        <span class="filter-button-label">Filter</span>
+        <span class="filter-badge" data-el="filter-badge" hidden>0</span>
       </button>
     </div>
   </div>
