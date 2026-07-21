@@ -303,61 +303,6 @@ body.stats-mode .filters-collapsible {
   }
 }
 
-/* Mid widths (Design 11b-3): the search would otherwise shrink to a truncated
-   sliver, so collapse it to a 42x42 icon button that expands to an overlay on
-   click instead. The mobile slide-in (<= 640px) below takes over from here. */
-@media (641px <= width <= 1100px) {
-  .search-filter-group {
-    position: relative;
-    flex: none;
-    min-width: 0;
-  }
-
-  .filter-search {
-    box-sizing: border-box;
-    flex: none;
-    justify-content: center;
-    width: 42px;
-    height: 42px;
-    padding: 0;
-    cursor: pointer;
-  }
-
-  .filter-search-input {
-    display: none;
-  }
-
-  .filter-search.is-expanded {
-    position: absolute;
-    top: 0;
-    right: 0;
-    z-index: 20;
-    justify-content: flex-start;
-    width: 320px;
-    height: 42px;
-    padding: 0 13px;
-    cursor: text;
-  }
-
-  .filter-search.is-expanded .filter-search-input {
-    display: block;
-  }
-
-  .filter-search.is-expanded .filter-search-close {
-    display: flex;
-    flex: none;
-    align-items: center;
-    justify-content: center;
-    width: 28px;
-    height: 28px;
-    color: var(--text-faint);
-    cursor: pointer;
-    background: transparent;
-    border: none;
-    border-radius: var(--radius-sm);
-  }
-}
-
 /* Mobile filter header (Design 5a): full-width period segment, month + filter
    row; search slides in below the top bar; the panel becomes a bottom sheet. */
 @media (width <= 640px) {

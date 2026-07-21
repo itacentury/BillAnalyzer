@@ -139,45 +139,7 @@ export function setupFilterListeners() {
   dateTo.addEventListener("change", switchToCustomMode);
 
   setupSortPills();
-  setupMidWidthSearch();
   updateFilterBadge();
-}
-
-// Mid widths (641–1100px): the search renders as a 42x42 icon button that
-// expands to an overlay input on click, instead of collapsing to a truncated
-// sliver. Below 641px the mobile slide-in (drawer.js) owns the search instead.
-function setupMidWidthSearch() {
-  const search = document
-    .querySelector('[data-el="search"]')
-    .closest(".filter-search");
-  const { searchInput } = els();
-  const midWidth = window.matchMedia(
-    "(min-width: 641px) and (max-width: 1100px)",
-  );
-
-  const collapse = () => {
-    if (!search.classList.contains("is-expanded")) return;
-    search.classList.remove("is-expanded");
-    document.removeEventListener("pointerdown", onOutside, true);
-  };
-
-  const onOutside = (event) => {
-    if (!search.contains(event.target)) collapse();
-  };
-
-  search.addEventListener("click", () => {
-    if (!midWidth.matches || search.classList.contains("is-expanded")) return;
-    search.classList.add("is-expanded");
-    document.addEventListener("pointerdown", onOutside, true);
-    searchInput.focus();
-  });
-
-  // The ✕ (also wired to the mobile slide-in in drawer.js) collapses the
-  // overlay; leaving the range with it open resets the state.
-  document
-    .querySelector('[data-el="search-close"]')
-    .addEventListener("click", collapse);
-  midWidth.addEventListener("change", collapse);
 }
 
 // Sort/order are rendered as pill groups backed by hidden inputs (data-el
