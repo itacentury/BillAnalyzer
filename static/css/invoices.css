@@ -42,8 +42,20 @@
 
 .invoice-list {
   min-height: 150px;
-  max-height: min(600px, calc(100dvh - 260px));
+
+  /* Baseline budget tuned so the page itself stays within the viewport;
+     scrolling should happen inside the list, not on the whole document. */
+  max-height: min(600px, calc(100dvh - 291px));
   overflow-y: auto;
+}
+
+/* Desktop compact-search overlay: when the search bar opens into a second row,
+   it adds ~84px vertical chrome (row gap + field box + bottom spacing). Reduce
+   the list budget only for that state so no page-level mini scrollbar appears. */
+@media (width > 640px) {
+  body:has(.search-filter-group.search-open) .invoice-list {
+    max-height: min(600px, calc(100dvh - 375px));
+  }
 }
 
 .pagination {
@@ -534,17 +546,16 @@
     font-size: 14px;
   }
 
-  /* The mobile chrome around the list (sticky top bar + container padding +
-     the two filter rows + section header + pagination) measures ~306px, well
-     above the 260px desktop budget — without this the page overflows the
-     viewport and clips the pagination. */
+  /* Mobile needs a larger fixed chrome budget (top bar, container paddings,
+     filter rows, section header, pagination) so scrolling stays inside the
+     list instead of creating a persistent page-level scrollbar. */
   .invoice-list {
-    max-height: calc(100dvh - 310px);
+    max-height: calc(100dvh - 329px);
   }
 
   /* The expanded search row adds its height + 8px row spacing. */
   body.mobile-search-open .invoice-list {
-    max-height: calc(100dvh - 310px - var(--mobile-search-height) - 8px);
+    max-height: calc(100dvh - 329px - var(--mobile-search-height) - 8px);
   }
 
   .invoice-header {
