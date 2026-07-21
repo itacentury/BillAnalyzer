@@ -6,8 +6,8 @@ uses structured output (a JSON schema), so the response is guaranteed-parseable.
 
 Prompt-injection note: the request embeds user-controlled store and item names,
 so a crafted name could try to steer the model. The blast radius is bounded — the
-output schema locks the shape to ``invoice_id`` + ``category``, and each returned
-category is length-capped and whitespace-normalized via
+output schema permits only an (optional) ``invoice_id`` + ``category`` per entry,
+and each returned category is length-capped and whitespace-normalized via
 :func:`summa.helpers.clean_category` before it can be surfaced or persisted.
 """
 
@@ -61,7 +61,10 @@ SYSTEM_PROMPT: Final[str] = (
 )
 
 # Structured-output schema: an object wrapping the suggestion array. Every object
-# sets `additionalProperties: false` and `required`, so the model cannot drift.
+# sets `additionalProperties: false` so the model cannot drift onto extra keys.
+# `invoice_id` is intentionally left out of the item `required` list: the model
+# may omit it, and the parser below skips any entry without one — keeping the
+# extraction decoupled from the schema. Only `category` is required per item.
 OUTPUT_SCHEMA: Final[dict[str, Any]] = {
     "type": "object",
     "properties": {
@@ -73,7 +76,7 @@ OUTPUT_SCHEMA: Final[dict[str, Any]] = {
                     "invoice_id": {"type": "integer"},
                     "category": {"type": "string", "maxLength": MAX_CATEGORY_LENGTH},
                 },
-                "required": ["invoice_id", "category"],
+                "required": ["category"],
                 "additionalProperties": False,
             },
         }

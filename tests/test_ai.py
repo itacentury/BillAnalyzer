@@ -163,6 +163,13 @@ def test_entry_without_invoice_id_is_skipped(
     assert [result.invoice_id for result in results] == [2]
 
 
+def test_schema_allows_missing_invoice_id() -> None:
+    """invoice_id is intentionally optional so the skip-guard stays reachable."""
+    item_schema: dict[str, Any] = ai.OUTPUT_SCHEMA["properties"]["suggestions"]["items"]
+    assert "invoice_id" not in item_schema["required"]
+    assert item_schema["additionalProperties"] is False
+
+
 def test_api_error_is_wrapped(monkeypatch: pytest.MonkeyPatch) -> None:
     """An Anthropic APIError surfaces as AiCategorizationError."""
     request: httpx.Request = httpx.Request("POST", "https://api.anthropic.com")
