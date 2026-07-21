@@ -162,18 +162,46 @@ function setupToolbarSearch() {
   const collapseBelow = 210; // box width under which the input is unusable
   const expandAbove = 260; // re-expand only past this (hysteresis)
 
+  // The compact icon is a <div> (it wraps the input, so it can't be a <button>);
+  // give it the ARIA custom-button affordances — but only while compact, since
+  // in the expanded state the <input> itself is the tab stop and would otherwise
+  // be shadowed by a spurious, mislabeled second one.
+  const applyCompactAffordance = (isCompact) => {
+    if (!isCompact) {
+      searchBox.removeAttribute("role");
+      searchBox.removeAttribute("tabindex");
+      searchBox.removeAttribute("aria-label");
+      searchBox.removeAttribute("aria-expanded");
+      return;
+    }
+    searchBox.setAttribute("role", "button");
+    searchBox.setAttribute("tabindex", "0");
+    searchBox.setAttribute("aria-label", "Search");
+    searchBox.setAttribute(
+      "aria-expanded",
+      String(group.classList.contains("search-open")),
+    );
+  };
+
   const onOutsidePointer = (event) => {
     if (!searchBox.contains(event.target)) closeOverlay();
   };
 
-  const closeOverlay = () => {
+  // restoreFocus returns focus to the icon after a keyboard/explicit close (Esc,
+  // ✕) — but not on an outside-pointer close, which must not yank focus back.
+  const closeOverlay = (restoreFocus = false) => {
     if (!group.classList.contains("search-open")) return;
     group.classList.remove("search-open");
+    searchBox.setAttribute("aria-expanded", "false");
     document.removeEventListener("pointerdown", onOutsidePointer, true);
+    if (restoreFocus && group.classList.contains("search-compact")) {
+      searchBox.focus();
+    }
   };
 
   const openOverlay = () => {
     group.classList.add("search-open");
+    searchBox.setAttribute("aria-expanded", "true");
     document.addEventListener("pointerdown", onOutsidePointer, true);
     searchInput.focus();
   };
@@ -191,6 +219,7 @@ function setupToolbarSearch() {
     if (window.innerWidth <= 640) {
       group.classList.remove("search-compact");
       closeOverlay();
+      applyCompactAffordance(false);
       return;
     }
     const compact = group.classList.contains("search-compact");
@@ -201,20 +230,29 @@ function setupToolbarSearch() {
     } else if (!compact && available < collapseBelow) {
       group.classList.add("search-compact");
     }
+    applyCompactAffordance(group.classList.contains("search-compact"));
   };
 
   searchBox.addEventListener("click", () => {
     if (!group.classList.contains("search-compact")) return;
     openOverlay();
   });
+  // The compact box is a role="button" div, so it needs an explicit key handler
+  // to activate like a native button would.
+  searchBox.addEventListener("keydown", (event) => {
+    if (!group.classList.contains("search-compact")) return;
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault(); // Space would otherwise scroll the page
+    openOverlay();
+  });
   // Stop the click from bubbling to the box handler above, which would reopen
   // the overlay in the same tick.
   closeButton.addEventListener("click", (event) => {
     event.stopPropagation();
-    closeOverlay();
+    closeOverlay(true);
   });
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") closeOverlay();
+    if (event.key === "Escape") closeOverlay(true);
   });
 
   // Observe the AI trigger too: it is unhidden asynchronously once the

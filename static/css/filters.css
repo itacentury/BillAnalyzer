@@ -324,6 +324,12 @@
     height: 14px;
   }
 
+  /* Keyboard focus ring for the compact icon (a role="button" div). */
+  .search-compact .filter-search:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
   .search-compact .filter-search-input {
     display: none;
   }
