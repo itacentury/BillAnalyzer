@@ -168,11 +168,18 @@ function setupToolbarSearch() {
   const rowGap = 8; // .filters-row column gap
   const collapseBelow = 210; // box width under which the input is unusable
   const expandAbove = 260; // re-expand only past this (hysteresis)
+  const closeAnimationMs = 200; // keep in sync with --transition (0.2s)
+  let closeOverlayTimer = null;
 
-  // restoreFocus returns focus to the toggle button after an explicit close
-  // (Esc, ✕, second toggle click) so keyboard users are not stranded.
-  const closeOverlay = (restoreFocus = false) => {
-    if (!group.classList.contains("search-open")) return;
+  const clearCloseOverlayTimer = () => {
+    if (closeOverlayTimer === null) return;
+    clearTimeout(closeOverlayTimer);
+    closeOverlayTimer = null;
+  };
+
+  const finishClosing = (restoreFocus = false) => {
+    clearCloseOverlayTimer();
+    group.classList.remove("search-closing");
     group.classList.remove("search-open");
     toggleButton.setAttribute("aria-expanded", "false");
     if (restoreFocus && group.classList.contains("search-compact")) {
@@ -180,7 +187,32 @@ function setupToolbarSearch() {
     }
   };
 
+  // restoreFocus returns focus to the toggle button after an explicit close
+  // (Esc, ✕, second toggle click) so keyboard users are not stranded.
+  const closeOverlay = (restoreFocus = false, immediate = false) => {
+    if (
+      !group.classList.contains("search-open") &&
+      !group.classList.contains("search-closing")
+    ) {
+      return;
+    }
+
+    if (immediate) {
+      finishClosing(restoreFocus);
+      return;
+    }
+
+    clearCloseOverlayTimer();
+    group.classList.add("search-closing");
+    toggleButton.setAttribute("aria-expanded", "false");
+    closeOverlayTimer = setTimeout(() => {
+      finishClosing(restoreFocus);
+    }, closeAnimationMs);
+  };
+
   const openOverlay = () => {
+    clearCloseOverlayTimer();
+    group.classList.remove("search-closing");
     group.classList.add("search-open");
     toggleButton.setAttribute("aria-expanded", "true");
     searchInput.focus();
@@ -219,14 +251,14 @@ function setupToolbarSearch() {
   const syncState = () => {
     if (window.innerWidth <= 640) {
       group.classList.remove("search-compact");
-      closeOverlay();
+      closeOverlay(false, true);
       return;
     }
     const compact = group.classList.contains("search-compact");
     const available = availableForSearch();
     if (compact && available > expandAbove) {
       group.classList.remove("search-compact");
-      closeOverlay();
+      closeOverlay(false, true);
     } else if (!compact && available < collapseBelow) {
       group.classList.add("search-compact");
     }

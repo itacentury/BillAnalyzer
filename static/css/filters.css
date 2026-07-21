@@ -356,13 +356,13 @@
 
   /* Collapsed bar: hidden and flattened. Mirrors the mobile slide-in so the
      desktop bar animates the same way; the open state below expands it. Unlike
-     mobile it must NOT set flex-basis/order here: the discrete display
-     transition keeps it laid out for a beat while closing, and a 100% basis
+      mobile it must NOT set flex-basis/order here: a 100% basis
      would inflate the group's width and fight the width-measuring
      ResizeObserver (endless compact/expand loop). Those belong to the open
      state only, where the group is display:contents and unmeasured. */
   .search-compact .filter-search {
     display: none;
+    visibility: hidden;
     flex: none;
     width: 0;
     min-width: 0;
@@ -379,8 +379,7 @@
       margin var(--transition),
       border-width var(--transition),
       opacity var(--transition),
-      transform var(--transition),
-      display var(--transition) allow-discrete;
+      transform var(--transition);
   }
 
   /* Open state: dissolve the wrapper so the field, AI and filter buttons become
@@ -395,6 +394,7 @@
      animated end values as the mobile slide-in; @starting-style runs it on open. */
   .search-open .filter-search {
     display: flex;
+    visibility: visible;
     flex-basis: 100%;
     order: 1;
     max-height: var(--mobile-search-height);
@@ -405,6 +405,17 @@
     border-radius: 12px;
     opacity: 1;
     transform: translateY(0);
+  }
+
+  /* Closing state: keep the row in flow for the transition, then JS removes
+     .search-open after 0.2s so compact state can snap to display:none cleanly. */
+  .search-open.search-closing .filter-search {
+    max-height: 0;
+    padding-block: 0;
+    margin-bottom: 0;
+    border-block-width: 0;
+    opacity: 0;
+    transform: translateY(-8px);
   }
 
   @starting-style {
