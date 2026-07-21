@@ -120,7 +120,10 @@ def get_invoices() -> Response:
         totals: sqlite3.Row = cursor.fetchone()
         total_count: int = totals["total_count"]
         total_sum: float = totals["total_sum"]
-        # Backs the "AI Categories" trigger badge: uncategorized invoices in view.
+        # Backs the "AI Categories" trigger badge. Deliberately computed under the
+        # full `where`, mirroring the categorize-suggest scope (same filter params)
+        # so the badge always matches what the AI action will touch. Consequence: an
+        # active category filter yields 0 (no NULL row can match `category = ?`).
         uncategorized_count: int = totals["uncategorized_count"] or 0
 
         if fetch_all:

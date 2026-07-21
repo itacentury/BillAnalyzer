@@ -150,3 +150,22 @@ def test_list_endpoint_reports_uncategorized_count(
     body = client.get("/api/invoices").get_json()
 
     assert body["uncategorized_count"] == 2
+
+
+def test_uncategorized_count_is_view_scoped(
+    client: FlaskClient, seed_invoice: SeedInvoice
+) -> None:
+    """uncategorized_count tracks the filtered view, mirroring the categorize-suggest scope.
+
+    View-scoped by design: a category filter drives it to 0 (no NULL row matches
+    ``category = ?``), and other filters narrow it to their matching rows.
+    """
+    seed_invoice(store="A", category=None)
+    seed_invoice(store="B", category=None)
+    seed_invoice(store="C", category="Groceries")
+
+    filtered_by_category = client.get("/api/invoices?category=Groceries").get_json()
+    assert filtered_by_category["uncategorized_count"] == 0
+
+    filtered_by_store = client.get("/api/invoices?store=A").get_json()
+    assert filtered_by_store["uncategorized_count"] == 1
