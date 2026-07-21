@@ -7,7 +7,7 @@ from typing import Any
 import pytest
 from flask.testing import FlaskClient
 
-from summa import db
+from summa import db, helpers
 from tests.conftest import SeedInvoice
 
 
@@ -814,6 +814,24 @@ def test_bulk_update_empty_category_clears_it(
     )
 
     assert _list(client)[0]["category"] is None
+
+
+def test_bulk_update_caps_and_normalizes_category(
+    client: FlaskClient, seed_invoice: SeedInvoice
+) -> None:
+    """An oversized/whitespace-mangled category is length-capped and collapsed."""
+    invoice_id = seed_invoice(store="Shop", category=None)
+    raw: str = "  Groceries\n\n" + "x" * 200
+
+    client.put(
+        "/api/invoices/bulk-update",
+        json={"ids": [invoice_id], "category": raw},
+    )
+
+    stored: str = _list(client)[0]["category"]
+    assert len(stored) <= helpers.MAX_CATEGORY_LENGTH
+    assert "\n" not in stored
+    assert stored.startswith("Groceries")
 
 
 def test_bulk_update_missing_ids_returns_400(client: FlaskClient) -> None:

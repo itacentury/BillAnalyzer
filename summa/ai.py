@@ -3,6 +3,12 @@
 Wraps a single Anthropic request behind :func:`suggest_categories` so the route
 layer stays thin and the logic is testable without a live API call. The request
 uses structured output (a JSON schema), so the response is guaranteed-parseable.
+
+Prompt-injection note: the request embeds user-controlled store and item names,
+so a crafted name could try to steer the model. The blast radius is bounded — the
+output schema locks the shape to ``invoice_id`` + ``category``, and each returned
+category is length-capped and whitespace-normalized via
+:func:`summa.helpers.clean_category` before it can be surfaced or persisted.
 """
 
 import json
@@ -17,6 +23,8 @@ from anthropic.types import (
     ThinkingConfigAdaptiveParam,
     ThinkingConfigDisabledParam,
 )
+
+from summa.helpers import MAX_CATEGORY_LENGTH, clean_category
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -63,7 +71,7 @@ OUTPUT_SCHEMA: Final[dict[str, Any]] = {
                 "type": "object",
                 "properties": {
                     "invoice_id": {"type": "integer"},
-                    "category": {"type": "string"},
+                    "category": {"type": "string", "maxLength": MAX_CATEGORY_LENGTH},
                 },
                 "required": ["invoice_id", "category"],
                 "additionalProperties": False,
@@ -197,7 +205,7 @@ def suggest_categories(
 
     suggestions: list[CategorySuggestion] = []
     for entry in parsed.get("suggestions", []):
-        category: str | None = entry.get("category") or None
+        category: str | None = clean_category(entry.get("category"))
         is_new: bool = category is not None and category.lower() not in existing_lower
         suggestions.append(
             CategorySuggestion(

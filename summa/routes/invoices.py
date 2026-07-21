@@ -19,6 +19,7 @@ from summa.helpers import (
     ImportValidation,
     Invoice,
     ValidationError,
+    clean_category,
     error_response,
     escape_like,
     parse_bounded_int,
@@ -526,8 +527,9 @@ def bulk_update_invoices() -> ApiResponse:
 
     if new_category is not None:
         set_clauses.append("category = ?")
-        # Empty string means remove category (set to NULL)
-        params.append(strip_text(new_category))
+        # Empty string means remove category (set to NULL); clean_category also
+        # length-caps so no client can persist an oversized category.
+        params.append(clean_category(new_category))
 
     try:
         with db_cursor() as cursor:

@@ -13,6 +13,11 @@ ApiResponse = Response | tuple[Response, int]
 # payload can still hold tens of thousands of rows, each a SELECT + INSERT.
 MAX_IMPORT_BATCH: Final[int] = 10_000
 
+# Categories are meant to be short and general; the cap also bounds the residual
+# prompt-injection surface of the AI suggestion path (an injected store/item name
+# cannot make an oversized category persist). See summa/ai.py.
+MAX_CATEGORY_LENGTH: Final[int] = 64
+
 
 def error_response(message: str, status: int) -> tuple[Response, int]:
     """Build a standard {success: False, error: …} JSON error response."""
@@ -74,6 +79,21 @@ def require_non_empty_str(value: Any, field: str) -> str:
     if stripped is None:
         raise ValidationError(f"Field '{field}' cannot be empty", field=field)
     return stripped
+
+
+def clean_category(value: Any) -> str | None:
+    """Normalize a category: collapse whitespace runs, cap length, empty -> None.
+
+    Stricter than :func:`strip_text`: it also collapses interior whitespace
+    (including newlines) and truncates to :data:`MAX_CATEGORY_LENGTH`.
+    """
+    if value is None:
+        return None
+    collapsed: str = " ".join(str(value).split())
+    if not collapsed:
+        return None
+    # .strip() again in case truncation lands mid-space.
+    return collapsed[:MAX_CATEGORY_LENGTH].strip() or None
 
 
 def escape_like(value: str) -> str:

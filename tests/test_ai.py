@@ -7,7 +7,7 @@ import anthropic
 import httpx
 import pytest
 
-from summa import ai
+from summa import ai, helpers
 
 _MODEL: str = ai.MODELS[ai.DEFAULT_MODEL_KEY]
 
@@ -121,6 +121,27 @@ def test_is_new_is_computed_case_insensitively(
     by_id = {result.invoice_id: result for result in results}
     assert by_id[1].is_new is False  # differs only in casing
     assert by_id[2].is_new is True
+
+
+def test_category_is_sanitized_and_capped(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An oversized/whitespace-mangled model category is collapsed and length-capped."""
+    raw: str = "  Groceries\n\n" + "x" * 200
+    response: str = json.dumps({"suggestions": [{"invoice_id": 1, "category": raw}]})
+    _patch_client(monkeypatch, response_text=response)
+
+    results = ai.suggest_categories(
+        [{"id": 1, "store": "A", "items": []}], ["Groceries"], _MODEL
+    )
+
+    category = results[0].category
+    assert category is not None
+    assert len(category) <= helpers.MAX_CATEGORY_LENGTH
+    assert "\n" not in category
+    assert category.startswith("Groceries")
+    # is_new is computed on the cleaned value, which is not an existing category.
+    assert results[0].is_new is True
 
 
 def test_api_error_is_wrapped(monkeypatch: pytest.MonkeyPatch) -> None:
