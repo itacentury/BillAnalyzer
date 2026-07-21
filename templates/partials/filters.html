@@ -64,6 +64,28 @@
 
     <!-- Search + filter toggle wrap together as one unit -->
     <div class="search-filter-group">
+      <!-- Compact-only search toggle: shown when the toolbar is tight; toggles
+           the slide-down search bar below. Hidden when the field shows inline. -->
+      <button
+        class="filter-search-toggle"
+        data-el="search-toggle-compact"
+        type="button"
+        aria-label="Search"
+        aria-expanded="false"
+      >
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <circle cx="11" cy="11" r="8" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+        </svg>
+      </button>
+
       <!-- Search -->
       <div class="filter-search">
         <svg

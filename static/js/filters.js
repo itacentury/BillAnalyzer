@@ -145,81 +145,81 @@ export function setupFilterListeners() {
 
 /**
  * Two-state toolbar search (12a), desktop only: the field is either a full
- * input or a 42x42 icon button that opens an overlay spanning the toolbar row.
- * A ResizeObserver on the toolbar switches states by the width actually left
- * for the field; at <= 640px the mobile slide-in (drawer.js) owns the search.
+ * inline input or — when the toolbar is tight — a persistent icon button that
+ * toggles a slide-down bar in its own full-width row below the toolbar
+ * (mirroring the mobile search). A ResizeObserver on the toolbar switches
+ * states by the width actually left for the field; at <= 640px the mobile
+ * slide-in (drawer.js) owns the search.
  */
 function setupToolbarSearch() {
   const row = document.querySelector(".filters-row");
   const group = document.querySelector(".search-filter-group");
-  const searchBox = document.querySelector(".filter-search");
+  const quickFilters = document.querySelector(".quick-filters");
+  const monthNavigator = document.querySelector(".month-navigator");
+  const todayButton = document.querySelector('[data-action="nav-today"]');
+  const toggleButton = document.querySelector(
+    '[data-el="search-toggle-compact"]',
+  );
   const aiTrigger = document.querySelector('[data-el="ai-categories-trigger"]');
   const filterButton = document.querySelector('[data-el="filters-toggle"]');
   const closeButton = document.querySelector('[data-el="search-close"]');
   const { searchInput } = els();
 
-  const groupGap = 8; // .search-filter-group column gap
+  const rowGap = 8; // .filters-row column gap
   const collapseBelow = 210; // box width under which the input is unusable
   const expandAbove = 260; // re-expand only past this (hysteresis)
 
-  // The compact icon is a <div> (it wraps the input, so it can't be a <button>);
-  // give it the ARIA custom-button affordances — but only while compact, since
-  // in the expanded state the <input> itself is the tab stop and would otherwise
-  // be shadowed by a spurious, mislabeled second one.
-  const applyCompactAffordance = (isCompact) => {
-    if (!isCompact) {
-      searchBox.removeAttribute("role");
-      searchBox.removeAttribute("tabindex");
-      searchBox.removeAttribute("aria-label");
-      searchBox.removeAttribute("aria-expanded");
-      return;
-    }
-    searchBox.setAttribute("role", "button");
-    searchBox.setAttribute("tabindex", "0");
-    searchBox.setAttribute("aria-label", "Search");
-    searchBox.setAttribute(
-      "aria-expanded",
-      String(group.classList.contains("search-open")),
-    );
-  };
-
-  const onOutsidePointer = (event) => {
-    if (!searchBox.contains(event.target)) closeOverlay();
-  };
-
-  // restoreFocus returns focus to the icon after a keyboard/explicit close (Esc,
-  // ✕) — but not on an outside-pointer close, which must not yank focus back.
+  // restoreFocus returns focus to the toggle button after an explicit close
+  // (Esc, ✕, second toggle click) so keyboard users are not stranded.
   const closeOverlay = (restoreFocus = false) => {
     if (!group.classList.contains("search-open")) return;
     group.classList.remove("search-open");
-    searchBox.setAttribute("aria-expanded", "false");
-    document.removeEventListener("pointerdown", onOutsidePointer, true);
+    toggleButton.setAttribute("aria-expanded", "false");
     if (restoreFocus && group.classList.contains("search-compact")) {
-      searchBox.focus();
+      toggleButton.focus();
     }
   };
 
   const openOverlay = () => {
     group.classList.add("search-open");
-    searchBox.setAttribute("aria-expanded", "true");
-    document.addEventListener("pointerdown", onOutsidePointer, true);
+    toggleButton.setAttribute("aria-expanded", "true");
     searchInput.focus();
   };
 
-  // Space the field could occupy = the group box (it stays flex:1 in both
-  // states, so this reflects the same width whether the field is full or an
-  // icon) minus the peer buttons and the gaps between the present children.
+  // Field-box width an inline search would get, measured against the group's
+  // *current* row. Row-based, so it is independent of the group's flex state
+  // (compact = flex:none, inline = flex:1) — which also removes a source of
+  // expand/collapse oscillation.
   const availableForSearch = () => {
     const aiWidth = aiTrigger.hidden ? 0 : aiTrigger.offsetWidth;
-    const peerGaps = aiTrigger.hidden ? groupGap : groupGap * 2;
-    return group.clientWidth - aiWidth - filterButton.offsetWidth - peerGaps;
+    // Wrapped: flex-wrap has dropped the group onto its own second row, where it
+    // shares the width only with AI + Filter (2 gaps). Measure that row — not the
+    // single-row layout — or the field stays needlessly collapsed to an icon on a
+    // near-empty line. filterButton always has a box (never display:contents), so
+    // it is the state-independent probe for the wrap.
+    const wrapped = filterButton.offsetTop > quickFilters.offsetTop + 2;
+    if (wrapped) {
+      return row.clientWidth - aiWidth - filterButton.offsetWidth - rowGap * 2;
+    }
+    // Single row: the field's share is the row minus the fixed chips, with the
+    // pills shrunk to their min-width floor. rowGap * 5 ≈ the inline layout's
+    // inter-item gaps (4 row items + 2 group gaps); the 50px hysteresis absorbs
+    // the minor variance when the today button is display:none'd (all/custom).
+    const quickFloor = parseFloat(getComputedStyle(quickFilters).minWidth) || 0;
+    const todayWidth = todayButton.offsetWidth; // 0 when .is-hidden (all/custom)
+    const fixed =
+      quickFloor +
+      monthNavigator.offsetWidth +
+      todayWidth +
+      aiWidth +
+      filterButton.offsetWidth;
+    return row.clientWidth - fixed - rowGap * 5;
   };
 
   const syncState = () => {
     if (window.innerWidth <= 640) {
       group.classList.remove("search-compact");
       closeOverlay();
-      applyCompactAffordance(false);
       return;
     }
     const compact = group.classList.contains("search-compact");
@@ -230,27 +230,16 @@ function setupToolbarSearch() {
     } else if (!compact && available < collapseBelow) {
       group.classList.add("search-compact");
     }
-    applyCompactAffordance(group.classList.contains("search-compact"));
   };
 
-  searchBox.addEventListener("click", () => {
-    if (!group.classList.contains("search-compact")) return;
-    openOverlay();
+  toggleButton.addEventListener("click", () => {
+    if (group.classList.contains("search-open")) {
+      closeOverlay(true);
+    } else {
+      openOverlay();
+    }
   });
-  // The compact box is a role="button" div, so it needs an explicit key handler
-  // to activate like a native button would.
-  searchBox.addEventListener("keydown", (event) => {
-    if (!group.classList.contains("search-compact")) return;
-    if (event.key !== "Enter" && event.key !== " ") return;
-    event.preventDefault(); // Space would otherwise scroll the page
-    openOverlay();
-  });
-  // Stop the click from bubbling to the box handler above, which would reopen
-  // the overlay in the same tick.
-  closeButton.addEventListener("click", (event) => {
-    event.stopPropagation();
-    closeOverlay(true);
-  });
+  closeButton.addEventListener("click", () => closeOverlay(true));
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") closeOverlay(true);
   });

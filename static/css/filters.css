@@ -164,6 +164,13 @@
   color: var(--text-faint);
 }
 
+/* Compact-only search toggle (see the >640px block): off everywhere by default;
+   the mobile top bar has its own search button, and a wide toolbar shows the
+   field inline instead. */
+.filter-search-toggle {
+  display: none;
+}
+
 /* Filter panel toggle */
 .filter-button {
   display: flex;
@@ -305,50 +312,110 @@
     min-width: min-content;
   }
 
-  /* Icon state: the field would otherwise shrink to a truncated sliver, so it
-     collapses to a 42x42 icon button matching the ⊙ jump-to-current chip. */
-  .search-compact .filter-search {
-    box-sizing: border-box;
+  /* Compact toolbar: the field is hidden, so the group shrinks to just its icon
+     cluster (toggle + AI + Filter). With flex:none it no longer claims half the
+     row's free space as a trailing gap — .quick-filters (flex:1) absorbs all of
+     it, pushing the navigator/today/cluster flush right, exactly like the open
+     state. The two states thus share one layout. availableForSearch() no longer
+     relies on this box growing (it measures the row directly, see filters.js). */
+  .search-compact {
     flex: none;
+  }
+
+  /* Compact state: the field would shrink to a truncated sliver, so it hides and
+     a persistent 42x42 icon button (matching the ⊙ jump-to-current chip) takes
+     its place in the toolbar and toggles the slide-down bar. */
+  .search-compact .filter-search-toggle {
+    box-sizing: border-box;
+    display: flex;
+    flex: none;
+    align-items: center;
     justify-content: center;
     width: 42px;
     height: 42px;
-    padding: 0;
     color: var(--text-muted);
     cursor: pointer;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
     border-radius: 12px;
   }
 
-  .search-compact .filter-search svg {
+  .search-compact .filter-search-toggle svg {
     width: 14px;
     height: 14px;
   }
 
-  /* Keyboard focus ring for the compact icon (a role="button" div). */
-  .search-compact .filter-search:focus-visible {
+  .search-compact .filter-search-toggle:hover {
+    background: var(--bg-hover);
+  }
+
+  .search-compact .filter-search-toggle:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
   }
 
-  .search-compact .filter-search-input {
+  /* Collapsed bar: hidden and flattened. Mirrors the mobile slide-in so the
+     desktop bar animates the same way; the open state below expands it. Unlike
+     mobile it must NOT set flex-basis/order here: the discrete display
+     transition keeps it laid out for a beat while closing, and a 100% basis
+     would inflate the group's width and fight the width-measuring
+     ResizeObserver (endless compact/expand loop). Those belong to the open
+     state only, where the group is display:contents and unmeasured. */
+  .search-compact .filter-search {
     display: none;
+    flex: none;
+    width: 0;
+    min-width: 0;
+    max-height: 0;
+    padding-block: 0;
+    margin-bottom: 0;
+    overflow: clip;
+    border-block-width: 0;
+    opacity: 0;
+    transform: translateY(-8px);
+    transition:
+      max-height var(--transition),
+      padding var(--transition),
+      margin var(--transition),
+      border-width var(--transition),
+      opacity var(--transition),
+      transform var(--transition),
+      display var(--transition) allow-discrete;
   }
 
-  /* Overlay state: clicking the icon expands the field over the whole toolbar
-     row (absolute, full width, row height). */
+  /* Open state: dissolve the wrapper so the field, AI and filter buttons become
+     direct children of .filters-row. The buttons keep the toolbar row (default
+     order 0); the field takes order 1 to drop onto its own line below. */
+  .search-filter-group.search-open {
+    display: contents;
+  }
+
+  /* Open state: the bar slides in-flow into its own full-width row below the
+     toolbar (order 1 + flex-basis 100% wraps it), pushing the list down. Same
+     animated end values as the mobile slide-in; @starting-style runs it on open. */
   .search-open .filter-search {
-    position: absolute;
-    inset: 0;
-    z-index: 20;
-    box-sizing: border-box;
-    justify-content: flex-start;
-    width: 100%;
-    height: 100%;
-    padding: 0 14px;
-    cursor: text;
+    display: flex;
+    flex-basis: 100%;
+    order: 1;
+    max-height: var(--mobile-search-height);
+    padding-block: 9px;
+    margin-bottom: 8px;
     border-color: #d9b8a2;
+    border-block-width: 1px;
     border-radius: 12px;
-    box-shadow: 0 10px 28px rgb(58 51 42 / 14%);
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  @starting-style {
+    .search-open .filter-search {
+      max-height: 0;
+      padding-block: 0;
+      margin-bottom: 0;
+      border-block-width: 0;
+      opacity: 0;
+      transform: translateY(-8px);
+    }
   }
 
   .search-open .filter-search svg {
