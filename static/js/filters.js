@@ -165,9 +165,13 @@ function setupToolbarSearch() {
   const closeButton = document.querySelector('[data-el="search-close"]');
   const { searchInput } = els();
 
+  // Empirical tuning constants, coupled to the toolbar's inline layout — the
+  // thing to re-tune if a toolbar item is added or resized. collapseBelow and
+  // expandAbove straddle a 50px hysteresis band (expandAbove - collapseBelow)
+  // that stops the field flickering between states at the threshold.
   const rowGap = 8; // .filters-row column gap
   const collapseBelow = 210; // box width under which the input is unusable
-  const expandAbove = 260; // re-expand only past this (hysteresis)
+  const expandAbove = 260; // re-expand only past this (hysteresis band top)
   const closeAnimationMs = 200; // keep in sync with --transition (0.2s)
   let closeOverlayTimer = null;
 
@@ -234,9 +238,11 @@ function setupToolbarSearch() {
       return row.clientWidth - aiWidth - filterButton.offsetWidth - rowGap * 2;
     }
     // Single row: the field's share is the row minus the fixed chips, with the
-    // pills shrunk to their min-width floor. rowGap * 5 ≈ the inline layout's
-    // inter-item gaps (4 row items + 2 group gaps); the 50px hysteresis absorbs
-    // the minor variance when the today button is display:none'd (all/custom).
+    // pills shrunk to their min-width floor. inlineGapCount ≈ the inline
+    // layout's inter-item gaps (4 row items + 2 group gaps); the hysteresis
+    // band absorbs the minor variance when the today button is display:none'd
+    // (all/custom).
+    const inlineGapCount = 5;
     const quickFloor = parseFloat(getComputedStyle(quickFilters).minWidth) || 0;
     const todayWidth = todayButton.offsetWidth; // 0 when .is-hidden (all/custom)
     const fixed =
@@ -245,7 +251,7 @@ function setupToolbarSearch() {
       todayWidth +
       aiWidth +
       filterButton.offsetWidth;
-    return row.clientWidth - fixed - rowGap * 5;
+    return row.clientWidth - fixed - rowGap * inlineGapCount;
   };
 
   const syncState = () => {
