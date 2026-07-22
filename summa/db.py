@@ -12,6 +12,7 @@ from summa.helpers import InvoiceItem
 logger: logging.Logger = logging.getLogger(__name__)
 
 DATABASE: Final[str] = os.environ.get("DATABASE_PATH", "invoices.db")
+LEGACY_PLACEHOLDER_ITEM_NAME: Final[str] = "Placeholder"
 
 
 def get_db() -> sqlite3.Connection:
@@ -132,6 +133,24 @@ def init_db() -> None:
         "CREATE INDEX IF NOT EXISTS idx_invoices_active_category "
         "ON invoices (category) WHERE deleted_at IS NULL"
     )
+
+    # Backfill legacy active invoices that predate the items constraint.
+    cursor.execute(
+        "INSERT INTO invoice_items (invoice_id, item_name, item_price) "
+        "SELECT invoices.id, ?, invoices.total "
+        "FROM invoices "
+        "WHERE invoices.deleted_at IS NULL "
+        "AND NOT EXISTS ("
+        "SELECT 1 FROM invoice_items WHERE invoice_items.invoice_id = invoices.id"
+        ")",
+        (LEGACY_PLACEHOLDER_ITEM_NAME,),
+    )
+    backfilled_items: int = cursor.rowcount if cursor.rowcount != -1 else 0
+    if backfilled_items:
+        logger.info(
+            "Migration applied: backfilled %d placeholder invoice items",
+            backfilled_items,
+        )
 
     conn.commit()
     conn.close()

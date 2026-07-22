@@ -51,6 +51,11 @@ export async function saveInvoice() {
     }
   });
 
+  if (items.length === 0) {
+    showErrorToast("Please add at least one item");
+    return;
+  }
+
   const total = items.reduce(
     (sum, item) => sum + parseFloat(item.item_price),
     0,

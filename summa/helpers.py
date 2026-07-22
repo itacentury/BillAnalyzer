@@ -150,8 +150,19 @@ def parse_invoice(data: Any) -> Invoice:
     if not isinstance(data, dict):
         raise ValidationError("Invoice must be a JSON object")
 
+    invoice_date: str | None = strip_text(_require(data, "date"))
+    _reject_future_date(invoice_date)
+
+    store: str | None = strip_text(
+        require_optional_str(_require(data, "store"), "store")
+    )
+    category: str | None = strip_text(
+        require_optional_str(data.get("category"), "category")
+    )
+    total: float = _parse_float(_require(data, "total"), "total")
+
     items: list[InvoiceItem] = []
-    raw_items: Any = data.get("items") or []
+    raw_items: Any = data.get("items", [])
     if not isinstance(raw_items, list):
         raise ValidationError("Field 'items' must be a list", field="items")
     for raw_item in raw_items:
