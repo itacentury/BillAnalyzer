@@ -103,13 +103,15 @@
 
 /* Dropdown — hidden until the trigger toggles `.is-open` on the root. */
 .model-picker-menu {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  z-index: 10;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1005;
   display: none;
   width: 280px;
+  max-height: 320px;
   padding: 5px;
+  overflow-y: auto;
   background: #fdf9f1;
   border: 1px solid #e2d8c2;
   border-radius: 12px;

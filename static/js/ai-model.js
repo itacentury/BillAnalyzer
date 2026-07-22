@@ -47,6 +47,68 @@ export function setupModelPicker() {
   const label = root.querySelector('[data-el="model-picker-label"]');
   const menu = root.querySelector('[data-el="model-picker-menu"]');
 
+  const viewportPadding = 8;
+  const menuGap = 6;
+  const maxMenuHeight = 320;
+
+  const positionMenu = () => {
+    const triggerRect = trigger.getBoundingClientRect();
+    const menuWidth = Math.min(
+      Math.max(240, Math.round(triggerRect.width)),
+      window.innerWidth - viewportPadding * 2,
+    );
+    const triggerRight = triggerRect.right;
+    const minLeft = viewportPadding;
+    const maxLeft = window.innerWidth - viewportPadding - menuWidth;
+    const left = Math.max(minLeft, Math.min(triggerRight - menuWidth, maxLeft));
+    const spaceBelow =
+      window.innerHeight - triggerRect.bottom - viewportPadding - menuGap;
+    const spaceAbove = triggerRect.top - viewportPadding - menuGap;
+
+    const desiredMenuHeight = Math.min(menu.scrollHeight, maxMenuHeight);
+    const canFitBelow = spaceBelow >= desiredMenuHeight;
+    const openUp = !canFitBelow && spaceAbove > 0;
+    root.classList.toggle("is-open-up", openUp);
+
+    const preferredSpace = openUp ? spaceAbove : spaceBelow;
+    const fallbackSpace = Math.max(spaceAbove, spaceBelow);
+    const availableSpace = preferredSpace > 0 ? preferredSpace : fallbackSpace;
+    const resolvedMaxHeight = Math.max(
+      80,
+      Math.min(maxMenuHeight, availableSpace),
+    );
+
+    menu.style.position = "fixed";
+    menu.style.left = `${left}px`;
+    menu.style.width = `${menuWidth}px`;
+    menu.style.right = "auto";
+    menu.style.maxHeight = `${resolvedMaxHeight}px`;
+    menu.style.top = "0px";
+
+    const menuHeight = Math.min(menu.scrollHeight, resolvedMaxHeight);
+    const idealTop = openUp
+      ? triggerRect.top - menuGap - menuHeight
+      : triggerRect.bottom + menuGap;
+    const maxTop = window.innerHeight - viewportPadding - menuHeight;
+    const top = Math.max(viewportPadding, Math.min(idealTop, maxTop));
+    menu.style.top = `${top}px`;
+  };
+
+  const repositionMenu = () => {
+    if (!root.classList.contains("is-open")) return;
+    positionMenu();
+  };
+
+  const bindPositionListeners = () => {
+    window.addEventListener("resize", repositionMenu);
+    document.addEventListener("scroll", repositionMenu, true);
+  };
+
+  const unbindPositionListeners = () => {
+    window.removeEventListener("resize", repositionMenu);
+    document.removeEventListener("scroll", repositionMenu, true);
+  };
+
   const syncSelection = () => {
     const current = getAiModel();
     label.textContent = modelByKey(current).name;
@@ -71,8 +133,10 @@ export function setupModelPicker() {
   const closeMenu = () => {
     if (!root.classList.contains("is-open")) return;
     root.classList.remove("is-open");
+    root.classList.remove("is-open-up");
     trigger.setAttribute("aria-expanded", "false");
     document.removeEventListener("pointerdown", onOutside, true);
+    unbindPositionListeners();
   };
 
   const onOutside = (event) => {
@@ -83,6 +147,8 @@ export function setupModelPicker() {
     root.classList.add("is-open");
     trigger.setAttribute("aria-expanded", "true");
     document.addEventListener("pointerdown", onOutside, true);
+    positionMenu();
+    bindPositionListeners();
     const selected = menu.querySelector(
       `[data-model-option="${getAiModel()}"]`,
     );
