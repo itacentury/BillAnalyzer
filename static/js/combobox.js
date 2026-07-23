@@ -46,6 +46,10 @@ export function createCombobox(root, { onChange } = {}) {
   const defaultPlaceholder = textInput.placeholder;
   const allowCreate = root.dataset.allowCreate === "true";
   const emptyLabel = root.dataset.emptyLabel || "None";
+  // Opt-in: anchor the menu to the viewport (position: fixed) so it can escape a
+  // clipping/scrolling ancestor and float over sibling chrome (e.g. the sticky
+  // footer in the categorize modal) instead of forcing that ancestor to scroll.
+  const floatMenu = root.dataset.menuFloat === "true";
 
   const menuId = `combobox-menu-${dataEl}`;
   menu.id = menuId;
@@ -138,6 +142,8 @@ export function createCombobox(root, { onChange } = {}) {
         : "var(--border-color)";
     });
     applyHighlight();
+    // Re-anchor a floating menu whenever its contents (and thus height) change.
+    if (floatMenu && open) positionMenu();
   };
 
   const applyHighlight = () => {
@@ -155,6 +161,63 @@ export function createCombobox(root, { onChange } = {}) {
     else textInput.removeAttribute("aria-activedescendant");
   };
 
+  // --- Floating (position: fixed) menu, opt-in via data-menu-float ------------
+  // Anchor the menu to the control's viewport rect. Prefer opening downward (so
+  // it overlaps whatever sits below, as requested), flipping up only when there
+  // is too little room below and more above.
+  const viewportPadding = 8;
+  const menuGap = 4;
+  const maxMenuHeight = 240;
+
+  const positionMenu = () => {
+    const control = root.querySelector(".combobox-control");
+    const rect = control.getBoundingClientRect();
+    const spaceBelow =
+      window.innerHeight - rect.bottom - viewportPadding - menuGap;
+    const spaceAbove = rect.top - viewportPadding - menuGap;
+    const desiredHeight = Math.min(menu.scrollHeight, maxMenuHeight);
+    const openUp = spaceBelow < desiredHeight && spaceAbove > spaceBelow;
+    const available = openUp ? spaceAbove : spaceBelow;
+    const resolvedMaxHeight = Math.max(120, Math.min(maxMenuHeight, available));
+
+    menu.style.position = "fixed";
+    menu.style.left = `${rect.left}px`;
+    menu.style.width = `${rect.width}px`;
+    menu.style.right = "auto";
+    menu.style.maxHeight = `${resolvedMaxHeight}px`;
+
+    const menuHeight = Math.min(menu.scrollHeight, resolvedMaxHeight);
+    const top = openUp
+      ? rect.top - menuGap - menuHeight
+      : rect.bottom + menuGap;
+    menu.style.top = `${top}px`;
+  };
+
+  const clearMenuPosition = () => {
+    menu.style.position = "";
+    menu.style.top = "";
+    menu.style.left = "";
+    menu.style.right = "";
+    menu.style.width = "";
+    menu.style.maxHeight = "";
+  };
+
+  const reposition = () => {
+    if (open) positionMenu();
+  };
+
+  const bindReposition = () => {
+    window.addEventListener("resize", reposition);
+    // Capture so a scroll of any ancestor (the modal's scroll container) keeps
+    // the fixed menu glued to its control.
+    document.addEventListener("scroll", reposition, true);
+  };
+
+  const unbindReposition = () => {
+    window.removeEventListener("resize", reposition);
+    document.removeEventListener("scroll", reposition, true);
+  };
+
   const openMenu = () => {
     if (open) return;
     open = true;
@@ -165,6 +228,7 @@ export function createCombobox(root, { onChange } = {}) {
     const current = entries.findIndex((entry) => entry.value === hidden.value);
     highlighted = current >= 0 ? current : 0;
     applyHighlight();
+    if (floatMenu) bindReposition();
   };
 
   // Close the menu and restore the display to the committed value (a typed but
@@ -176,6 +240,10 @@ export function createCombobox(root, { onChange } = {}) {
     textInput.setAttribute("aria-expanded", "false");
     textInput.removeAttribute("aria-activedescendant");
     highlighted = -1;
+    if (floatMenu) {
+      unbindReposition();
+      clearMenuPosition();
+    }
     applyValue(hidden.value);
   };
 
@@ -186,6 +254,10 @@ export function createCombobox(root, { onChange } = {}) {
     textInput.setAttribute("aria-expanded", "false");
     textInput.removeAttribute("aria-activedescendant");
     highlighted = -1;
+    if (floatMenu) {
+      unbindReposition();
+      clearMenuPosition();
+    }
     if (onChange) onChange(value);
   };
 

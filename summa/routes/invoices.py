@@ -425,7 +425,11 @@ def categorize_suggest() -> ApiResponse:
         len(invoices) - len(misses),
     )
     return jsonify(
-        {"suggestions": suggestions, "count": len(suggestions), "total": total}
+        {
+            "suggestions": suggestions,
+            "count": len(suggestions),
+            "total": total,
+        }
     )
 
 

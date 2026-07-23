@@ -11,7 +11,7 @@
 import { state } from "./state.js";
 import { buildFilterParams, refreshAllData } from "./api.js";
 import { escapeHtml, formatCurrency } from "./dom.js";
-import { showUndoToast, showErrorToast } from "./toast.js";
+import { showUndoToast, showErrorToast, flushPendingToast } from "./toast.js";
 import { renderInvoices, restoreRows } from "./render.js";
 import { lockScroll, unlockScroll } from "./modals.js";
 import { createCombobox } from "./combobox.js";
@@ -74,7 +74,8 @@ function itemsLineHtml(groups) {
 
 function comboboxMarkup(index) {
   return `
-    <div class="combobox" data-combobox data-kind="category" data-empty-label="No Category" data-allow-create="true">
+    <span class="categorize-new-badge">NEW</span>
+    <div class="combobox" data-combobox data-kind="category" data-empty-label="No Category" data-allow-create="true" data-menu-float="true">
       <input type="hidden" data-el="categorize-cat-${index}" />
       <div class="combobox-control">
         <svg class="combobox-search" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -88,7 +89,6 @@ function comboboxMarkup(index) {
       </div>
       <ul class="combobox-menu" role="listbox"></ul>
     </div>
-    <span class="categorize-new-badge">NEW</span>
   `;
 }
 
@@ -99,12 +99,13 @@ function contentEl() {
 }
 
 function renderLoading() {
-  const count = state.uncategorizedCount || 0;
+  // No count: with caching only new/edited invoices reach the model, and the
+  // true analyzed amount is not known until the server responds.
   setFooterVisible(false);
   contentEl().innerHTML = `
     <div class="categorize-banner categorize-banner-loading">
       <span class="categorize-spinner"></span>
-      <span>Analyzing ${count} invoice${count !== 1 ? "s" : ""}…</span>
+      <span>Analyzing invoices…</span>
       <button type="button" class="categorize-banner-action" data-action="categorize-cancel">Cancel</button>
     </div>
   `;
@@ -211,7 +212,6 @@ function renderReview(data, categories) {
         <span class="categorize-check-mark"></span>
       </label>
       <span class="categorize-selectall-label">Select all</span>
-      <button type="button" class="categorize-deselect" data-action="categorize-deselect">Deselect all</button>
     </div>
     <div class="categorize-rows">
       ${rows.map((row, index) => rowHtml(row, index)).join("")}
@@ -354,6 +354,33 @@ async function openCategorize() {
   openModalShell();
   renderLoading();
 
+  // Finalize any deferred invoice edit/delete first so its new content reaches
+  // the server before we ask for suggestions — otherwise a just-edited invoice
+  // would still match its cached fingerprint and return the pre-edit suggestion.
+  await flushPendingToast();
+
+  await runAnalysis();
+}
+
+/**
+ * Re-run the model switch inside the open modal: abort the previous request,
+ * show the loading banner (which hides the footer/Apply), and fetch fresh
+ * suggestions for the currently selected model. No-op when the modal is closed.
+ */
+async function rerunForModel() {
+  const modal = document.querySelector('[data-el="categorize-modal"]');
+  if (!modal.classList.contains("active")) return;
+  renderLoading();
+  await runAnalysis();
+}
+
+/**
+ * Fetch suggestions for the current filter + model and render the review. The
+ * caller shows the loading banner first; this owns the request lifecycle and
+ * aborts any in-flight request so a rapid model switch never double-renders.
+ */
+async function runAnalysis() {
+  controller?.abort();
   controller = new AbortController();
   const current = controller;
   try {
@@ -478,10 +505,11 @@ function applyCategories() {
 
 /**
  * Wire the trigger button, the review-content delegation (checkboxes, accordion,
- * deselect-all, cancel) and the footer actions.
+ * cancel) and the footer actions.
  */
 export function setupCategorizeListeners() {
-  setupModelPicker();
+  // Switching the model re-runs the analysis live when the modal is open.
+  setupModelPicker(rerunForModel);
 
   document
     .querySelectorAll('[data-action="open-categorize"]')
@@ -495,10 +523,6 @@ export function setupCategorizeListeners() {
 
     if (event.target.closest('[data-action="categorize-cancel"]')) {
       closeCategorizeModal();
-      return;
-    }
-    if (event.target.closest('[data-action="categorize-deselect"]')) {
-      toggleAll(false);
       return;
     }
     const toggle = event.target.closest('[data-action="toggle-items"]');

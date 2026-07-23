@@ -152,6 +152,7 @@ def test_second_call_reuses_cache(
     first = client.post("/api/invoices/categorize-suggest").get_json()
     second = client.post("/api/invoices/categorize-suggest").get_json()
 
+    # Identical response both times; the model was called only for the first.
     assert first == second
     assert len(captured) == 1  # the second call hit the cache, no model call
 

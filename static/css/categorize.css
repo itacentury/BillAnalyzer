@@ -319,19 +319,6 @@
   letter-spacing: 0.06em;
 }
 
-.categorize-deselect {
-  flex: none;
-  margin-left: auto;
-  font-family: inherit;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: #a5643c;
-  white-space: nowrap;
-  cursor: pointer;
-  background: none;
-  border: none;
-}
-
 /* Custom checkbox (shared by the select-all header and each row) */
 .categorize-check {
   position: relative;
@@ -390,7 +377,7 @@
 /* Suggestion rows */
 .categorize-row {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) 190px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 16px;
   align-items: flex-start;
   padding: 14px 24px;
@@ -503,16 +490,24 @@
   text-align: right;
 }
 
-/* Category combobox column + NEW badge */
+/* Category combobox column + NEW badge. The badge sits to the left of the
+   fixed-width field, right-aligned against its edge, so a long category value
+   keeps the full input width. */
 .categorize-combobox {
-  position: relative;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.categorize-combobox .combobox {
+  flex: none;
+  width: 190px;
 }
 
 .categorize-new-badge {
-  position: absolute;
-  top: 50%;
-  right: 34px;
   display: none;
+  flex: none;
   padding: 2px 7px;
   font-size: 0.6875rem;
   font-weight: 700;
@@ -520,7 +515,6 @@
   letter-spacing: 0.04em;
   background: var(--cat-technik);
   border-radius: 5px;
-  transform: translateY(-50%);
 }
 
 .categorize-combobox.is-new .categorize-new-badge {
@@ -535,11 +529,6 @@
    the category value in the fixed-width column. */
 .categorize-combobox .combobox-search {
   display: none;
-}
-
-/* Reserve room so the NEW badge never overlaps a long category value. */
-.categorize-combobox.is-new .combobox-input {
-  margin-right: 46px;
 }
 
 /* Footer */
@@ -615,8 +604,10 @@
     margin-left: 30px;
   }
 
-  .categorize-new-badge {
-    right: 40px;
+  /* Full-width field on mobile; the NEW badge stays to its left. */
+  .categorize-combobox .combobox {
+    flex: 1;
+    width: auto;
   }
 
   .categorize-footer {

@@ -2,8 +2,8 @@
  * Model picker for the AI Category Suggestions modal.
  *
  * The chosen model persists per-device in `localStorage` and is read by
- * `categorize.js` when it requests suggestions. Changing the model applies to
- * future runs only — it never re-runs the currently open modal.
+ * `categorize.js` when it requests suggestions. Selecting a model fires the
+ * optional `onChange` callback so an open modal can re-run its analysis live.
  */
 
 const STORAGE_KEY = "summa.aiModel";
@@ -38,8 +38,13 @@ function modelByKey(key) {
   return MODELS.find((model) => model.key === key) || MODELS[0];
 }
 
-/** Wire the header trigger and its dropdown menu. */
-export function setupModelPicker() {
+/**
+ * Wire the header trigger and its dropdown menu.
+ *
+ * @param {Function} [onChange] - Called with the newly selected model key after
+ *   a selection is committed, so a caller can re-run an open modal live.
+ */
+export function setupModelPicker(onChange = null) {
   const root = document.querySelector('[data-el="model-picker"]');
   if (!root) return;
 
@@ -163,9 +168,11 @@ export function setupModelPicker() {
   menu.addEventListener("click", (event) => {
     const option = event.target.closest("[data-model-option]");
     if (!option) return;
-    localStorage.setItem(STORAGE_KEY, option.dataset.modelOption);
+    const key = option.dataset.modelOption;
+    localStorage.setItem(STORAGE_KEY, key);
     syncSelection();
     closeMenu();
+    if (onChange) onChange(key);
   });
 
   // Arrow / Home / End move focus between options (roving tabindex). Enter and
