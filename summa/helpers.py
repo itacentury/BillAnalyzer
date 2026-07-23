@@ -36,7 +36,7 @@ class ValidationError(Exception):
 class InvoiceItem:
     """A single validated invoice line item."""
 
-    item_name: str | None
+    item_name: str
     item_price: float
 
 
@@ -44,8 +44,8 @@ class InvoiceItem:
 class Invoice:
     """A validated invoice parsed from a request payload."""
 
-    date: str | None
-    store: str | None
+    date: str
+    store: str
     category: str | None
     total: float
     items: list[InvoiceItem]
