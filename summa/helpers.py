@@ -36,7 +36,7 @@ class ValidationError(Exception):
 class InvoiceItem:
     """A single validated invoice line item."""
 
-    item_name: str | None
+    item_name: str
     item_price: float
 
 
@@ -44,8 +44,8 @@ class InvoiceItem:
 class Invoice:
     """A validated invoice parsed from a request payload."""
 
-    date: str | None
-    store: str | None
+    date: str
+    store: str
     category: str | None
     total: float
     items: list[InvoiceItem]
@@ -64,6 +64,16 @@ def require_optional_str(value: Any, field: str) -> str | None:
     if value is not None and not isinstance(value, str):
         raise ValidationError(f"Field '{field}' must be a string", field=field)
     return value
+
+
+def require_non_empty_str(value: Any, field: str) -> str:
+    """Return a stripped non-empty string; raise ValidationError otherwise."""
+    if not isinstance(value, str):
+        raise ValidationError(f"Field '{field}' must be a string", field=field)
+    stripped: str | None = strip_text(value)
+    if stripped is None:
+        raise ValidationError(f"Field '{field}' cannot be empty", field=field)
+    return stripped
 
 
 def escape_like(value: str) -> str:
@@ -98,10 +108,8 @@ def _parse_float(value: Any, field: str) -> float:
         ) from None
 
 
-def _reject_future_date(date_value: str | None) -> None:
+def _reject_future_date(date_value: str) -> None:
     """Reject invoice dates in the future — the app has no future invoices."""
-    if date_value is None:
-        return
     try:
         parsed: date = date.fromisoformat(date_value[:10])
     except ValueError:
@@ -129,16 +137,16 @@ def parse_invoice(data: Any) -> Invoice:
     for raw_item in raw_items:
         if not isinstance(raw_item, dict):
             raise ValidationError("Each item must be a JSON object")
-        name: str | None = strip_text(_require(raw_item, "item_name"))
+        name: str = require_non_empty_str(_require(raw_item, "item_name"), "item_name")
         price: float = _parse_float(_require(raw_item, "item_price"), "item_price")
         items.append(InvoiceItem(item_name=name, item_price=price))
 
-    invoice_date: str | None = strip_text(_require(data, "date"))
+    invoice_date: str = require_non_empty_str(_require(data, "date"), "date")
     _reject_future_date(invoice_date)
 
     return Invoice(
         date=invoice_date,
-        store=strip_text(require_optional_str(_require(data, "store"), "store")),
+        store=require_non_empty_str(_require(data, "store"), "store"),
         category=strip_text(require_optional_str(data.get("category"), "category")),
         total=_parse_float(_require(data, "total"), "total"),
         items=items,

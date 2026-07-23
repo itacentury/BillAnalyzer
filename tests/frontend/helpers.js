@@ -48,3 +48,29 @@ export function mountListFixture() {
     <label data-el="select-all-checkbox"><input type="checkbox" /></label>
   `;
 }
+
+/**
+ * Yields to the next macrotask so DOM updates from event handlers can settle.
+ */
+export function flushUi() {
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+/**
+ * Mount the import modal containers and controls used by import UI tests.
+ */
+export function mountImportFixture() {
+  document.body.innerHTML = `
+    <div data-el="import-modal">
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-action="import">Import</button>
+      </div>
+    </div>
+    <div data-el="import-input"></div>
+    <textarea data-el="json-input"></textarea>
+    <div data-el="import-errors" class="is-hidden"></div>
+    <div data-el="selected-files"></div>
+    <div data-el="dropzone"></div>
+    <input data-el="file-input" type="file" />
+  `;
+}
