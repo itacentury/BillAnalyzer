@@ -67,6 +67,9 @@ def _patch_client(
     """Patch anthropic.Anthropic to return a fake client; return its messages stub."""
     fake_messages: _FakeMessages = _FakeMessages(response_text, error, stop_reason)
     monkeypatch.setattr(anthropic, "Anthropic", lambda: _FakeClient(fake_messages))
+    # The client is cached across calls; drop the cache so this test's patched
+    # Anthropic() is the one actually constructed.
+    ai._get_client.cache_clear()
     return fake_messages
 
 

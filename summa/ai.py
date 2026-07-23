@@ -11,6 +11,7 @@ and each returned category is length-capped and whitespace-normalized via
 :func:`summa.helpers.clean_category` before it can be surfaced or persisted.
 """
 
+import functools
 import hashlib
 import json
 import logging
@@ -168,6 +169,16 @@ def _thinking_config(
     return {"type": "disabled"}, None
 
 
+@functools.cache
+def _get_client() -> anthropic.Anthropic:
+    """Return the lazily-constructed, reused Anthropic client.
+
+    Built on first use (not at import) so the API key need only be present when a
+    request is actually made, and reused across calls rather than rebuilt each time.
+    """
+    return anthropic.Anthropic()
+
+
 def _extract_text(message: anthropic.types.Message) -> str:
     """Return the first text block of a response, or raise if none is present."""
     for block in message.content:
@@ -191,7 +202,7 @@ def suggest_categories(
     if not invoices:
         return []
 
-    client: anthropic.Anthropic = anthropic.Anthropic()
+    client: anthropic.Anthropic = _get_client()
     user_payload: dict[str, Any] = {
         "existing_categories": existing_categories,
         "invoices": invoices,
