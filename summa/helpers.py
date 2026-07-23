@@ -66,6 +66,16 @@ def require_optional_str(value: Any, field: str) -> str | None:
     return value
 
 
+def require_non_empty_str(value: Any, field: str) -> str:
+    """Return a stripped non-empty string; raise ValidationError otherwise."""
+    if not isinstance(value, str):
+        raise ValidationError(f"Field '{field}' must be a string", field=field)
+    stripped: str | None = strip_text(value)
+    if stripped is None:
+        raise ValidationError(f"Field '{field}' cannot be empty", field=field)
+    return stripped
+
+
 def escape_like(value: str) -> str:
     """Escape LIKE wildcards so a search term matches literally."""
     # Escape the escape char first, then the two LIKE wildcards.
@@ -129,16 +139,16 @@ def parse_invoice(data: Any) -> Invoice:
     for raw_item in raw_items:
         if not isinstance(raw_item, dict):
             raise ValidationError("Each item must be a JSON object")
-        name: str | None = strip_text(_require(raw_item, "item_name"))
+        name: str = require_non_empty_str(_require(raw_item, "item_name"), "item_name")
         price: float = _parse_float(_require(raw_item, "item_price"), "item_price")
         items.append(InvoiceItem(item_name=name, item_price=price))
 
-    invoice_date: str | None = strip_text(_require(data, "date"))
+    invoice_date: str = require_non_empty_str(_require(data, "date"), "date")
     _reject_future_date(invoice_date)
 
     return Invoice(
         date=invoice_date,
-        store=strip_text(require_optional_str(_require(data, "store"), "store")),
+        store=require_non_empty_str(_require(data, "store"), "store"),
         category=strip_text(require_optional_str(data.get("category"), "category")),
         total=_parse_float(_require(data, "total"), "total"),
         items=items,

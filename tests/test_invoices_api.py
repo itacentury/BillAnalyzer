@@ -1,8 +1,10 @@
 """Integration tests for the invoice CRUD, bulk and lookup endpoints."""
 
+from copy import deepcopy
 from datetime import date, timedelta
 from typing import Any
 
+import pytest
 from flask.testing import FlaskClient
 
 from summa import db
@@ -22,6 +24,31 @@ def _list(client: FlaskClient, query: str = "") -> Any:
 def _detail(client: FlaskClient, invoice_id: int) -> Any:
     """Return the parsed body of the single-invoice detail endpoint."""
     return _get_json(client.get(f"/api/invoices/{invoice_id}"))
+
+
+def _invoice_payload() -> dict[str, Any]:
+    """Return a valid invoice payload used as baseline in validation tests."""
+    return {
+        "date": "2024-03-01",
+        "store": "Grocer",
+        "category": "Food",
+        "total": 25.5,
+        "items": [{"item_name": "Milk", "item_price": 1.5}],
+    }
+
+
+def _payload_with(field: str, value: Any, *, missing: bool = False) -> dict[str, Any]:
+    """Return a payload with one overridden (or removed) top-level/item field."""
+    payload: dict[str, Any] = deepcopy(_invoice_payload())
+    if field in {"item_name", "item_price"}:
+        target: dict[str, Any] = payload["items"][0]
+    else:
+        target = payload
+    if missing:
+        target.pop(field)
+    else:
+        target[field] = value
+    return payload
 
 
 # --- POST /api/invoices -------------------------------------------------------
@@ -194,6 +221,57 @@ def test_add_invoice_future_date_returns_400(client: FlaskClient) -> None:
     assert body["success"] is False
     assert body["error"] == "Invoice date cannot be in the future"
     assert _list(client) == []
+
+
+@pytest.mark.parametrize(
+    ("payload", "expected_error"),
+    [
+        (_payload_with("date", ""), "Field 'date' cannot be empty"),
+        (_payload_with("date", "   "), "Field 'date' cannot be empty"),
+        (_payload_with("date", None), "Field 'date' must be a string"),
+        (_payload_with("date", None, missing=True), "Missing required field: date"),
+        (_payload_with("store", ""), "Field 'store' cannot be empty"),
+        (_payload_with("store", "   "), "Field 'store' cannot be empty"),
+        (_payload_with("store", None), "Field 'store' must be a string"),
+        (
+            _payload_with("store", None, missing=True),
+            "Missing required field: store",
+        ),
+        (_payload_with("total", "abc"), "Field 'total' must be a number"),
+        (_payload_with("total", None), "Field 'total' must be a number"),
+        (
+            _payload_with("total", None, missing=True),
+            "Missing required field: total",
+        ),
+        (_payload_with("items", "bad"), "Field 'items' must be a list"),
+        (_payload_with("item_name", ""), "Field 'item_name' cannot be empty"),
+        (
+            _payload_with("item_name", "   "),
+            "Field 'item_name' cannot be empty",
+        ),
+        (_payload_with("item_name", None), "Field 'item_name' must be a string"),
+        (
+            _payload_with("item_name", None, missing=True),
+            "Missing required field: item_name",
+        ),
+        (_payload_with("item_price", "abc"), "Field 'item_price' must be a number"),
+        (_payload_with("item_price", None), "Field 'item_price' must be a number"),
+        (
+            _payload_with("item_price", None, missing=True),
+            "Missing required field: item_price",
+        ),
+        (_payload_with("category", ["bad"]), "Field 'category' must be a string"),
+    ],
+)
+def test_add_invoice_field_validation_matrix_returns_400(
+    client: FlaskClient,
+    payload: dict[str, Any],
+    expected_error: str,
+) -> None:
+    """All field-level validation failures return 400 with a precise message."""
+    response = client.post("/api/invoices", json=payload)
+    assert response.status_code == 400
+    assert _get_json(response)["error"] == expected_error
 
 
 # --- GET /api/invoices --------------------------------------------------------
@@ -506,6 +584,111 @@ def test_import_future_dated_entry_reported_and_not_persisted(
     assert stores == ["Good"]
 
 
+@pytest.mark.parametrize(
+    ("payload", "expected_field", "expected_message"),
+    [
+        (_payload_with("date", ""), "date", "Field 'date' cannot be empty"),
+        (_payload_with("date", "   "), "date", "Field 'date' cannot be empty"),
+        (_payload_with("date", None), "date", "Field 'date' must be a string"),
+        (
+            _payload_with("date", None, missing=True),
+            "date",
+            "Missing required field: date",
+        ),
+        (_payload_with("store", ""), "store", "Field 'store' cannot be empty"),
+        (
+            _payload_with("store", "   "),
+            "store",
+            "Field 'store' cannot be empty",
+        ),
+        (_payload_with("store", None), "store", "Field 'store' must be a string"),
+        (
+            _payload_with("store", None, missing=True),
+            "store",
+            "Missing required field: store",
+        ),
+        (_payload_with("total", "abc"), "total", "Field 'total' must be a number"),
+        (_payload_with("total", None), "total", "Field 'total' must be a number"),
+        (
+            _payload_with("total", None, missing=True),
+            "total",
+            "Missing required field: total",
+        ),
+        (_payload_with("items", "bad"), "items", "Field 'items' must be a list"),
+        (
+            _payload_with("item_name", ""),
+            "item_name",
+            "Field 'item_name' cannot be empty",
+        ),
+        (
+            _payload_with("item_name", "   "),
+            "item_name",
+            "Field 'item_name' cannot be empty",
+        ),
+        (
+            _payload_with("item_name", None),
+            "item_name",
+            "Field 'item_name' must be a string",
+        ),
+        (
+            _payload_with("item_name", None, missing=True),
+            "item_name",
+            "Missing required field: item_name",
+        ),
+        (
+            _payload_with("item_price", "abc"),
+            "item_price",
+            "Field 'item_price' must be a number",
+        ),
+        (
+            _payload_with("item_price", None),
+            "item_price",
+            "Field 'item_price' must be a number",
+        ),
+        (
+            _payload_with("item_price", None, missing=True),
+            "item_price",
+            "Missing required field: item_price",
+        ),
+        (
+            _payload_with("category", ["bad"]),
+            "category",
+            "Field 'category' must be a string",
+        ),
+    ],
+)
+def test_import_field_validation_matrix_reports_indexed_errors(
+    client: FlaskClient,
+    payload: dict[str, Any],
+    expected_field: str,
+    expected_message: str,
+) -> None:
+    """Import returns per-entry field errors for all malformed field variants."""
+    response = client.post("/api/invoices/import", json=[payload])
+    assert response.status_code == 200
+    body = _get_json(response)
+    assert body["imported"] == 0
+    assert body["skipped"] == 0
+    assert body["failed"] == 1
+    assert body["errors"][0]["index"] == 0
+    assert body["errors"][0]["field"] == expected_field
+    assert body["errors"][0]["message"] == expected_message
+    assert _list(client) == []
+
+
+def test_import_item_entry_must_be_object(client: FlaskClient) -> None:
+    """Import rejects non-object item entries with an indexed entry-level error."""
+    payload = _invoice_payload()
+    payload["items"] = ["bad"]
+    response = client.post("/api/invoices/import", json=[payload])
+    assert response.status_code == 200
+    body = _get_json(response)
+    assert body["failed"] == 1
+    assert body["errors"][0]["field"] is None
+    assert body["errors"][0]["message"] == "Each item must be a JSON object"
+    assert _list(client) == []
+
+
 # --- PUT /api/invoices/<id> ---------------------------------------------------
 
 
@@ -548,6 +731,39 @@ def test_update_invoice_missing_field_returns_400(
     )
     assert response.status_code == 400
     assert _get_json(response)["error"] == "Missing required field: date"
+
+
+@pytest.mark.parametrize(
+    ("payload", "expected_error"),
+    [
+        (_payload_with("date", ""), "Field 'date' cannot be empty"),
+        (_payload_with("date", "   "), "Field 'date' cannot be empty"),
+        (_payload_with("date", None), "Field 'date' must be a string"),
+        (_payload_with("store", ""), "Field 'store' cannot be empty"),
+        (_payload_with("store", "   "), "Field 'store' cannot be empty"),
+        (_payload_with("store", None), "Field 'store' must be a string"),
+        (_payload_with("total", "abc"), "Field 'total' must be a number"),
+        (_payload_with("items", "bad"), "Field 'items' must be a list"),
+        (_payload_with("item_name", ""), "Field 'item_name' cannot be empty"),
+        (_payload_with("item_name", None), "Field 'item_name' must be a string"),
+        (
+            _payload_with("item_price", "abc"),
+            "Field 'item_price' must be a number",
+        ),
+        (_payload_with("category", ["bad"]), "Field 'category' must be a string"),
+    ],
+)
+def test_update_invoice_field_validation_matrix_returns_400(
+    client: FlaskClient,
+    seed_invoice: SeedInvoice,
+    payload: dict[str, Any],
+    expected_error: str,
+) -> None:
+    """Update mirrors the same field-level validation errors as create/import."""
+    invoice_id = seed_invoice(store="Keep")
+    response = client.put(f"/api/invoices/{invoice_id}", json=payload)
+    assert response.status_code == 400
+    assert _get_json(response)["error"] == expected_error
 
 
 def test_update_nonexistent_invoice_returns_404(client: FlaskClient) -> None:
