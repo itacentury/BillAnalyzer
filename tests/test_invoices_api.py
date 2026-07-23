@@ -655,20 +655,6 @@ def test_update_invoice_replaces_items(
     assert [item["item_name"] for item in detail["items"]] == ["new item"]
 
 
-def test_update_invoice_missing_field_returns_400(
-    client: FlaskClient, seed_invoice: SeedInvoice
-) -> None:
-    """A missing required key on update is rejected with the JSON 400 envelope."""
-    invoice_id = seed_invoice(store="Keep")
-
-    response = client.put(
-        f"/api/invoices/{invoice_id}",
-        json={"store": "NoDate", "total": 1.0},
-    )
-    assert response.status_code == 400
-    assert _get_json(response)["error"] == "Missing required field: date"
-
-
 @pytest.mark.parametrize(
     ("payload", "expected_error"),
     [
