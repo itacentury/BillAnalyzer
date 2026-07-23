@@ -51,6 +51,33 @@ def _payload_with(field: str, value: Any, *, missing: bool = False) -> dict[str,
     return payload
 
 
+_FIELD_VALIDATION_CASES: list[tuple[str, Any, str]] = [
+    ("date", "", "Field 'date' cannot be empty"),
+    ("date", "   ", "Field 'date' cannot be empty"),
+    ("date", None, "Field 'date' must be a string"),
+    ("store", "", "Field 'store' cannot be empty"),
+    ("store", "   ", "Field 'store' cannot be empty"),
+    ("store", None, "Field 'store' must be a string"),
+    ("total", "abc", "Field 'total' must be a number"),
+    ("total", None, "Field 'total' must be a number"),
+    ("items", "bad", "Field 'items' must be a list"),
+    ("item_name", "", "Field 'item_name' cannot be empty"),
+    ("item_name", "   ", "Field 'item_name' cannot be empty"),
+    ("item_name", None, "Field 'item_name' must be a string"),
+    ("item_price", "abc", "Field 'item_price' must be a number"),
+    ("item_price", None, "Field 'item_price' must be a number"),
+    ("category", ["bad"], "Field 'category' must be a string"),
+]
+
+_MISSING_FIELD_VALIDATION_CASES: list[tuple[str, str]] = [
+    ("date", "Missing required field: date"),
+    ("store", "Missing required field: store"),
+    ("total", "Missing required field: total"),
+    ("item_name", "Missing required field: item_name"),
+    ("item_price", "Missing required field: item_price"),
+]
+
+
 # --- POST /api/invoices -------------------------------------------------------
 
 
@@ -226,41 +253,12 @@ def test_add_invoice_future_date_returns_400(client: FlaskClient) -> None:
 @pytest.mark.parametrize(
     ("payload", "expected_error"),
     [
-        (_payload_with("date", ""), "Field 'date' cannot be empty"),
-        (_payload_with("date", "   "), "Field 'date' cannot be empty"),
-        (_payload_with("date", None), "Field 'date' must be a string"),
-        (_payload_with("date", None, missing=True), "Missing required field: date"),
-        (_payload_with("store", ""), "Field 'store' cannot be empty"),
-        (_payload_with("store", "   "), "Field 'store' cannot be empty"),
-        (_payload_with("store", None), "Field 'store' must be a string"),
-        (
-            _payload_with("store", None, missing=True),
-            "Missing required field: store",
-        ),
-        (_payload_with("total", "abc"), "Field 'total' must be a number"),
-        (_payload_with("total", None), "Field 'total' must be a number"),
-        (
-            _payload_with("total", None, missing=True),
-            "Missing required field: total",
-        ),
-        (_payload_with("items", "bad"), "Field 'items' must be a list"),
-        (_payload_with("item_name", ""), "Field 'item_name' cannot be empty"),
-        (
-            _payload_with("item_name", "   "),
-            "Field 'item_name' cannot be empty",
-        ),
-        (_payload_with("item_name", None), "Field 'item_name' must be a string"),
-        (
-            _payload_with("item_name", None, missing=True),
-            "Missing required field: item_name",
-        ),
-        (_payload_with("item_price", "abc"), "Field 'item_price' must be a number"),
-        (_payload_with("item_price", None), "Field 'item_price' must be a number"),
-        (
-            _payload_with("item_price", None, missing=True),
-            "Missing required field: item_price",
-        ),
-        (_payload_with("category", ["bad"]), "Field 'category' must be a string"),
+        (_payload_with(field, value), message)
+        for field, value, message in _FIELD_VALIDATION_CASES
+    ]
+    + [
+        (_payload_with(field, None, missing=True), message)
+        for field, message in _MISSING_FIELD_VALIDATION_CASES
     ],
 )
 def test_add_invoice_field_validation_matrix_returns_400(
@@ -587,74 +585,12 @@ def test_import_future_dated_entry_reported_and_not_persisted(
 @pytest.mark.parametrize(
     ("payload", "expected_field", "expected_message"),
     [
-        (_payload_with("date", ""), "date", "Field 'date' cannot be empty"),
-        (_payload_with("date", "   "), "date", "Field 'date' cannot be empty"),
-        (_payload_with("date", None), "date", "Field 'date' must be a string"),
-        (
-            _payload_with("date", None, missing=True),
-            "date",
-            "Missing required field: date",
-        ),
-        (_payload_with("store", ""), "store", "Field 'store' cannot be empty"),
-        (
-            _payload_with("store", "   "),
-            "store",
-            "Field 'store' cannot be empty",
-        ),
-        (_payload_with("store", None), "store", "Field 'store' must be a string"),
-        (
-            _payload_with("store", None, missing=True),
-            "store",
-            "Missing required field: store",
-        ),
-        (_payload_with("total", "abc"), "total", "Field 'total' must be a number"),
-        (_payload_with("total", None), "total", "Field 'total' must be a number"),
-        (
-            _payload_with("total", None, missing=True),
-            "total",
-            "Missing required field: total",
-        ),
-        (_payload_with("items", "bad"), "items", "Field 'items' must be a list"),
-        (
-            _payload_with("item_name", ""),
-            "item_name",
-            "Field 'item_name' cannot be empty",
-        ),
-        (
-            _payload_with("item_name", "   "),
-            "item_name",
-            "Field 'item_name' cannot be empty",
-        ),
-        (
-            _payload_with("item_name", None),
-            "item_name",
-            "Field 'item_name' must be a string",
-        ),
-        (
-            _payload_with("item_name", None, missing=True),
-            "item_name",
-            "Missing required field: item_name",
-        ),
-        (
-            _payload_with("item_price", "abc"),
-            "item_price",
-            "Field 'item_price' must be a number",
-        ),
-        (
-            _payload_with("item_price", None),
-            "item_price",
-            "Field 'item_price' must be a number",
-        ),
-        (
-            _payload_with("item_price", None, missing=True),
-            "item_price",
-            "Missing required field: item_price",
-        ),
-        (
-            _payload_with("category", ["bad"]),
-            "category",
-            "Field 'category' must be a string",
-        ),
+        (_payload_with(field, value), field, message)
+        for field, value, message in _FIELD_VALIDATION_CASES
+    ]
+    + [
+        (_payload_with(field, None, missing=True), field, message)
+        for field, message in _MISSING_FIELD_VALIDATION_CASES
     ],
 )
 def test_import_field_validation_matrix_reports_indexed_errors(
@@ -736,21 +672,12 @@ def test_update_invoice_missing_field_returns_400(
 @pytest.mark.parametrize(
     ("payload", "expected_error"),
     [
-        (_payload_with("date", ""), "Field 'date' cannot be empty"),
-        (_payload_with("date", "   "), "Field 'date' cannot be empty"),
-        (_payload_with("date", None), "Field 'date' must be a string"),
-        (_payload_with("store", ""), "Field 'store' cannot be empty"),
-        (_payload_with("store", "   "), "Field 'store' cannot be empty"),
-        (_payload_with("store", None), "Field 'store' must be a string"),
-        (_payload_with("total", "abc"), "Field 'total' must be a number"),
-        (_payload_with("items", "bad"), "Field 'items' must be a list"),
-        (_payload_with("item_name", ""), "Field 'item_name' cannot be empty"),
-        (_payload_with("item_name", None), "Field 'item_name' must be a string"),
-        (
-            _payload_with("item_price", "abc"),
-            "Field 'item_price' must be a number",
-        ),
-        (_payload_with("category", ["bad"]), "Field 'category' must be a string"),
+        (_payload_with(field, value), message)
+        for field, value, message in _FIELD_VALIDATION_CASES
+    ]
+    + [
+        (_payload_with(field, None, missing=True), message)
+        for field, message in _MISSING_FIELD_VALIDATION_CASES
     ],
 )
 def test_update_invoice_field_validation_matrix_returns_400(
