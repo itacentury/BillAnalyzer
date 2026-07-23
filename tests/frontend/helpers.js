@@ -50,7 +50,7 @@ export function mountListFixture() {
 }
 
 /**
- * Yields to the next microtask so DOM updates from event handlers can settle.
+ * Yields to the next macrotask so DOM updates from event handlers can settle.
  */
 export function flushUi() {
   return new Promise((resolve) => setTimeout(resolve, 0));
