@@ -95,6 +95,25 @@ def init_db() -> None:
     """
     )
 
+    # Per-invoice cache of AI category suggestions. Keyed by invoice_id (one
+    # suggestion per invoice); the fingerprint captures the invoice content the
+    # model saw, so an edit invalidates the entry, and the model is stored so a
+    # model switch re-checks. category may be NULL (the model returned none) and
+    # is cached as such to avoid re-asking. Rows are pruned via ON DELETE CASCADE
+    # on hard delete; soft-deleted invoices are excluded by the read filter.
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS invoice_category_suggestions (
+            invoice_id INTEGER PRIMARY KEY,
+            category TEXT,
+            model TEXT NOT NULL,
+            fingerprint TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (invoice_id) REFERENCES invoices (id) ON DELETE CASCADE
+        )
+    """
+    )
+
     # Migration: Add deleted_at column if it doesn't exist (for existing databases)
     cursor.execute("PRAGMA table_info(invoices)")
     columns: list[str] = [column[1] for column in cursor.fetchall()]

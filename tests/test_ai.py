@@ -247,3 +247,37 @@ def test_max_tokens_scales_with_batch_and_is_capped() -> None:
     assert small < large
     assert large == ai._TOKEN_BUDGET_BASE + 100 * ai._TOKENS_PER_INVOICE
     assert ai._max_tokens_for(100_000) == ai._TOKEN_BUDGET_CAP
+
+
+def test_fingerprint_is_stable_and_item_order_independent() -> None:
+    """Same content yields the same fingerprint regardless of item order."""
+    base: dict[str, Any] = {
+        "id": 1,
+        "store": "Bakery",
+        "total": 14.5,
+        "items": [
+            {"item_name": "Bread", "item_price": 3.9},
+            {"item_name": "Milk", "item_price": 1.2},
+        ],
+    }
+    reordered: dict[str, Any] = {**base, "items": list(reversed(base["items"]))}
+    assert ai.invoice_fingerprint(base) == ai.invoice_fingerprint(reordered)
+
+
+def test_fingerprint_changes_when_content_changes() -> None:
+    """Editing store, total or an item changes the fingerprint."""
+    base: dict[str, Any] = {"id": 1, "store": "Bakery", "total": 14.5, "items": []}
+    assert ai.invoice_fingerprint(base) != ai.invoice_fingerprint(
+        {**base, "total": 15.0}
+    )
+    assert ai.invoice_fingerprint(base) != ai.invoice_fingerprint(
+        {**base, "store": "Shop"}
+    )
+
+
+def test_is_category_new_is_case_insensitive() -> None:
+    """A category is new only if absent from the existing set, ignoring casing."""
+    existing: set[str] = {"groceries"}
+    assert ai.is_category_new("Travel", existing) is True
+    assert ai.is_category_new("Groceries", existing) is False
+    assert ai.is_category_new(None, existing) is False

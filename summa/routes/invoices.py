@@ -9,7 +9,10 @@ from flask import Blueprint, Response, jsonify, request
 
 from summa.ai import (
     AiCategorizationError,
+    CategorySuggestion,
     api_key_configured,
+    invoice_fingerprint,
+    is_category_new,
     resolve_model,
     suggest_categories,
 )
@@ -239,6 +242,45 @@ def get_categories() -> Response:
     return jsonify(categories)
 
 
+def _cache_suggestions(
+    results: list[CategorySuggestion],
+    model: str,
+    fingerprint_by_id: dict[int, str],
+    resolved_category: dict[int, str | None],
+) -> None:
+    """Persist fresh model answers and merge them into ``resolved_category``.
+
+    Best-effort: a cache write failure is logged, not raised — the suggestions
+    are still valid and will simply be recomputed next time. Results for ids that
+    were not sent (no known fingerprint) are skipped defensively.
+
+    :param fingerprint_by_id: fingerprint per sent invoice id.
+    :param resolved_category: mutated in place with each result's category.
+    """
+    upserts: list[tuple[int, str | None, str, str]] = []
+    for result in results:
+        fingerprint: str | None = fingerprint_by_id.get(result.invoice_id)
+        if fingerprint is None:
+            continue
+        resolved_category[result.invoice_id] = result.category
+        upserts.append((result.invoice_id, result.category, model, fingerprint))
+
+    if not upserts:
+        return
+    try:
+        with db_cursor() as cursor:
+            cursor.executemany(
+                "INSERT INTO invoice_category_suggestions "
+                "(invoice_id, category, model, fingerprint) VALUES (?, ?, ?, ?) "
+                "ON CONFLICT(invoice_id) DO UPDATE SET "
+                "category = excluded.category, model = excluded.model, "
+                "fingerprint = excluded.fingerprint, created_at = CURRENT_TIMESTAMP",
+                upserts,
+            )
+    except sqlite3.Error as error:
+        logger.warning("Failed to cache category suggestions: %s", error)
+
+
 @invoices_bp.route("/api/invoices/categorize-suggest", methods=["POST"])
 def categorize_suggest() -> ApiResponse:
     """Suggest categories for the uncategorized invoices in the current filter.
@@ -304,6 +346,18 @@ def categorize_suggest() -> ApiResponse:
             existing_categories: list[str] = [
                 row["category"] for row in cursor.fetchall()
             ]
+
+            # Previously cached suggestions for exactly these invoices, so only
+            # new/edited ones (or a model change) need a fresh Claude call below.
+            cached_rows: list[sqlite3.Row] = []
+            if rows:
+                cursor.execute(
+                    f"SELECT invoice_id, category, model, fingerprint "
+                    f"FROM invoice_category_suggestions "
+                    f"WHERE invoice_id IN ({placeholders_for(len(ids))})",
+                    ids,
+                )
+                cached_rows = cursor.fetchall()
     except sqlite3.Error as e:
         logger.error("Failed to load invoices for categorization: %s", e)
         return error_response(str(e), 500)
@@ -312,37 +366,63 @@ def categorize_suggest() -> ApiResponse:
         return jsonify({"suggestions": [], "count": 0, "total": 0})
 
     model: str = resolve_model(request.args.get("model"))
-    try:
-        results = suggest_categories(invoices, existing_categories, model=model)
-    except AiCategorizationError as error:
-        logger.error("AI categorization failed: %s", error)
-        return error_response(str(error), 502)
-
-    # Merge each suggestion with the invoice's display info (store, amount, items).
-    invoice_by_id: dict[int, dict[str, Any]] = {
-        invoice["id"]: invoice for invoice in invoices
+    cache_by_id: dict[int, sqlite3.Row] = {
+        row["invoice_id"]: row for row in cached_rows
     }
+    fingerprint_by_id: dict[int, str] = {
+        invoice["id"]: invoice_fingerprint(invoice) for invoice in invoices
+    }
+
+    # Reuse a cached suggestion when the invoice content and model both match;
+    # everything else (new, edited, or a model switch) goes to Claude.
+    resolved_category: dict[int, str | None] = {}
+    misses: list[dict[str, Any]] = []
+    for invoice in invoices:
+        cached: sqlite3.Row | None = cache_by_id.get(invoice["id"])
+        matches: bool = (
+            cached is not None
+            and cached["fingerprint"] == fingerprint_by_id[invoice["id"]]
+            and cached["model"] == model
+        )
+        if matches and cached is not None:
+            resolved_category[invoice["id"]] = cached["category"]
+        else:
+            misses.append(invoice)
+
+    if misses:
+        try:
+            results = suggest_categories(misses, existing_categories, model=model)
+        except AiCategorizationError as error:
+            logger.error("AI categorization failed: %s", error)
+            return error_response(str(error), 502)
+        _cache_suggestions(results, model, fingerprint_by_id, resolved_category)
+
+    # Merge each suggestion with the invoice's display info (store, amount, items),
+    # in the stable id order the invoices were loaded. is_new is recomputed live
+    # (not cached) because it depends on the current category set, not the invoice.
+    existing_lower: set[str] = {category.lower() for category in existing_categories}
     suggestions: list[dict[str, Any]] = []
-    for result in results:
-        invoice = invoice_by_id.get(result.invoice_id)
-        if invoice is None:
-            # The model returned an id we did not send — skip it defensively.
+    for invoice in invoices:
+        if invoice["id"] not in resolved_category:
+            # The model returned no entry for this invoice — omit it, as before.
             continue
+        category: str | None = resolved_category[invoice["id"]]
         suggestions.append(
             {
-                "invoice_id": result.invoice_id,
+                "invoice_id": invoice["id"],
                 "store": invoice["store"],
                 "total": invoice["total"],
                 "items": invoice["items"],
-                "category": result.category,
-                "is_new": result.is_new,
+                "category": category,
+                "is_new": is_category_new(category, existing_lower),
             }
         )
 
     logger.info(
-        "Categorization suggested: %d of %d uncategorized invoices",
+        "Categorization suggested: %d of %d uncategorized invoices (%d reused)",
         len(suggestions),
         total,
+        len(invoices) - len(misses),
     )
     return jsonify(
         {"suggestions": suggestions, "count": len(suggestions), "total": total}

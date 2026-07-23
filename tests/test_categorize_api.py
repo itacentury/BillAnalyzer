@@ -5,7 +5,7 @@ from typing import Any
 import pytest
 from flask.testing import FlaskClient
 
-from summa import ai
+from summa import ai, db
 from summa.routes import invoices as invoices_route
 from tests.conftest import SeedInvoice
 
@@ -137,6 +137,102 @@ def test_no_uncategorized_returns_empty(
 
     assert response.get_json() == {"suggestions": [], "count": 0, "total": 0}
     assert captured == []  # suggest_categories was never called
+
+
+def test_second_call_reuses_cache(
+    client: FlaskClient,
+    seed_invoice: SeedInvoice,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Unchanged invoices are served from cache: the model is called only once."""
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+    captured = _stub_suggestions(monkeypatch)
+    seed_invoice(store="Bakery", category=None)
+
+    first = client.post("/api/invoices/categorize-suggest").get_json()
+    second = client.post("/api/invoices/categorize-suggest").get_json()
+
+    assert first == second
+    assert len(captured) == 1  # the second call hit the cache, no model call
+
+
+def test_edited_invoice_is_rechecked(
+    client: FlaskClient,
+    seed_invoice: SeedInvoice,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Changing an invoice's content invalidates its cache entry; only it is re-sent."""
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+    captured = _stub_suggestions(monkeypatch)
+    stable_id = seed_invoice(store="Bakery", category=None)
+    edited_id = seed_invoice(store="Shop", category=None, total=5.0)
+
+    client.post("/api/invoices/categorize-suggest")
+
+    conn = db.get_db()
+    conn.execute("UPDATE invoices SET total = 99.0 WHERE id = ?", (edited_id,))
+    conn.commit()
+    conn.close()
+
+    client.post("/api/invoices/categorize-suggest")
+
+    # First call sent both; second sent only the edited invoice (stable one reused).
+    assert [invoice["id"] for invoice in captured[0]] == [stable_id, edited_id]
+    assert [invoice["id"] for invoice in captured[1]] == [edited_id]
+
+
+def test_new_invoice_is_rechecked(
+    client: FlaskClient,
+    seed_invoice: SeedInvoice,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A newly added uncategorized invoice is the only one sent on the next call."""
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+    captured = _stub_suggestions(monkeypatch)
+    seed_invoice(store="Bakery", category=None)
+
+    client.post("/api/invoices/categorize-suggest")
+    new_id = seed_invoice(store="Butcher", category=None)
+    client.post("/api/invoices/categorize-suggest")
+
+    assert [invoice["id"] for invoice in captured[1]] == [new_id]
+
+
+def test_model_switch_rechecks(
+    client: FlaskClient,
+    seed_invoice: SeedInvoice,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Switching the model invalidates the cache: the invoice is analyzed again."""
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+    captured = _stub_suggestions(monkeypatch)
+    invoice_id = seed_invoice(store="Bakery", category=None)
+
+    client.post("/api/invoices/categorize-suggest?model=haiku")
+    client.post("/api/invoices/categorize-suggest?model=opus")
+
+    assert len(captured) == 2
+    assert [invoice["id"] for invoice in captured[1]] == [invoice_id]
+
+
+def test_is_new_recomputed_for_cached_suggestion(
+    client: FlaskClient,
+    seed_invoice: SeedInvoice,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """is_new reflects the current category set even when the suggestion is cached."""
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+    _stub_suggestions(monkeypatch)  # every suggestion is the category "Guessed"
+    seed_invoice(store="Bakery", category=None)
+
+    first = client.post("/api/invoices/categorize-suggest").get_json()
+    assert first["suggestions"][0]["is_new"] is True
+
+    # "Guessed" now exists as a real category, so the cached suggestion is no longer new.
+    seed_invoice(store="Deli", category="Guessed")
+    second = client.post("/api/invoices/categorize-suggest").get_json()
+
+    assert second["suggestions"][0]["is_new"] is False
 
 
 def test_list_endpoint_reports_uncategorized_count(

@@ -11,6 +11,7 @@ and each returned category is length-capped and whitespace-normalized via
 :func:`summa.helpers.clean_category` before it can be surfaced or persisted.
 """
 
+import hashlib
 import json
 import logging
 import os
@@ -117,6 +118,34 @@ def resolve_model(key: str | None) -> str:
     return MODELS.get(key or DEFAULT_MODEL_KEY, MODELS[DEFAULT_MODEL_KEY])
 
 
+def is_category_new(category: str | None, existing_lower: set[str]) -> bool:
+    """Return whether ``category`` is absent from the existing categories.
+
+    :param existing_lower: existing categories, already lower-cased. The check is
+        case-insensitive so a suggestion differing only in casing is not flagged.
+    """
+    return category is not None and category.lower() not in existing_lower
+
+
+def invoice_fingerprint(invoice: dict[str, Any]) -> str:
+    """Return a stable hash over the invoice fields the model sees.
+
+    Captures store, total and the (order-independent) line items, so any edit to
+    them changes the fingerprint and invalidates a cached suggestion. Items are
+    sorted first so a reordering alone does not count as a change.
+
+    :param invoice: a dict with ``store``, ``total`` and an ``items`` list
+        (``item_name`` / ``item_price``), as assembled by the route.
+    """
+    items: list[list[Any]] = sorted(
+        [item["item_name"], item["item_price"]] for item in invoice["items"]
+    )
+    canonical: str = json.dumps(
+        [invoice["store"], invoice["total"], items], sort_keys=True
+    )
+    return hashlib.sha256(canonical.encode()).hexdigest()
+
+
 def _max_tokens_for(invoice_count: int) -> int:
     """Size the output budget to the batch so thinking + JSON don't truncate."""
     budget: int = _TOKEN_BUDGET_BASE + invoice_count * _TOKENS_PER_INVOICE
@@ -202,8 +231,6 @@ def suggest_categories(
     except json.JSONDecodeError as error:
         raise AiCategorizationError("Claude response was not valid JSON") from error
 
-    # Case-insensitive lookup so a suggestion that only differs in casing from an
-    # existing category is not falsely flagged as new.
     existing_lower: set[str] = {category.lower() for category in existing_categories}
 
     suggestions: list[CategorySuggestion] = []
@@ -212,12 +239,11 @@ def suggest_categories(
         if invoice_id is None:
             continue
         category: str | None = clean_category(entry.get("category"))
-        is_new: bool = category is not None and category.lower() not in existing_lower
         suggestions.append(
             CategorySuggestion(
                 invoice_id=invoice_id,
                 category=category,
-                is_new=is_new,
+                is_new=is_category_new(category, existing_lower),
             )
         )
     return suggestions
