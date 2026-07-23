@@ -8,30 +8,11 @@ vi.mock("../../static/js/api.js", () => ({ refreshAllData: vi.fn() }));
 vi.mock("../../static/js/modals.js", () => ({ closeImportModal: vi.fn() }));
 
 import { importJson, setupImportListeners } from "../../static/js/import.js";
+import { flushUi, jsonResponse, mountImportFixture } from "./helpers.js";
 import { state } from "../../static/js/state.js";
 import { refreshAllData } from "../../static/js/api.js";
 import { closeImportModal } from "../../static/js/modals.js";
 import { showErrorToast } from "../../static/js/toast.js";
-
-function mountImportFixture() {
-  document.body.innerHTML = `
-    <div data-el="import-modal">
-      <div class="modal-footer">
-        <button type="button" class="btn btn-primary" data-action="import">Import</button>
-      </div>
-    </div>
-    <div data-el="import-input"></div>
-    <textarea data-el="json-input"></textarea>
-    <div data-el="import-errors" class="is-hidden"></div>
-    <div data-el="selected-files"></div>
-    <div data-el="dropzone"></div>
-    <input data-el="file-input" type="file" />
-  `;
-}
-
-function flushUi() {
-  return new Promise((resolve) => setTimeout(resolve, 0));
-}
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -56,9 +37,8 @@ describe("importJson", () => {
     document.querySelector('[data-el="json-input"]').value =
       JSON.stringify(payload);
 
-    global.fetch = vi.fn(async () => ({
-      ok: true,
-      json: async () => ({
+    global.fetch = vi.fn(async () =>
+      jsonResponse({
         success: true,
         imported: 0,
         skipped: 0,
@@ -90,7 +70,7 @@ describe("importJson", () => {
           },
         ],
       }),
-    }));
+    );
 
     await importJson();
 
@@ -139,9 +119,8 @@ describe("importJson", () => {
 
     global.fetch = vi
       .fn()
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
+      .mockResolvedValueOnce(
+        jsonResponse({
           success: true,
           imported: 0,
           skipped: 0,
@@ -155,17 +134,16 @@ describe("importJson", () => {
             },
           ],
         }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
           success: true,
           imported: 1,
           skipped: 0,
           failed: 0,
           errors: [],
         }),
-      });
+      );
 
     await importJson();
 
