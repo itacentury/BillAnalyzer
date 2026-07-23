@@ -19,11 +19,9 @@ import { getAiModel, setupModelPicker } from "./ai-model.js";
 
 // Per-open review state, reset every time the modal opens.
 let controller = null; // aborts the in-flight suggest request on cancel
-let rows = []; // suggestion rows from the server
-let selected = []; // parallel: whether each row is included
-let expanded = []; // parallel: whether each row shows the inline item list
-let rowCategory = []; // parallel: the (possibly edited) category per row
-let rowIsNew = []; // parallel: whether that category is new
+// One object per suggestion row, index-aligned to the rendered rows:
+// { suggestion, selected, expanded, category, isNew }.
+let reviewRows = [];
 let existingLower = new Set(); // lowercased existing categories, for is-new recompute
 
 /**
@@ -139,7 +137,7 @@ function rowHtml(row, index) {
   const groups = aggregateItems(row.items);
   const itemCount = groups.length;
   const hasExpandableItems = itemCount > 1;
-  const isExpanded = expanded[index];
+  const isExpanded = reviewRows[index].expanded;
   const total = `€${formatCurrency(row.total)}`;
   const metaLead =
     itemCount === 1
@@ -185,14 +183,16 @@ function rowHtml(row, index) {
 }
 
 function renderReview(data, categories) {
-  rows = data.suggestions;
-  selected = rows.map(() => true);
-  expanded = rows.map(() => false);
-  rowCategory = rows.map((row) => row.category || "");
-  rowIsNew = rows.map((row) => Boolean(row.is_new));
+  reviewRows = data.suggestions.map((suggestion) => ({
+    suggestion,
+    selected: true,
+    expanded: false,
+    category: suggestion.category || "",
+    isNew: Boolean(suggestion.is_new),
+  }));
   existingLower = new Set(categories.map((category) => category.toLowerCase()));
 
-  if (rows.length === 0) {
+  if (reviewRows.length === 0) {
     setFooterVisible(false);
     contentEl().innerHTML = `
       <div class="categorize-banner">Nothing to categorize in this period.</div>`;
@@ -214,7 +214,7 @@ function renderReview(data, categories) {
       <span class="categorize-selectall-label">Select all</span>
     </div>
     <div class="categorize-rows">
-      ${rows.map((row, index) => rowHtml(row, index)).join("")}
+      ${reviewRows.map((entry, index) => rowHtml(entry.suggestion, index)).join("")}
     </div>
   `;
 
@@ -225,15 +225,15 @@ function renderReview(data, categories) {
       const root = wrap.querySelector(".combobox");
       const combobox = createCombobox(root, {
         onChange: (value) => {
-          rowCategory[index] = value;
-          rowIsNew[index] =
+          reviewRows[index].category = value;
+          reviewRows[index].isNew =
             value !== "" && !existingLower.has(value.toLowerCase());
           updateRowNewBadge(index);
           refreshFooter();
         },
       });
       combobox.setOptions(categories);
-      combobox.setValue(rowCategory[index]);
+      combobox.setValue(reviewRows[index].category);
       updateRowNewBadge(index);
     });
 
@@ -243,13 +243,13 @@ function renderReview(data, categories) {
 
 function updateRowNewBadge(index) {
   const wrap = contentEl().querySelectorAll(".categorize-combobox")[index];
-  if (wrap) wrap.classList.toggle("is-new", rowIsNew[index]);
+  if (wrap) wrap.classList.toggle("is-new", reviewRows[index].isNew);
 }
 
 // --- Selection, accordion, footer -------------------------------------------
 
 function setRowSelected(index, value) {
-  selected[index] = value;
+  reviewRows[index].selected = value;
   const row = contentEl().querySelector(
     `.categorize-row[data-index="${index}"]`,
   );
@@ -262,42 +262,40 @@ function setRowSelected(index, value) {
 }
 
 function toggleAll(value) {
-  rows.forEach((_, index) => setRowSelected(index, value));
+  reviewRows.forEach((_, index) => setRowSelected(index, value));
 }
 
 function toggleItems(index) {
-  if (index < 0 || index >= expanded.length) return;
-  expanded[index] = !expanded[index];
+  if (index < 0 || index >= reviewRows.length) return;
+  const isExpanded = !reviewRows[index].expanded;
+  reviewRows[index].expanded = isExpanded;
 
   const row = contentEl().querySelector(
     `.categorize-row[data-index="${index}"]`,
   );
   if (!row) return;
 
-  row.classList.toggle("expanded", expanded[index]);
+  row.classList.toggle("expanded", isExpanded);
 
   const toggleButton = row.querySelector('[data-el="categorize-meta-toggle"]');
   if (toggleButton) {
-    toggleButton.setAttribute(
-      "aria-expanded",
-      expanded[index] ? "true" : "false",
-    );
+    toggleButton.setAttribute("aria-expanded", isExpanded ? "true" : "false");
   }
 
   const toggleLabel = row.querySelector('[data-el="categorize-toggle-label"]');
   if (toggleLabel) {
-    toggleLabel.textContent = expanded[index] ? "Show less" : "Show items";
+    toggleLabel.textContent = isExpanded ? "Show less" : "Show items";
   }
 }
 
 function refreshFooter() {
-  const total = rows.length;
-  const selectedCount = selected.filter(Boolean).length;
+  const total = reviewRows.length;
+  const selectedCount = reviewRows.filter((entry) => entry.selected).length;
 
   const newCategories = new Set();
-  selected.forEach((isSelected, index) => {
-    if (isSelected && rowCategory[index] && rowIsNew[index]) {
-      newCategories.add(rowCategory[index].toLowerCase());
+  reviewRows.forEach((entry) => {
+    if (entry.selected && entry.category && entry.isNew) {
+      newCategories.add(entry.category.toLowerCase());
     }
   });
   const newCount = newCategories.size;
@@ -343,11 +341,7 @@ export function closeCategorizeModal() {
   unlockScroll();
   contentEl().innerHTML = "";
   setFooterVisible(false);
-  rows = [];
-  selected = [];
-  expanded = [];
-  rowCategory = [];
-  rowIsNew = [];
+  reviewRows = [];
 }
 
 async function openCategorize() {
@@ -427,11 +421,11 @@ async function runAnalysis() {
 function applyCategories() {
   // Accepted = selected rows that carry a non-empty category.
   const accepted = [];
-  selected.forEach((isSelected, index) => {
-    if (isSelected && rowCategory[index]) {
+  reviewRows.forEach((entry) => {
+    if (entry.selected && entry.category) {
       accepted.push({
-        id: rows[index].invoice_id,
-        category: rowCategory[index],
+        id: entry.suggestion.invoice_id,
+        category: entry.category,
       });
     }
   });
