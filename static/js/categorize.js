@@ -21,6 +21,7 @@ import { getAiModel, setupModelPicker } from "./ai-model.js";
 let controller = null; // aborts the in-flight suggest request on cancel
 let rows = []; // suggestion rows from the server
 let selected = []; // parallel: whether each row is included
+let expanded = []; // parallel: whether each row shows the inline item list
 let rowCategory = []; // parallel: the (possibly edited) category per row
 let rowIsNew = []; // parallel: whether that category is new
 let existingLower = new Set(); // lowercased existing categories, for is-new recompute
@@ -57,31 +58,13 @@ function aggregateItems(items) {
   return [...groups.values()];
 }
 
-function groupLabel(group) {
-  return group.qty > 1
-    ? `${escapeHtml(group.name)} ×${group.qty}`
-    : escapeHtml(group.name);
-}
-
-/** The item part of the one-line summary (without the trailing amount). */
-function summaryItems(groups) {
-  if (groups.length === 0) return "No items";
-  if (groups.length === 1) return `${escapeHtml(groups[0].name)} · 1 item`;
-  const shown = groups.slice(0, 2).map(groupLabel).join(", ");
-  const more = groups.length - 2;
-  return more > 0
-    ? `${shown} <b class="categorize-more">+${more} more</b>`
-    : shown;
-}
-
-function itemsCardHtml(groups) {
+function itemsLineHtml(groups) {
   return groups
     .map(
       (group) => `
-        <div class="categorize-item">
-          <span class="categorize-item-name">${escapeHtml(group.name)}</span>
-          <span class="categorize-item-qty">${group.qty > 1 ? `×${group.qty}` : ""}</span>
-          <span class="categorize-item-price">€${formatCurrency(group.price)}</span>
+        <div class="categorize-item-line">
+          <span class="categorize-item-line-name">${group.qty > 1 ? `${group.qty}× ` : ""}${escapeHtml(group.name)}</span>
+          <span class="categorize-item-line-price">€${formatCurrency(group.price)}</span>
         </div>`,
     )
     .join("");
@@ -153,31 +136,47 @@ function renderError(message) {
 
 function rowHtml(row, index) {
   const groups = aggregateItems(row.items);
-  const itemsLabel = `${groups.length} item${groups.length !== 1 ? "s" : ""}`;
+  const itemCount = groups.length;
+  const hasExpandableItems = itemCount > 1;
+  const isExpanded = expanded[index];
+  const total = `€${formatCurrency(row.total)}`;
+  const metaLead =
+    itemCount === 1
+      ? `${escapeHtml(groups[0]?.name || "No items")} · 1 item · ${total}`
+      : `${itemCount} items · ${total}`;
+  const toggleLabel = isExpanded ? "Show less" : "Show items";
+
   return `
-    <div class="categorize-row" data-index="${index}">
+    <div class="categorize-row${isExpanded ? " expanded" : ""}" data-index="${index}">
       <label class="categorize-check">
         <input type="checkbox" data-el="categorize-row-check" checked aria-label="Include ${escapeHtml(row.store)}" />
         <span class="categorize-check-mark"></span>
       </label>
       <div class="categorize-info">
-        <button type="button" class="categorize-rowhead" data-action="toggle-items">
-          <span class="categorize-topline">
-            <span class="categorize-store">${escapeHtml(row.store)}</span>
-            <span class="categorize-amount">€${formatCurrency(row.total)}</span>
-          </span>
-          <span class="categorize-summary">
-            <span class="categorize-summary-items">${summaryItems(groups)}</span>
-            <span class="categorize-summary-amount"> · €${formatCurrency(row.total)}</span>
-          </span>
-        </button>
-        <div class="categorize-items">
-          <div class="categorize-items-head">
-            <span>${itemsLabel} · €${formatCurrency(row.total)}</span>
-            <button type="button" class="categorize-showless" data-action="toggle-items">Show less</button>
-          </div>
-          <div class="categorize-items-card">${itemsCardHtml(groups)}</div>
-        </div>
+        <span class="categorize-topline">
+          <span class="categorize-store">${escapeHtml(row.store)}</span>
+          <span class="categorize-amount">${total}</span>
+        </span>
+        ${
+          hasExpandableItems
+            ? `<button
+                 type="button"
+                 class="categorize-meta-button"
+                 data-action="toggle-items"
+                 data-el="categorize-meta-toggle"
+                 aria-expanded="${isExpanded ? "true" : "false"}"
+               >
+                 <span class="categorize-meta-text">${metaLead}</span>
+                 <span class="categorize-meta-sep" aria-hidden="true">·</span>
+                 <span class="categorize-meta-toggle" data-el="categorize-toggle-label">${toggleLabel}</span>
+               </button>`
+            : `<span class="categorize-meta-text">${metaLead}</span>`
+        }
+        ${
+          hasExpandableItems
+            ? `<div class="categorize-items">${itemsLineHtml(groups)}</div>`
+            : ""
+        }
       </div>
       <div class="categorize-combobox">${comboboxMarkup(index)}</div>
     </div>
@@ -187,6 +186,7 @@ function rowHtml(row, index) {
 function renderReview(data, categories) {
   rows = data.suggestions;
   selected = rows.map(() => true);
+  expanded = rows.map(() => false);
   rowCategory = rows.map((row) => row.category || "");
   rowIsNew = rows.map((row) => Boolean(row.is_new));
   existingLower = new Set(categories.map((category) => category.toLowerCase()));
@@ -265,16 +265,29 @@ function toggleAll(value) {
   rows.forEach((_, index) => setRowSelected(index, value));
 }
 
-/** Accordion: expand one row's item list, collapsing any other open row. */
 function toggleItems(index) {
-  const rowsEls = contentEl().querySelectorAll(".categorize-row");
-  rowsEls.forEach((row) => {
-    const isTarget = Number(row.dataset.index) === index;
-    row.classList.toggle(
-      "expanded",
-      isTarget && !row.classList.contains("expanded"),
+  if (index < 0 || index >= expanded.length) return;
+  expanded[index] = !expanded[index];
+
+  const row = contentEl().querySelector(
+    `.categorize-row[data-index="${index}"]`,
+  );
+  if (!row) return;
+
+  row.classList.toggle("expanded", expanded[index]);
+
+  const toggleButton = row.querySelector('[data-el="categorize-meta-toggle"]');
+  if (toggleButton) {
+    toggleButton.setAttribute(
+      "aria-expanded",
+      expanded[index] ? "true" : "false",
     );
-  });
+  }
+
+  const toggleLabel = row.querySelector('[data-el="categorize-toggle-label"]');
+  if (toggleLabel) {
+    toggleLabel.textContent = expanded[index] ? "Show less" : "Show items";
+  }
 }
 
 function refreshFooter() {
@@ -332,6 +345,7 @@ export function closeCategorizeModal() {
   setFooterVisible(false);
   rows = [];
   selected = [];
+  expanded = [];
   rowCategory = [];
   rowIsNew = [];
 }
