@@ -150,12 +150,10 @@ def parse_invoice(data: Any) -> Invoice:
     if not isinstance(data, dict):
         raise ValidationError("Invoice must be a JSON object")
 
-    invoice_date: str | None = strip_text(_require(data, "date"))
+    invoice_date: str = require_non_empty_str(_require(data, "date"), "date")
     _reject_future_date(invoice_date)
 
-    store: str | None = strip_text(
-        require_optional_str(_require(data, "store"), "store")
-    )
+    store: str = require_non_empty_str(_require(data, "store"), "store")
     category: str | None = strip_text(
         require_optional_str(data.get("category"), "category")
     )
@@ -172,14 +170,14 @@ def parse_invoice(data: Any) -> Invoice:
         price: float = _parse_float(_require(raw_item, "item_price"), "item_price")
         items.append(InvoiceItem(item_name=name, item_price=price))
 
-    invoice_date: str = require_non_empty_str(_require(data, "date"), "date")
-    _reject_future_date(invoice_date)
+    if not items:
+        raise ValidationError("Invoice must contain at least one item", field="items")
 
     return Invoice(
         date=invoice_date,
-        store=require_non_empty_str(_require(data, "store"), "store"),
-        category=strip_text(require_optional_str(data.get("category"), "category")),
-        total=_parse_float(_require(data, "total"), "total"),
+        store=store,
+        category=category,
+        total=total,
         items=items,
     )
 
