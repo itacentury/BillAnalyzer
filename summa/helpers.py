@@ -108,10 +108,8 @@ def _parse_float(value: Any, field: str) -> float:
         ) from None
 
 
-def _reject_future_date(date_value: str | None) -> None:
+def _reject_future_date(date_value: str) -> None:
     """Reject invoice dates in the future — the app has no future invoices."""
-    if date_value is None:
-        return
     try:
         parsed: date = date.fromisoformat(date_value[:10])
     except ValueError:
