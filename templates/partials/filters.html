@@ -130,16 +130,17 @@
         </button>
       </div>
 
-      <!-- AI category suggestions trigger; hidden when nothing is uncategorized.
-           aria-label + title carry the name/tooltip when the label is hidden on
-           mobile. -->
+      <!-- AI category suggestions trigger; disabled (greyed out) when nothing is
+           uncategorized. Starts disabled until the first invoice load reports the
+           real count. aria-label + title carry the name/tooltip when the label is
+           hidden on mobile. -->
       <button
         class="ai-trigger"
         data-el="ai-categories-trigger"
         data-action="open-categorize"
         aria-label="AI Categories"
         title="AI Categories"
-        hidden
+        disabled
       >
         <svg
           class="ai-trigger-icon"

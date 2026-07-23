@@ -25,14 +25,16 @@ let reviewRows = [];
 let existingLower = new Set(); // lowercased existing categories, for is-new recompute
 
 /**
- * Show/hide the trigger button and its badge from `state.uncategorizedCount`.
- * Called after every invoice-list load so the badge stays live.
+ * Enable/disable the trigger button and update its badge from
+ * `state.uncategorizedCount`. Called after every invoice-list load so it stays
+ * live. When nothing is uncategorized the button is greyed out (disabled), not
+ * hidden, so it keeps its place in the toolbar.
  */
 export function updateAiTriggerBadge() {
   const button = document.querySelector('[data-el="ai-categories-trigger"]');
   if (!button) return;
   const count = state.uncategorizedCount || 0;
-  button.hidden = count === 0;
+  button.disabled = count === 0;
   const badge = button.querySelector('[data-el="ai-categories-badge"]');
   if (badge) badge.textContent = count;
 }
