@@ -12,6 +12,55 @@ from summa import ai, helpers
 _MODEL: str = ai.MODELS[ai.DEFAULT_MODEL_KEY]
 
 
+def test_suggestions_enabled_defaults_to_false(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An unset master switch keeps AI suggestions disabled."""
+    monkeypatch.delenv(ai.ENABLE_ENV, raising=False)
+
+    assert ai.suggestions_enabled() is False
+
+
+@pytest.mark.parametrize("raw_value", ["", "0", "false", "off", "no"])
+def test_suggestions_enabled_recognizes_explicit_false_values(
+    monkeypatch: pytest.MonkeyPatch, raw_value: str
+) -> None:
+    """Explicit falsy strings disable AI suggestions."""
+    monkeypatch.setenv(ai.ENABLE_ENV, raw_value)
+
+    assert ai.suggestions_enabled() is False
+
+
+def test_suggestions_enabled_accepts_truthy_values(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A truthy switch value keeps AI suggestions enabled."""
+    monkeypatch.setenv(ai.ENABLE_ENV, "1")
+
+    assert ai.suggestions_enabled() is True
+
+
+def test_suggestions_available_requires_switch_and_key(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Availability is true only when the switch is on and a key exists."""
+    monkeypatch.setenv(ai.API_KEY_ENV, "test-key")
+    monkeypatch.delenv(ai.ENABLE_ENV, raising=False)
+
+    assert ai.suggestions_available() is False
+
+    monkeypatch.setenv(ai.ENABLE_ENV, "1")
+
+    assert ai.suggestions_available() is True
+
+    monkeypatch.delenv(ai.API_KEY_ENV, raising=False)
+    assert ai.suggestions_available() is False
+
+    monkeypatch.setenv(ai.API_KEY_ENV, "test-key")
+    monkeypatch.setenv(ai.ENABLE_ENV, "0")
+    assert ai.suggestions_available() is False
+
+
 class _FakeBlock:
     """Minimal stand-in for an Anthropic text content block."""
 

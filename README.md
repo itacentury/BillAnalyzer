@@ -104,8 +104,10 @@ mutates your data.
 the [Anthropic Console](https://console.anthropic.com/)). Locally, copy
 [`.env.example`](.env.example) to `.env` and fill it in; for Docker the
 `env_file` in [`docker-compose.yml`](docker-compose.yml) picks the same `.env` up.
-While the key is unset the categorize triggers stay greyed out and the endpoint
-returns `503`.
+If `ENABLE_AI_SUGGESTIONS` is missing, the feature is disabled by default. Set
+`ENABLE_AI_SUGGESTIONS=1` to enable it; set `0` to hard-disable it and hide the
+trigger entirely. With the master switch enabled but no API key configured, the
+trigger still renders and the endpoint returns `503`.
 
 The model — Claude Haiku, Sonnet, or Opus — is chosen in the UI (default: Haiku)
 and remembered per browser, so it is **not** an environment variable.
@@ -114,12 +116,13 @@ and remembered per browser, so it is **not** an environment variable.
 
 Copy [`.env.example`](.env.example) to `.env` and fill in the values you need.
 
-| Environment Variable   | Default       | Description                                                                                                     |
-| ---------------------- | ------------- | --------------------------------------------------------------------------------------------------------------- |
-| `ANTHROPIC_API_KEY`    | _(unset)_     | Enables [AI category suggestions](#ai-category-suggestions). When unset, the feature is disabled.               |
-| `DATABASE_PATH`        | `invoices.db` | Path to SQLite database                                                                                         |
-| `CORS_ALLOWED_ORIGINS` | _(empty)_     | Cross-origin allowlist — a comma-separated list of origins, or `*` for the wildcard. Empty = same-origin only.  |
-| `FLASK_DEBUG`          | `0` (off)     | Set to `1` to enable the Flask/Werkzeug debugger on the dev server. Never enable in production — it allows RCE. |
+| Environment Variable    | Default       | Description                                                                                                                   |
+| ----------------------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `ANTHROPIC_API_KEY`     | _(unset)_     | Configures [AI category suggestions](#ai-category-suggestions). Required for requests once the master switch is enabled.      |
+| `ENABLE_AI_SUGGESTIONS` | _(unset)_     | Master switch for AI category suggestions. Unset/`0` disables the feature; set to `1` to show the trigger and allow requests. |
+| `DATABASE_PATH`         | `invoices.db` | Path to SQLite database                                                                                                       |
+| `CORS_ALLOWED_ORIGINS`  | _(empty)_     | Cross-origin allowlist — a comma-separated list of origins, or `*` for the wildcard. Empty = same-origin only.                |
+| `FLASK_DEBUG`           | `0` (off)     | Set to `1` to enable the Flask/Werkzeug debugger on the dev server. Never enable in production — it allows RCE.               |
 
 ## API
 

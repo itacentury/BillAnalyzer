@@ -9,8 +9,8 @@ services:
       - 8000:8000/tcp
     volumes:
       - ./data:/data
-    # Optional .env supplies ANTHROPIC_API_KEY (enables AI category suggestions)
-    # and any other overrides. Missing file is fine — copy .env.example to .env.
+    # Optional .env supplies ANTHROPIC_API_KEY, ENABLE_AI_SUGGESTIONS, and any
+    # other overrides. Missing file is fine — copy .env.example to .env.
     env_file:
       - path: .env
         required: false

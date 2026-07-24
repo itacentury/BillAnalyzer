@@ -3,6 +3,7 @@
 import re
 from pathlib import Path
 
+import pytest
 from flask.testing import FlaskClient
 
 from summa.routes.invoices import DEFAULT_PAGE_SIZE
@@ -51,6 +52,45 @@ def test_frontend_default_page_size_matches_backend() -> None:
     assert match is not None, "pageSize default not found in state.js"
     frontend_default: int = int(match.group(1))
     assert frontend_default == DEFAULT_PAGE_SIZE
+
+
+def test_homepage_hides_ai_trigger_by_default(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The AI trigger is omitted when the master switch is unset."""
+    monkeypatch.delenv("ENABLE_AI_SUGGESTIONS", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert 'data-el="ai-categories-trigger"' not in response.get_data(as_text=True)
+
+
+def test_homepage_renders_ai_trigger_when_master_switch_is_enabled(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The AI trigger is rendered when the master switch is explicitly on."""
+    monkeypatch.setenv("ENABLE_AI_SUGGESTIONS", "1")
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert 'data-el="ai-categories-trigger"' in response.get_data(as_text=True)
+
+
+def test_homepage_hides_ai_trigger_when_master_switch_is_disabled(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The AI trigger is omitted from the HTML when the master switch is off."""
+    monkeypatch.setenv("ENABLE_AI_SUGGESTIONS", "0")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert 'data-el="ai-categories-trigger"' not in response.get_data(as_text=True)
 
 
 def test_security_headers_present_on_every_response(client: FlaskClient) -> None:

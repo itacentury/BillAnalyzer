@@ -31,6 +31,7 @@ from summa.helpers import MAX_CATEGORY_LENGTH, clean_category
 logger: logging.Logger = logging.getLogger(__name__)
 
 API_KEY_ENV: Final[str] = "ANTHROPIC_API_KEY"
+ENABLE_ENV: Final[str] = "ENABLE_AI_SUGGESTIONS"
 
 # User-selectable models, keyed by the short identifier the client sends. The
 # resolver below maps a key to its real model id, so an arbitrary client string
@@ -108,6 +109,21 @@ class CategorySuggestion:
 def api_key_configured() -> bool:
     """Return whether an Anthropic API key is present in the environment."""
     return bool(os.environ.get(API_KEY_ENV))
+
+
+def suggestions_enabled() -> bool:
+    """Return whether AI suggestions are enabled via the master switch."""
+    raw_value: str | None = os.environ.get(ENABLE_ENV)
+    if raw_value is None:
+        return False
+    return raw_value.strip().lower() not in {"", "0", "false", "no", "off"}
+
+
+def suggestions_available() -> bool:
+    """Return whether AI suggestions are enabled and configured for use."""
+    if not suggestions_enabled():
+        return False
+    return api_key_configured()
 
 
 def resolve_model(key: str | None) -> str:

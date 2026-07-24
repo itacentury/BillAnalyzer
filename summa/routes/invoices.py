@@ -10,11 +10,11 @@ from flask import Blueprint, Response, jsonify, request
 from summa.ai import (
     AiCategorizationError,
     CategorySuggestion,
-    api_key_configured,
     invoice_fingerprint,
     is_category_new,
     resolve_model,
     suggest_categories,
+    suggestions_available,
 )
 from summa.db import chunked, db_cursor, insert_invoice_items, placeholders_for
 from summa.helpers import (
@@ -290,7 +290,7 @@ def categorize_suggest() -> ApiResponse:
     returns the suggestions for review. The actual write goes through the existing
     ``/api/invoices/bulk-update`` path once the user confirms.
     """
-    if not api_key_configured():
+    if not suggestions_available():
         return error_response("AI categorization not configured", 503)
 
     # Reuse the shared filter, restricted to uncategorized invoices only.

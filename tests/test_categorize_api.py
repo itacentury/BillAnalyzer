@@ -10,6 +10,12 @@ from summa.routes import invoices as invoices_route
 from tests.conftest import SeedInvoice
 
 
+def _enable_ai(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Enable AI suggestions with a test API key for endpoint happy paths."""
+    monkeypatch.setenv("ENABLE_AI_SUGGESTIONS", "1")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+
+
 def _stub_suggestions(
     monkeypatch: pytest.MonkeyPatch,
 ) -> list[list[dict[str, Any]]]:
@@ -39,7 +45,21 @@ def test_returns_503_without_api_key(
     client: FlaskClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """With no ANTHROPIC_API_KEY the endpoint reports it is not configured."""
+    monkeypatch.setenv("ENABLE_AI_SUGGESTIONS", "1")
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+
+    response = client.post("/api/invoices/categorize-suggest")
+
+    assert response.status_code == 503
+    assert response.get_json()["error"] == "AI categorization not configured"
+
+
+def test_returns_503_when_master_switch_is_disabled(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A disabled master switch hard-disables the endpoint even with a key."""
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+    monkeypatch.setenv("ENABLE_AI_SUGGESTIONS", "0")
 
     response = client.post("/api/invoices/categorize-suggest")
 
@@ -53,7 +73,7 @@ def test_only_uncategorized_are_sent(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Only invoices with a NULL category are collected for suggestion."""
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+    _enable_ai(monkeypatch)
     captured = _stub_suggestions(monkeypatch)
 
     uncategorized_id = seed_invoice(
@@ -87,7 +107,7 @@ def test_period_filter_is_applied(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """The shared date filter narrows which uncategorized invoices are collected."""
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+    _enable_ai(monkeypatch)
     _stub_suggestions(monkeypatch)
 
     in_range = seed_invoice(store="InRange", category=None, date="2024-03-10")
@@ -108,7 +128,7 @@ def test_run_is_capped_and_reports_total(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """More than the cap: only the first 100 are sent, `total` reports the full set."""
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+    _enable_ai(monkeypatch)
     monkeypatch.setattr(invoices_route, "CATEGORIZE_SUGGEST_LIMIT", 3)
     captured = _stub_suggestions(monkeypatch)
 
@@ -129,7 +149,7 @@ def test_no_uncategorized_returns_empty(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """With nothing to categorize the endpoint returns an empty result, no API call."""
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+    _enable_ai(monkeypatch)
     captured = _stub_suggestions(monkeypatch)
     seed_invoice(store="Shop", category="Groceries")
 
@@ -145,7 +165,7 @@ def test_second_call_reuses_cache(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Unchanged invoices are served from cache: the model is called only once."""
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+    _enable_ai(monkeypatch)
     captured = _stub_suggestions(monkeypatch)
     seed_invoice(store="Bakery", category=None)
 
@@ -163,7 +183,7 @@ def test_edited_invoice_is_rechecked(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Changing an invoice's content invalidates its cache entry; only it is re-sent."""
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+    _enable_ai(monkeypatch)
     captured = _stub_suggestions(monkeypatch)
     stable_id = seed_invoice(store="Bakery", category=None)
     edited_id = seed_invoice(store="Shop", category=None, total=5.0)
@@ -188,7 +208,7 @@ def test_new_invoice_is_rechecked(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A newly added uncategorized invoice is the only one sent on the next call."""
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+    _enable_ai(monkeypatch)
     captured = _stub_suggestions(monkeypatch)
     seed_invoice(store="Bakery", category=None)
 
@@ -205,7 +225,7 @@ def test_model_switch_rechecks(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Switching the model invalidates the cache: the invoice is analyzed again."""
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+    _enable_ai(monkeypatch)
     captured = _stub_suggestions(monkeypatch)
     invoice_id = seed_invoice(store="Bakery", category=None)
 
@@ -222,7 +242,7 @@ def test_is_new_recomputed_for_cached_suggestion(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """is_new reflects the current category set even when the suggestion is cached."""
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+    _enable_ai(monkeypatch)
     _stub_suggestions(monkeypatch)  # every suggestion is the category "Guessed"
     seed_invoice(store="Bakery", category=None)
 
