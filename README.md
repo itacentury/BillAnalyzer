@@ -16,9 +16,10 @@ Invoice management and expense tracking web application.
 docker compose up -d
 ```
 
-The application runs at `http://localhost:8000`. Data is persisted in a Docker volume.
+The application runs at `http://localhost:8000`. Data is persisted in the
+bind-mounted `./data` directory next to the compose file.
 
-See [`docker-compose.yml`](docker-compose.yml) for the full configuration including health checks and volume setup.
+See [`docker-compose.yml`](docker-compose.yml) for the full configuration.
 
 ### Production Deployment
 
@@ -52,8 +53,7 @@ container's published port to `127.0.0.1:8000:8000` so only the proxy can reach 
 
 Cross-origin browser access is **denied by default** — the PWA is served
 same-origin and needs no CORS. To allow other origins (e.g. a native mobile
-client), set `CORS_ALLOWED_ORIGINS` to a comma-separated allowlist, or to `*` to
-re-enable the wildcard.
+client), set `CORS_ALLOWED_ORIGINS` (see [Configuration](#configuration)).
 
 ### Local Development
 
@@ -92,12 +92,34 @@ Two operational caveats:
 - **Code scanning must be enabled** for the repository, otherwise the SARIF upload succeeds but no alerts are surfaced. It is free on public repositories; private repositories require GitHub Advanced Security.
 - **Pull-request findings are filtered by branch.** The **Security → Code scanning** view defaults to the default branch (`main`); a scan that ran on a PR only appears after switching the **Branch** filter to that PR's branch (or via the PR's own file annotations).
 
+## AI Category Suggestions
+
+Summa can suggest a spending category for uncategorized invoices using Claude.
+From the categorize dialog you trigger a run over the currently filtered
+uncategorized invoices; the model returns one category per invoice and you review
+and confirm the suggestions before anything is written — the request itself never
+mutates your data.
+
+**Enabling it:** set `ANTHROPIC_API_KEY` in the server environment (get a key from
+the [Anthropic Console](https://console.anthropic.com/)). Locally, copy
+[`.env.example`](.env.example) to `.env` and fill it in; for Docker the
+`env_file` in [`docker-compose.yml`](docker-compose.yml) picks the same `.env` up.
+While the key is unset the categorize triggers stay greyed out and the endpoint
+returns `503`.
+
+The model — Claude Haiku, Sonnet, or Opus — is chosen in the UI (default: Haiku)
+and remembered per browser, so it is **not** an environment variable.
+
 ## Configuration
 
-| Environment Variable | Default       | Description                                                                                                     |
-| -------------------- | ------------- | --------------------------------------------------------------------------------------------------------------- |
-| `DATABASE_PATH`      | `invoices.db` | Path to SQLite database                                                                                         |
-| `FLASK_DEBUG`        | `0` (off)     | Set to `1` to enable the Flask/Werkzeug debugger on the dev server. Never enable in production — it allows RCE. |
+Copy [`.env.example`](.env.example) to `.env` and fill in the values you need.
+
+| Environment Variable   | Default       | Description                                                                                                     |
+| ---------------------- | ------------- | --------------------------------------------------------------------------------------------------------------- |
+| `ANTHROPIC_API_KEY`    | _(unset)_     | Enables [AI category suggestions](#ai-category-suggestions). When unset, the feature is disabled.               |
+| `DATABASE_PATH`        | `invoices.db` | Path to SQLite database                                                                                         |
+| `CORS_ALLOWED_ORIGINS` | _(empty)_     | Cross-origin allowlist — a comma-separated list of origins, or `*` for the wildcard. Empty = same-origin only.  |
+| `FLASK_DEBUG`          | `0` (off)     | Set to `1` to enable the Flask/Werkzeug debugger on the dev server. Never enable in production — it allows RCE. |
 
 ## API
 
