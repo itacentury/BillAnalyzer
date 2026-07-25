@@ -115,19 +115,13 @@ def get_invoices() -> Response:
 
     with db_cursor() as cursor:
         cursor.execute(
-            f"SELECT COUNT(*) AS total_count, COALESCE(SUM(total), 0) AS total_sum, "
-            f"SUM(CASE WHEN category IS NULL THEN 1 ELSE 0 END) AS uncategorized_count "
+            f"SELECT COUNT(*) AS total_count, COALESCE(SUM(total), 0) AS total_sum "
             f"FROM invoices {where}",
             params,
         )
         totals: sqlite3.Row = cursor.fetchone()
         total_count: int = totals["total_count"]
         total_sum: float = totals["total_sum"]
-        # Backs the "AI Categories" trigger badge. Deliberately computed under the
-        # full `where`, mirroring the categorize-suggest scope (same filter params)
-        # so the badge always matches what the AI action will touch. Consequence: an
-        # active category filter yields 0 (no NULL row can match `category = ?`).
-        uncategorized_count: int = totals["uncategorized_count"] or 0
 
         if fetch_all:
             # Report the served size so the client's ceil(total/size) collapses to
@@ -161,7 +155,6 @@ def get_invoices() -> Response:
             "page_size": page_size,
             "total_count": total_count,
             "total_sum": total_sum,
-            "uncategorized_count": uncategorized_count,
         }
     )
 
@@ -283,19 +276,30 @@ def _cache_suggestions(
 
 @invoices_bp.route("/api/invoices/categorize-suggest", methods=["POST"])
 def categorize_suggest() -> ApiResponse:
-    """Suggest categories for the uncategorized invoices in the current filter.
+    """Suggest categories for the invoices visible on the caller's current page.
 
-    Read-only: this collects the uncategorized invoices (with items) matching the
-    same query params as the list endpoint, asks Claude for one category each, and
-    returns the suggestions for review. The actual write goes through the existing
-    ``/api/invoices/bulk-update`` path once the user confirms.
+    Read-only: the client sends the ids of the invoices currently shown (POST body
+    ``{"ids": [...]}``); this collects the uncategorized ones among them (with
+    items), asks Claude for one category each, and returns the suggestions for
+    review. Scoping by explicit ids keeps the analysis limited to exactly the
+    rows on the current page rather than the whole filtered period. The actual
+    write goes through the existing ``/api/invoices/bulk-update`` path once the
+    user confirms.
     """
     if not suggestions_available():
         return error_response("AI categorization not configured", 503)
 
-    # Reuse the shared filter, restricted to uncategorized invoices only.
-    where, params = _build_invoice_filter(request.args)
-    where += " AND category IS NULL"
+    data: Any = request.get_json(silent=True) or {}
+    requested_ids: list[int] = [int(value) for value in data.get("ids", [])]
+    if not requested_ids:
+        return jsonify({"suggestions": [], "count": 0, "total": 0})
+
+    # Scope strictly to the requested (visible) rows, uncategorized only.
+    where: str = (
+        f"WHERE deleted_at IS NULL AND category IS NULL "
+        f"AND id IN ({placeholders_for(len(requested_ids))})"
+    )
+    params: list[int] = requested_ids
 
     try:
         with db_cursor() as cursor:

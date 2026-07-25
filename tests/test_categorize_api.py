@@ -82,9 +82,12 @@ def test_only_uncategorized_are_sent(
         total=14.5,
         items=[{"item_name": "Bread", "item_price": 3.9}],
     )
-    seed_invoice(store="Shop", category="Groceries", total=5.0)
+    categorized_id = seed_invoice(store="Shop", category="Groceries", total=5.0)
 
-    response = client.post("/api/invoices/categorize-suggest")
+    response = client.post(
+        "/api/invoices/categorize-suggest",
+        json={"ids": [uncategorized_id, categorized_id]},
+    )
 
     assert response.status_code == 200
     body = response.get_json()
@@ -101,25 +104,23 @@ def test_only_uncategorized_are_sent(
     assert [invoice["id"] for invoice in captured[0]] == [uncategorized_id]
 
 
-def test_period_filter_is_applied(
+def test_only_requested_ids_are_scoped(
     client: FlaskClient,
     seed_invoice: SeedInvoice,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """The shared date filter narrows which uncategorized invoices are collected."""
+    """Only invoices whose ids the client sent (the visible page) are collected."""
     _enable_ai(monkeypatch)
     _stub_suggestions(monkeypatch)
 
-    in_range = seed_invoice(store="InRange", category=None, date="2024-03-10")
-    seed_invoice(store="OutOfRange", category=None, date="2024-05-10")
+    on_page = seed_invoice(store="OnPage", category=None)
+    seed_invoice(store="OffPage", category=None)
 
-    response = client.post(
-        "/api/invoices/categorize-suggest?date_from=2024-03-01&date_to=2024-03-31"
-    )
+    response = client.post("/api/invoices/categorize-suggest", json={"ids": [on_page]})
 
     body = response.get_json()
     assert body["count"] == 1
-    assert body["suggestions"][0]["invoice_id"] == in_range
+    assert body["suggestions"][0]["invoice_id"] == on_page
 
 
 def test_run_is_capped_and_reports_total(
@@ -132,10 +133,9 @@ def test_run_is_capped_and_reports_total(
     monkeypatch.setattr(invoices_route, "CATEGORIZE_SUGGEST_LIMIT", 3)
     captured = _stub_suggestions(monkeypatch)
 
-    for index in range(5):
-        seed_invoice(store=f"Store {index}", category=None)
+    ids = [seed_invoice(store=f"Store {index}", category=None) for index in range(5)]
 
-    response = client.post("/api/invoices/categorize-suggest")
+    response = client.post("/api/invoices/categorize-suggest", json={"ids": ids})
 
     body = response.get_json()
     assert body["total"] == 5
@@ -148,15 +148,30 @@ def test_no_uncategorized_returns_empty(
     seed_invoice: SeedInvoice,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """With nothing to categorize the endpoint returns an empty result, no API call."""
+    """A page of only categorized invoices returns an empty result, no API call."""
     _enable_ai(monkeypatch)
     captured = _stub_suggestions(monkeypatch)
-    seed_invoice(store="Shop", category="Groceries")
+    categorized_id = seed_invoice(store="Shop", category="Groceries")
 
-    response = client.post("/api/invoices/categorize-suggest")
+    response = client.post(
+        "/api/invoices/categorize-suggest", json={"ids": [categorized_id]}
+    )
 
     assert response.get_json() == {"suggestions": [], "count": 0, "total": 0}
     assert captured == []  # suggest_categories was never called
+
+
+def test_empty_ids_returns_empty(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """No ids (empty page) returns an empty result without touching the DB or model."""
+    _enable_ai(monkeypatch)
+    captured = _stub_suggestions(monkeypatch)
+
+    response = client.post("/api/invoices/categorize-suggest", json={"ids": []})
+
+    assert response.get_json() == {"suggestions": [], "count": 0, "total": 0}
+    assert captured == []
 
 
 def test_second_call_reuses_cache(
@@ -167,10 +182,11 @@ def test_second_call_reuses_cache(
     """Unchanged invoices are served from cache: the model is called only once."""
     _enable_ai(monkeypatch)
     captured = _stub_suggestions(monkeypatch)
-    seed_invoice(store="Bakery", category=None)
+    invoice_id = seed_invoice(store="Bakery", category=None)
 
-    first = client.post("/api/invoices/categorize-suggest").get_json()
-    second = client.post("/api/invoices/categorize-suggest").get_json()
+    payload: dict[str, Any] = {"ids": [invoice_id]}
+    first = client.post("/api/invoices/categorize-suggest", json=payload).get_json()
+    second = client.post("/api/invoices/categorize-suggest", json=payload).get_json()
 
     # Identical response both times; the model was called only for the first.
     assert first == second
@@ -188,14 +204,15 @@ def test_edited_invoice_is_rechecked(
     stable_id = seed_invoice(store="Bakery", category=None)
     edited_id = seed_invoice(store="Shop", category=None, total=5.0)
 
-    client.post("/api/invoices/categorize-suggest")
+    payload: dict[str, Any] = {"ids": [stable_id, edited_id]}
+    client.post("/api/invoices/categorize-suggest", json=payload)
 
     conn = db.get_db()
     conn.execute("UPDATE invoices SET total = 99.0 WHERE id = ?", (edited_id,))
     conn.commit()
     conn.close()
 
-    client.post("/api/invoices/categorize-suggest")
+    client.post("/api/invoices/categorize-suggest", json=payload)
 
     # First call sent both; second sent only the edited invoice (stable one reused).
     assert [invoice["id"] for invoice in captured[0]] == [stable_id, edited_id]
@@ -210,11 +227,11 @@ def test_new_invoice_is_rechecked(
     """A newly added uncategorized invoice is the only one sent on the next call."""
     _enable_ai(monkeypatch)
     captured = _stub_suggestions(monkeypatch)
-    seed_invoice(store="Bakery", category=None)
+    existing_id = seed_invoice(store="Bakery", category=None)
 
-    client.post("/api/invoices/categorize-suggest")
+    client.post("/api/invoices/categorize-suggest", json={"ids": [existing_id]})
     new_id = seed_invoice(store="Butcher", category=None)
-    client.post("/api/invoices/categorize-suggest")
+    client.post("/api/invoices/categorize-suggest", json={"ids": [existing_id, new_id]})
 
     assert [invoice["id"] for invoice in captured[1]] == [new_id]
 
@@ -229,8 +246,9 @@ def test_model_switch_rechecks(
     captured = _stub_suggestions(monkeypatch)
     invoice_id = seed_invoice(store="Bakery", category=None)
 
-    client.post("/api/invoices/categorize-suggest?model=haiku")
-    client.post("/api/invoices/categorize-suggest?model=opus")
+    payload: dict[str, Any] = {"ids": [invoice_id]}
+    client.post("/api/invoices/categorize-suggest?model=haiku", json=payload)
+    client.post("/api/invoices/categorize-suggest?model=opus", json=payload)
 
     assert len(captured) == 2
     assert [invoice["id"] for invoice in captured[1]] == [invoice_id]
@@ -244,45 +262,14 @@ def test_is_new_recomputed_for_cached_suggestion(
     """is_new reflects the current category set even when the suggestion is cached."""
     _enable_ai(monkeypatch)
     _stub_suggestions(monkeypatch)  # every suggestion is the category "Guessed"
-    seed_invoice(store="Bakery", category=None)
+    invoice_id = seed_invoice(store="Bakery", category=None)
 
-    first = client.post("/api/invoices/categorize-suggest").get_json()
+    payload: dict[str, Any] = {"ids": [invoice_id]}
+    first = client.post("/api/invoices/categorize-suggest", json=payload).get_json()
     assert first["suggestions"][0]["is_new"] is True
 
     # "Guessed" now exists as a real category, so the cached suggestion is no longer new.
     seed_invoice(store="Deli", category="Guessed")
-    second = client.post("/api/invoices/categorize-suggest").get_json()
+    second = client.post("/api/invoices/categorize-suggest", json=payload).get_json()
 
     assert second["suggestions"][0]["is_new"] is False
-
-
-def test_list_endpoint_reports_uncategorized_count(
-    client: FlaskClient, seed_invoice: SeedInvoice
-) -> None:
-    """GET /api/invoices exposes the uncategorized count that backs the trigger badge."""
-    seed_invoice(store="A", category=None)
-    seed_invoice(store="B", category=None)
-    seed_invoice(store="C", category="Groceries")
-
-    body = client.get("/api/invoices").get_json()
-
-    assert body["uncategorized_count"] == 2
-
-
-def test_uncategorized_count_is_view_scoped(
-    client: FlaskClient, seed_invoice: SeedInvoice
-) -> None:
-    """uncategorized_count tracks the filtered view, mirroring the categorize-suggest scope.
-
-    View-scoped by design: a category filter drives it to 0 (no NULL row matches
-    ``category = ?``), and other filters narrow it to their matching rows.
-    """
-    seed_invoice(store="A", category=None)
-    seed_invoice(store="B", category=None)
-    seed_invoice(store="C", category="Groceries")
-
-    filtered_by_category = client.get("/api/invoices?category=Groceries").get_json()
-    assert filtered_by_category["uncategorized_count"] == 0
-
-    filtered_by_store = client.get("/api/invoices?store=A").get_json()
-    assert filtered_by_store["uncategorized_count"] == 1

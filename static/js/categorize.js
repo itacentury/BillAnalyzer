@@ -9,7 +9,7 @@
  */
 
 import { state } from "./state.js";
-import { buildFilterParams, refreshAllData } from "./api.js";
+import { refreshAllData } from "./api.js";
 import { escapeHtml, formatCurrency } from "./dom.js";
 import { showUndoToast, showErrorToast, flushPendingToast } from "./toast.js";
 import { renderInvoices, restoreRows } from "./render.js";
@@ -25,18 +25,19 @@ let reviewRows = [];
 let existingLower = new Set(); // lowercased existing categories, for is-new recompute
 
 /**
- * Enable/disable the trigger button and update its badge from
- * `state.uncategorizedCount`. Called after every invoice-list load so it stays
- * live. When nothing is uncategorized the button is greyed out (disabled), not
- * hidden, so it keeps its place in the toolbar.
+ * Enable/disable the trigger button and update its badge from the uncategorized
+ * invoices on the current page (`state.invoices`), matching what the AI action
+ * analyzes. Called after every invoice-list load so it stays live. When nothing
+ * is uncategorized the button is greyed out (disabled), not hidden, so it keeps
+ * its place in the toolbar.
  */
 export function updateAiTriggerBadge() {
   const button = document.querySelector('[data-el="ai-categories-trigger"]');
   if (!button) return;
-  const count = state.uncategorizedCount || 0;
+  const count = state.invoices.filter((invoice) => !invoice.category).length;
   button.disabled = count === 0;
   const badge = button.querySelector('[data-el="ai-categories-badge"]');
-  if (badge) badge.textContent = count;
+  if (badge) badge.textContent = String(count);
 }
 
 // --- Item aggregation & summary ---------------------------------------------
@@ -197,7 +198,7 @@ function renderReview(data, categories) {
   if (reviewRows.length === 0) {
     setFooterVisible(false);
     contentEl().innerHTML = `
-      <div class="categorize-banner">Nothing to categorize in this period.</div>`;
+      <div class="categorize-banner">Nothing to categorize on this page.</div>`;
     return;
   }
 
@@ -379,12 +380,18 @@ async function runAnalysis() {
   controller?.abort();
   controller = new AbortController();
   const current = controller;
+  // Scope the analysis to exactly the uncategorized invoices on the current page.
+  const ids = state.invoices
+    .filter((invoice) => !invoice.category)
+    .map((invoice) => invoice.id);
   try {
     const [suggestResponse, categoriesResponse] = await Promise.all([
       fetch(
-        `/api/invoices/categorize-suggest?${buildFilterParams()}&model=${encodeURIComponent(getAiModel())}`,
+        `/api/invoices/categorize-suggest?model=${encodeURIComponent(getAiModel())}`,
         {
           method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ids }),
           signal: current.signal,
         },
       ),
@@ -404,10 +411,8 @@ async function runAnalysis() {
     const data = await suggestResponse.json();
     const categories = await categoriesResponse.json();
 
-    const period =
-      document.querySelector('[data-el="month-display"]')?.textContent || "";
     document.querySelector('[data-el="categorize-subtitle"]').textContent =
-      `${data.total} uncategorized invoice${data.total !== 1 ? "s" : ""}${period ? ` · ${period}` : ""}`;
+      `${data.total} uncategorized invoice${data.total !== 1 ? "s" : ""} on this page`;
 
     renderReview(data, categories);
   } catch (error) {
