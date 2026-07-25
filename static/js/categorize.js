@@ -504,6 +504,9 @@ function applyCategories() {
  * cancel) and the footer actions.
  */
 export function setupCategorizeListeners() {
+  const modal = document.querySelector('[data-el="categorize-modal"]');
+  if (!modal) return; // AI suggestions disabled: modal partial not rendered
+
   // Switching the model re-runs the analysis live when the modal is open.
   setupModelPicker(rerunForModel);
 
@@ -539,7 +542,6 @@ export function setupCategorizeListeners() {
     if (row) setRowSelected(Number(row.dataset.index), checkbox.checked);
   });
 
-  const modal = document.querySelector('[data-el="categorize-modal"]');
   modal
     .querySelector(".modal-close")
     .addEventListener("click", closeCategorizeModal);

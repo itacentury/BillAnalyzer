@@ -110,7 +110,9 @@
     {% include "partials/modals/add-invoice.html" %}
     {% include "partials/modals/import.html" %}
     {% include "partials/modals/bulk-edit.html" %}
-    {% include "partials/modals/categorize.html" %}
+    {% if ai_suggestions_enabled %}
+      {% include "partials/modals/categorize.html" %}
+    {% endif %}
     {% include "partials/modals/shortcuts-help.html" %}
     {% include "partials/bulk-toolbar.html" %}
 
