@@ -350,3 +350,11 @@ def test_is_new_recomputed_for_cached_suggestion(
     second = client.post("/api/invoices/categorize-suggest", json=payload).get_json()
 
     assert second["suggestions"][0]["is_new"] is False
+
+
+def test_categorize_limit_is_fully_budgeted() -> None:
+    """The batch cap never exceeds what the AI token budget can fully fund."""
+    limit: int = invoices_route.CATEGORIZE_SUGGEST_LIMIT
+    assert ai._max_tokens_for(limit) == (
+        ai._TOKEN_BUDGET_BASE + ai._TOKENS_PER_INVOICE * limit
+    )

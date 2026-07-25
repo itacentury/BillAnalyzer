@@ -8,6 +8,7 @@ from typing import Any, Final
 from flask import Blueprint, Response, jsonify, request
 
 from summa.ai import (
+    MAX_FULLY_BUDGETED_BATCH,
     AiCategorizationError,
     CategorySuggestion,
     invoice_fingerprint,
@@ -40,11 +41,12 @@ invoices_bp: Blueprint = Blueprint("invoices", __name__)
 DEFAULT_PAGE_SIZE: Final[int] = 25
 MAX_PAGE_SIZE: Final[int] = 200
 ALL_PAGE_SIZE_TOKEN: Final[str] = "all"
-# Cap per categorize-suggest run to bound Claude token use and cost. Aligned with
-# MAX_PAGE_SIZE so an ordinary paginated view is never truncated; only a
-# `page_size=all` view larger than this hits the cap, and the response `total`
-# then lets the client prompt a re-run.
-CATEGORIZE_SUGGEST_LIMIT: Final[int] = MAX_PAGE_SIZE
+# Cap per categorize-suggest run to bound Claude token use and cost. Bounded by
+# MAX_PAGE_SIZE (so an ordinary paginated view fits) and by the AI layer's
+# fully-budgeted batch (so a run never exceeds the token budget and truncates the
+# response). Whichever is smaller wins; the response `total` lets the client
+# prompt a re-run when a larger view is capped.
+CATEGORIZE_SUGGEST_LIMIT: Final[int] = min(MAX_PAGE_SIZE, MAX_FULLY_BUDGETED_BATCH)
 
 
 def _build_invoice_filter(args: Any) -> tuple[str, list[str]]:
