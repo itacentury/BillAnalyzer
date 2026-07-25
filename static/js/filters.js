@@ -144,6 +144,42 @@ export function setupFilterListeners() {
 }
 
 /**
+ * Width an inline search field would get, from already-measured toolbar parts.
+ *
+ * Pure: the caller measures, this one decides — which is also what makes the
+ * gap arithmetic testable without a layout engine. `aiPresent` and `aiWidth`
+ * are separate inputs because the AI trigger can be present but hidden: it then
+ * occupies no width yet still contributes its inter-item gap.
+ */
+export function searchFieldSpace({
+  rowWidth,
+  wrapped,
+  aiPresent,
+  aiWidth,
+  filterWidth,
+  quickFloor,
+  monthWidth,
+  todayWidth,
+  rowGap,
+}) {
+  // The AI trigger is one flex item inside the group, so its absence (AI
+  // suggestions disabled) also removes one inter-item gap from both layouts.
+  const aiGapCount = aiPresent ? 1 : 0;
+  // Wrapped: flex-wrap has dropped the group onto its own second row, where it
+  // shares the width only with Filter and — when present — AI.
+  if (wrapped) {
+    return rowWidth - aiWidth - filterWidth - rowGap * (1 + aiGapCount);
+  }
+  // Single row: the field's share is the row minus the fixed chips, with the
+  // pills shrunk to their min-width floor. The gap count ≈ the inline layout's
+  // inter-item gaps (4 row items + 2 group gaps, one fewer group gap without
+  // the AI trigger); the hysteresis band absorbs the minor variance when the
+  // today button is display:none'd (all/custom).
+  const fixed = quickFloor + monthWidth + todayWidth + aiWidth + filterWidth;
+  return rowWidth - fixed - rowGap * (4 + aiGapCount);
+}
+
+/**
  * Two-state toolbar search (12a), desktop only: the field is either a full
  * inline input or — when the toolbar is tight — a persistent icon button that
  * toggles a slide-down bar in its own full-width row below the toolbar
@@ -173,9 +209,6 @@ function setupToolbarSearch() {
   const collapseBelow = 210; // box width under which the input is unusable
   const expandAbove = 260; // re-expand only past this (hysteresis band top)
   const closeAnimationMs = 200; // keep in sync with --transition (0.2s)
-  // The AI trigger is one flex item inside the group, so its absence (AI
-  // suggestions disabled) also removes one inter-item gap from both layouts.
-  const aiGapCount = aiTrigger ? 1 : 0;
   let closeRowTimer = null;
 
   const clearCloseRowTimer = () => {
@@ -229,38 +262,21 @@ function setupToolbarSearch() {
   // *current* row. Row-based, so it is independent of the group's flex state
   // (compact = flex:none, inline = flex:1) — which also removes a source of
   // expand/collapse oscillation.
-  const availableForSearch = () => {
-    const aiWidth = !aiTrigger || aiTrigger.hidden ? 0 : aiTrigger.offsetWidth;
-    // Wrapped: flex-wrap has dropped the group onto its own second row, where it
-    // shares the width only with Filter and — when present — AI. Measure that row
-    // — not the single-row layout — or the field stays needlessly collapsed to an
-    // icon on a near-empty line. filterButton always has a box (never
-    // display:contents), so it is the state-independent probe for the wrap.
-    const wrapped = filterButton.offsetTop > quickFilters.offsetTop + 2;
-    if (wrapped) {
-      return (
-        row.clientWidth -
-        aiWidth -
-        filterButton.offsetWidth -
-        rowGap * (1 + aiGapCount)
-      );
-    }
-    // Single row: the field's share is the row minus the fixed chips, with the
-    // pills shrunk to their min-width floor. inlineGapCount ≈ the inline
-    // layout's inter-item gaps (4 row items + 2 group gaps, one fewer group gap
-    // without the AI trigger); the hysteresis band absorbs the minor variance
-    // when the today button is display:none'd (all/custom).
-    const inlineGapCount = 4 + aiGapCount;
-    const quickFloor = parseFloat(getComputedStyle(quickFilters).minWidth) || 0;
-    const todayWidth = todayButton.offsetWidth; // 0 when .is-hidden (all/custom)
-    const fixed =
-      quickFloor +
-      monthNavigator.offsetWidth +
-      todayWidth +
-      aiWidth +
-      filterButton.offsetWidth;
-    return row.clientWidth - fixed - rowGap * inlineGapCount;
-  };
+  const availableForSearch = () =>
+    searchFieldSpace({
+      rowWidth: row.clientWidth,
+      // Measure the wrapped row — not the single-row layout — or the field stays
+      // needlessly collapsed to an icon on a near-empty line. filterButton always
+      // has a box (never display:contents), so it is the state-independent probe.
+      wrapped: filterButton.offsetTop > quickFilters.offsetTop + 2,
+      aiPresent: Boolean(aiTrigger),
+      aiWidth: !aiTrigger || aiTrigger.hidden ? 0 : aiTrigger.offsetWidth,
+      filterWidth: filterButton.offsetWidth,
+      quickFloor: parseFloat(getComputedStyle(quickFilters).minWidth) || 0,
+      monthWidth: monthNavigator.offsetWidth,
+      todayWidth: todayButton.offsetWidth, // 0 when .is-hidden (all/custom)
+      rowGap,
+    });
 
   const syncState = () => {
     if (window.innerWidth <= 640) {

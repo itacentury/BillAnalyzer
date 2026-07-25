@@ -50,6 +50,50 @@ export function mountListFixture() {
 }
 
 /**
+ * Mount the toolbar `setupFilterListeners()` wires up, mirroring the structure
+ * of templates/partials/filters.html.
+ *
+ * `aiTrigger` reproduces the `{% if ai_suggestions_enabled %}` branch around the
+ * AI button: with the flag off the element is absent from the DOM entirely, and
+ * every `querySelector` for it returns null. That is the configuration the
+ * toolbar's null-guard exists for.
+ */
+export function mountToolbarFixture({ aiTrigger = true } = {}) {
+  const aiTriggerHtml = aiTrigger
+    ? '<button class="ai-trigger" data-el="ai-categories-trigger" data-action="open-categorize"></button>'
+    : "";
+  document.body.innerHTML = `
+    <div class="filters-row">
+      <div class="quick-filters">
+        <button class="quick-filter-btn" data-filter="month"></button>
+        <button class="quick-filter-btn" data-filter="year"></button>
+      </div>
+      <div class="month-navigator">
+        <button data-action="nav-prev"></button>
+        <div data-el="month-display"></div>
+        <button data-action="nav-next"></button>
+      </div>
+      <button data-action="nav-today"></button>
+      <div class="search-filter-group">
+        <button data-el="search-toggle-compact" aria-expanded="false"></button>
+        <input data-el="search" />
+        <button data-el="search-close"></button>
+        ${aiTriggerHtml}
+        <button data-el="filters-toggle"><span data-el="filter-badge" hidden></span></button>
+      </div>
+    </div>
+    <button data-action="reset-filters"></button>
+    <input data-el="store-filter" />
+    <input data-el="type-filter" />
+    <input data-el="date-from" />
+    <input data-el="date-to" />
+    <input data-el="sort-by" value="date" />
+    <input data-el="sort-order" value="desc" />
+    <div data-el="invoice-list"></div>
+  `;
+}
+
+/**
  * Yields to the next macrotask so DOM updates from event handlers can settle.
  */
 export function flushUi() {
