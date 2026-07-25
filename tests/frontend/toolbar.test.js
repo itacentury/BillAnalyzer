@@ -47,16 +47,16 @@ describe("searchFieldSpace", () => {
     expect(withoutAi - withAi).toBe(measurements.aiWidth + measurements.rowGap);
   });
 
-  it("still counts the AI gap when the trigger is present but hidden", () => {
-    // Hidden means zero width, not zero gaps: the flex item is still in the row
-    // until the async uncategorized count unhides it.
-    const hidden = searchFieldSpace({ ...measurements, aiWidth: 0 });
+  it("counts the AI gap from presence, not from measured width", () => {
+    // A trigger measuring zero is one that is not laid out yet, not one that is
+    // absent: the flex item — and therefore its gap — is still in the row.
+    const unmeasured = searchFieldSpace({ ...measurements, aiWidth: 0 });
     const absent = searchFieldSpace({
       ...measurements,
       aiPresent: false,
       aiWidth: 0,
     });
-    expect(absent - hidden).toBe(measurements.rowGap);
+    expect(absent - unmeasured).toBe(measurements.rowGap);
   });
 
   describe("wrapped onto its own row", () => {

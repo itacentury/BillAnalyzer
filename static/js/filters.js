@@ -148,8 +148,10 @@ export function setupFilterListeners() {
  *
  * Pure: the caller measures, this one decides — which is also what makes the
  * gap arithmetic testable without a layout engine. `aiPresent` and `aiWidth`
- * are separate inputs because the AI trigger can be present but hidden: it then
- * occupies no width yet still contributes its inter-item gap.
+ * are separate inputs because presence is a DOM fact and width a measurement: a
+ * trigger that measures 0 (not laid out yet) still occupies its inter-item gap,
+ * and inferring absence from a zero width is exactly the confusion that once
+ * left the field collapsed for a whole gap's worth of room.
  */
 export function searchFieldSpace({
   rowWidth,
@@ -270,7 +272,7 @@ function setupToolbarSearch() {
       // has a box (never display:contents), so it is the state-independent probe.
       wrapped: filterButton.offsetTop > quickFilters.offsetTop + 2,
       aiPresent: Boolean(aiTrigger),
-      aiWidth: !aiTrigger || aiTrigger.hidden ? 0 : aiTrigger.offsetWidth,
+      aiWidth: aiTrigger ? aiTrigger.offsetWidth : 0,
       filterWidth: filterButton.offsetWidth,
       quickFloor: parseFloat(getComputedStyle(quickFilters).minWidth) || 0,
       monthWidth: monthNavigator.offsetWidth,
@@ -306,9 +308,9 @@ function setupToolbarSearch() {
     if (event.key === "Escape") closeSearchRow(true);
   });
 
-  // Observe the AI trigger too: it is unhidden asynchronously once the
-  // uncategorized count arrives, which shrinks the field's room without
-  // changing the row's own size (so observing the row alone would miss it).
+  // Observe the AI trigger too: its badge shows the uncategorized count, which
+  // arrives asynchronously and grows the button (0 -> 12 -> 137) without
+  // changing the row's own size — so observing the row alone would miss it.
   // It is absent entirely when AI suggestions are disabled (the template omits
   // it), and observe() throws on null — which would abort init() in app.js.
   const observer = new ResizeObserver(syncState);
