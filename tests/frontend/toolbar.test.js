@@ -80,7 +80,7 @@ describe("searchFieldSpace", () => {
   });
 });
 
-describe("setupFilterListeners with the AI trigger absent", () => {
+describe("setupFilterListeners with and without the AI trigger", () => {
   let observe;
 
   beforeEach(() => {
@@ -118,7 +118,7 @@ describe("setupFilterListeners with the AI trigger absent", () => {
   };
 
   it("wires up without throwing", async () => {
-    await expect(setupWith({ aiTrigger: false })).resolves.not.toThrow();
+    await expect(setupWith({ aiTrigger: false })).resolves.toBeUndefined();
   });
 
   it("observes only the toolbar row", async () => {
