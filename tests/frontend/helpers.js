@@ -50,8 +50,11 @@ export function mountListFixture() {
 }
 
 /**
- * Mount the toolbar `setupFilterListeners()` wires up, mirroring the structure
- * of templates/partials/filters.html.
+ * Mount the toolbar `setupFilterListeners()` wires up, mirroring the flex-item
+ * structure of `.search-filter-group` in templates/partials/filters.html — that
+ * child count is what `searchFieldSpace()` encodes as gap counts. Purely
+ * presentational descendants (icon SVGs, the search hint) are left out: no
+ * selector reaches them and they sit below the measured group.
  *
  * `aiTrigger` reproduces the `{% if ai_suggestions_enabled %}` branch around the
  * AI button: with the flag off the element is absent from the DOM entirely, and
@@ -76,8 +79,10 @@ export function mountToolbarFixture({ aiTrigger = true } = {}) {
       <button data-action="nav-today"></button>
       <div class="search-filter-group">
         <button data-el="search-toggle-compact" aria-expanded="false"></button>
-        <input data-el="search" />
-        <button data-el="search-close"></button>
+        <div class="filter-search">
+          <input data-el="search" />
+          <button data-el="search-close"></button>
+        </div>
         ${aiTriggerHtml}
         <button data-el="filters-toggle"><span data-el="filter-badge" hidden></span></button>
       </div>
