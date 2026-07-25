@@ -186,6 +186,34 @@ describe("init", () => {
     expect(loggedLabels()[0]).toMatch(/^\[init\] setupComboboxes failed:/);
   });
 
+  it("survives a localStorage that throws", async () => {
+    // Blocked storage (Safari private mode, cookies disabled) makes getItem
+    // throw rather than return null. restorePageSize is init()'s first
+    // statement, so an unguarded throw there costs every step — the same bug
+    // class as above, reached without a missing element.
+    //
+    // Replacing the whole global rather than spying on Storage.prototype:
+    // happy-dom copies each prototype method onto the localStorage instance as
+    // a bound own property the first time it is read, so a prototype spy is
+    // invisible to every later call — and its restore is swallowed by the
+    // instance's Proxy, leaking a throwing getItem into the rest of the file.
+    vi.stubGlobal("localStorage", {
+      getItem: () => {
+        throw new Error("storage disabled");
+      },
+    });
+    try {
+      await runInit();
+
+      expect(stepsThatRan()).toEqual(ALL_STEPS);
+      expect(loggedLabels()).toEqual([
+        expect.stringMatching(/^\[init\] restorePageSize failed:/),
+      ]);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("isolates each failure independently, not just the first", async () => {
     breakStep("setupModalListeners");
     breakStep("setupDrawerListeners");
