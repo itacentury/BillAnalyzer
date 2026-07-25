@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { searchFieldSpace } from "../../static/js/filters.js";
 import { mountToolbarFixture } from "./helpers.js";
 
 // The toolbar listeners reload the list on every interaction; the network layer
@@ -23,12 +24,6 @@ const measurements = {
 };
 
 describe("searchFieldSpace", () => {
-  let searchFieldSpace;
-
-  beforeEach(async () => {
-    ({ searchFieldSpace } = await import("../../static/js/filters.js"));
-  });
-
   it("subtracts the fixed chips and the inline gaps", () => {
     // 1200 - (200 + 180 + 60 + 40 + 90) - 8 * 5
     expect(searchFieldSpace(measurements)).toBe(590);
