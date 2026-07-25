@@ -73,6 +73,11 @@ if ("serviceWorker" in navigator) {
  * The setup steps are independent, so a throw in one (a missing conditionally
  * rendered element, say) must not stop the later ones from binding their
  * listeners — otherwise one absent element leaves most of the UI dead.
+ *
+ * The guard reaches as far as the step's own stack frame: work it schedules but
+ * does not await settles after this try block is gone. refreshAllData() is the
+ * live example — it fires three un-awaited loads — so an async step has to
+ * handle its own rejections, as today's loaders in api.js each do.
  */
 function runStep(label, step) {
   try {
