@@ -123,6 +123,9 @@ const runInit = async () => {
 const stepsThatRan = (names = ALL_STEPS) =>
   names.filter((name) => steps[name].mock.calls.length > 0);
 
+/** Position of a step's first call in the global invocation sequence. */
+const callOrder = (name) => steps[name].mock.invocationCallOrder[0];
+
 /** Make a step throw, the way a missing DOM element would. */
 const breakStep = (name) => {
   steps[name].mockImplementation(() => {
@@ -149,6 +152,19 @@ describe("init", () => {
       expect(steps[name], name).toHaveBeenCalledTimes(1);
     }
     expect(consoleError).not.toHaveBeenCalled();
+  });
+
+  it("instantiates the comboboxes before the first data load", async () => {
+    // Load-bearing, not incidental: refreshAllData() fans out to loadStores()
+    // and loadCategories(), which feed their options into the combobox
+    // instances via getCombobox() — and skip that silently when none exists
+    // yet. stepsThatRan() reports the declared order of ALL_STEPS, not the
+    // observed one, so only the invocation order catches a reordering.
+    await runInit();
+
+    expect(callOrder("setupComboboxes")).toBeLessThan(
+      callOrder("refreshAllData"),
+    );
   });
 
   it("keeps wiring the remaining steps when one throws", async () => {
