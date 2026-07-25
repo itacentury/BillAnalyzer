@@ -67,8 +67,23 @@ if ("serviceWorker" in navigator) {
   });
 }
 
+/**
+ * Run one wiring step in isolation.
+ *
+ * The setup steps are independent, so a throw in one (a missing conditionally
+ * rendered element, say) must not stop the later ones from binding their
+ * listeners — otherwise one absent element leaves most of the UI dead.
+ */
+function runStep(label, step) {
+  try {
+    step();
+  } catch (error) {
+    console.error(`[init] ${label} failed:`, error);
+  }
+}
+
 function init() {
-  restorePageSize();
+  runStep("restorePageSize", restorePageSize);
 
   // Instantiate the comboboxes before the first data load, so loadStores() and
   // loadCategories() have live instances to feed options into.
@@ -76,28 +91,36 @@ function init() {
     updateFilterBadge();
     loadInvoices();
   };
-  setupComboboxes({
-    "store-filter": reloadOnFilterChange,
-    "type-filter": reloadOnFilterChange,
-  });
+  runStep("setupComboboxes", () =>
+    setupComboboxes({
+      "store-filter": reloadOnFilterChange,
+      "type-filter": reloadOnFilterChange,
+    }),
+  );
 
-  applyFilter("month");
-  refreshAllData();
+  runStep("applyFilter", () => applyFilter("month"));
+  runStep("refreshAllData", refreshAllData);
 
-  setupFilterListeners();
-  setupModalListeners();
-  setupInvoiceListListeners();
-  setupPaginationListeners();
-  setupPageSizeListeners();
-  setupBulkListeners();
-  setupStatsListeners();
-  setupImportListeners();
-  setupCategorizeListeners();
-  initToastListeners();
-  setupKeyboardListeners();
-  setupDrawerListeners();
-  setupSheetGestures();
-  setupViewportListeners();
+  // Listed rather than called in sequence so a new step cannot be added without
+  // the isolation guard. `step.name` labels the failure; there is no build step
+  // that could minify those names away.
+  const wiringSteps = [
+    setupFilterListeners,
+    setupModalListeners,
+    setupInvoiceListListeners,
+    setupPaginationListeners,
+    setupPageSizeListeners,
+    setupBulkListeners,
+    setupStatsListeners,
+    setupImportListeners,
+    setupCategorizeListeners,
+    initToastListeners,
+    setupKeyboardListeners,
+    setupDrawerListeners,
+    setupSheetGestures,
+    setupViewportListeners,
+  ];
+  for (const step of wiringSteps) runStep(step.name, step);
 }
 
 // Module scripts run after parsing, so DOMContentLoaded may already have fired.
