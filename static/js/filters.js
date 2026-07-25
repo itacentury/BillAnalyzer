@@ -227,7 +227,7 @@ function setupToolbarSearch() {
   // (compact = flex:none, inline = flex:1) — which also removes a source of
   // expand/collapse oscillation.
   const availableForSearch = () => {
-    const aiWidth = aiTrigger.hidden ? 0 : aiTrigger.offsetWidth;
+    const aiWidth = !aiTrigger || aiTrigger.hidden ? 0 : aiTrigger.offsetWidth;
     // Wrapped: flex-wrap has dropped the group onto its own second row, where it
     // shares the width only with AI + Filter (2 gaps). Measure that row — not the
     // single-row layout — or the field stays needlessly collapsed to an icon on a
@@ -285,9 +285,11 @@ function setupToolbarSearch() {
   // Observe the AI trigger too: it is unhidden asynchronously once the
   // uncategorized count arrives, which shrinks the field's room without
   // changing the row's own size (so observing the row alone would miss it).
+  // It is absent entirely when AI suggestions are disabled (the template omits
+  // it), and observe() throws on null — which would abort init() in app.js.
   const observer = new ResizeObserver(syncState);
   observer.observe(row);
-  observer.observe(aiTrigger);
+  if (aiTrigger) observer.observe(aiTrigger);
   syncState();
 }
 
