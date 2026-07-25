@@ -9,7 +9,6 @@ import { renderInvoices } from "./render.js";
 import { loadStats } from "./stats.js";
 import { getCombobox, setCategoryOptions } from "./combobox.js";
 import { updateFilterBadge } from "./filters.js";
-import { updateAiTriggerBadge } from "./categorize.js";
 
 // Cancels the in-flight invoice request when a newer one supersedes it, so a
 // slower earlier response can't render over a newer one (out-of-order results
@@ -132,7 +131,6 @@ async function fetchInvoices() {
     state.totalCount = data.total_count;
     state.totalSum = data.total_sum;
     renderInvoices();
-    updateAiTriggerBadge();
 
     // Also refresh stats if in stats view
     if (state.currentView === "stats") {

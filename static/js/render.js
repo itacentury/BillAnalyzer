@@ -19,6 +19,7 @@ import { editInvoice } from "./modals.js";
 import { deleteInvoice } from "./invoices.js";
 import { fetchInvoiceItems } from "./api.js";
 import { toggleInvoiceSelection } from "./bulk.js";
+import { updateAiTriggerBadge } from "./categorize.js";
 import { renderPageSizeControl } from "./pagesize.js";
 
 /**
@@ -203,6 +204,10 @@ export function renderInvoices() {
 
   renderPagination();
   updateBulkActionToolbar();
+  // Every optimistic mutation (edit/delete/bulk/categorize/undo) re-renders
+  // through here, so refreshing the AI trigger badge at this single choke point
+  // keeps its page-scoped count live without a call at each mutation site.
+  updateAiTriggerBadge();
 }
 
 /**
