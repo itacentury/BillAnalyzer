@@ -204,7 +204,7 @@ function renderReview(data, categories) {
 
   const cappedNote =
     data.total > data.count
-      ? `<div class="categorize-note">First ${data.count} of ${data.total} — run again for the rest.</div>`
+      ? `<div class="categorize-note">First ${data.count} of ${data.total} — apply these, then run again for the rest.</div>`
       : "";
 
   contentEl().innerHTML = `

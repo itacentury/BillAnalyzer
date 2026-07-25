@@ -40,9 +40,11 @@ invoices_bp: Blueprint = Blueprint("invoices", __name__)
 DEFAULT_PAGE_SIZE: Final[int] = 25
 MAX_PAGE_SIZE: Final[int] = 200
 ALL_PAGE_SIZE_TOKEN: Final[str] = "all"
-# Cap per categorize-suggest run to bound Claude token use and cost; the rest are
-# reported via the response `total` so the client can prompt a re-run.
-CATEGORIZE_SUGGEST_LIMIT: Final[int] = 100
+# Cap per categorize-suggest run to bound Claude token use and cost. Aligned with
+# MAX_PAGE_SIZE so an ordinary paginated view is never truncated; only a
+# `page_size=all` view larger than this hits the cap, and the response `total`
+# then lets the client prompt a re-run.
+CATEGORIZE_SUGGEST_LIMIT: Final[int] = MAX_PAGE_SIZE
 
 
 def _build_invoice_filter(args: Any) -> tuple[str, list[str]]:

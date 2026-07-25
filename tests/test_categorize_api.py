@@ -151,7 +151,7 @@ def test_run_is_capped_and_reports_total(
     seed_invoice: SeedInvoice,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """More than the cap: only the first 100 are sent, `total` reports the full set."""
+    """More than the cap: only the first CATEGORIZE_SUGGEST_LIMIT are sent, `total` reports the full set."""
     _enable_ai(monkeypatch)
     monkeypatch.setattr(invoices_route, "CATEGORIZE_SUGGEST_LIMIT", 3)
     captured = _stub_suggestions(monkeypatch)
