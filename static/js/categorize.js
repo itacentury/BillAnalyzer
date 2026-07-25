@@ -37,7 +37,9 @@ export function updateAiTriggerBadge() {
   const count = state.invoices.filter((invoice) => !invoice.category).length;
   button.disabled = count === 0;
   const badge = button.querySelector('[data-el="ai-categories-badge"]');
-  if (badge) badge.textContent = count;
+  // String() is load-bearing: happy-dom's textContent setter renders the number
+  // 0 as "" (not "0"), so the badge would blank out on a page with none.
+  if (badge) badge.textContent = String(count);
 }
 
 // --- Item aggregation & summary ---------------------------------------------
@@ -198,7 +200,7 @@ function renderReview(data, categories) {
   if (reviewRows.length === 0) {
     setFooterVisible(false);
     contentEl().innerHTML = `
-      <div class="categorize-banner">Nothing to categorize on this page.</div>`;
+      <div class="categorize-banner">No uncategorized invoices on this page — other pages in this period may still have some.</div>`;
     return;
   }
 
