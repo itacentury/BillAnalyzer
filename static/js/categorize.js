@@ -37,7 +37,7 @@ export function updateAiTriggerBadge() {
   const count = state.invoices.filter((invoice) => !invoice.category).length;
   button.disabled = count === 0;
   const badge = button.querySelector('[data-el="ai-categories-badge"]');
-  if (badge) badge.textContent = String(count);
+  if (badge) badge.textContent = count;
 }
 
 // --- Item aggregation & summary ---------------------------------------------

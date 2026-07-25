@@ -298,7 +298,9 @@ def categorize_suggest() -> ApiResponse:
     if not (isinstance(data, dict) and data.get("ids")):
         return jsonify({"suggestions": [], "count": 0, "total": 0})
     try:
-        requested_ids: list[int] = parse_id_list(data)
+        # Dedupe once: IN dedupes within a chunk, but the same id split across two
+        # chunks would double-count the summed total (and duplicate work).
+        requested_ids: list[int] = list(dict.fromkeys(parse_id_list(data)))
     except ValidationError as error:
         return error_response(error.message, 400)
 
