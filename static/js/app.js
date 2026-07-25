@@ -108,7 +108,10 @@ function init() {
 
   // Listed rather than called in sequence so a new step cannot be added without
   // the isolation guard. `step.name` labels the failure; there is no build step
-  // that could minify those names away.
+  // that could minify those names away. Entries stay bare function references
+  // for that reason — an arrow written inline has no name, and its failure logs
+  // unlabelled. A step needing arguments belongs in the block above, called with
+  // an explicit label like setupComboboxes and applyFilter are.
   const wiringSteps = [
     setupFilterListeners,
     setupModalListeners,
