@@ -150,8 +150,7 @@ export function setupFilterListeners() {
  * gap arithmetic testable without a layout engine. `aiPresent` and `aiWidth`
  * are separate inputs because presence is a DOM fact and width a measurement: a
  * trigger that measures 0 (not laid out yet) still occupies its inter-item gap,
- * and inferring absence from a zero width is exactly the confusion that once
- * left the field collapsed for a whole gap's worth of room.
+ * so deriving absence from a zero width would drop a gap the row still has.
  */
 export function searchFieldSpace({
   rowWidth,
