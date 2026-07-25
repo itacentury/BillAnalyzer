@@ -174,6 +174,31 @@ def test_empty_ids_returns_empty(
     assert captured == []
 
 
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"ids": "abc"},
+        {"ids": 5},
+        {"ids": [None]},
+        {"ids": [1.9]},
+        {"ids": [True]},
+    ],
+)
+def test_malformed_ids_return_400(
+    client: FlaskClient,
+    monkeypatch: pytest.MonkeyPatch,
+    payload: dict[str, Any],
+) -> None:
+    """A non-empty but malformed ids body is a client error, not a 500."""
+    _enable_ai(monkeypatch)
+    captured = _stub_suggestions(monkeypatch)
+
+    response = client.post("/api/invoices/categorize-suggest", json=payload)
+
+    assert response.status_code == 400
+    assert captured == []  # never reached the model
+
+
 def test_second_call_reuses_cache(
     client: FlaskClient,
     seed_invoice: SeedInvoice,

@@ -290,9 +290,15 @@ def categorize_suggest() -> ApiResponse:
         return error_response("AI categorization not configured", 503)
 
     data: Any = request.get_json(silent=True) or {}
-    requested_ids: list[int] = [int(value) for value in data.get("ids", [])]
-    if not requested_ids:
+    # An empty/missing page is a valid empty result; a non-empty but malformed
+    # ids payload is a client error. Reuse parse_id_list (as /bulk-* do) so the
+    # same strict int/list/bool validation applies here instead of raising a 500.
+    if not (isinstance(data, dict) and data.get("ids")):
         return jsonify({"suggestions": [], "count": 0, "total": 0})
+    try:
+        requested_ids: list[int] = parse_id_list(data)
+    except ValidationError as error:
+        return error_response(error.message, 400)
 
     # Scope strictly to the requested (visible) rows, uncategorized only.
     where: str = (
