@@ -217,6 +217,8 @@ describe("init", () => {
       getItem: () => {
         throw new Error("storage disabled");
       },
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
     });
     try {
       await runInit();
