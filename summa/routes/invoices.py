@@ -300,23 +300,36 @@ def categorize_suggest() -> ApiResponse:
     except ValidationError as error:
         return error_response(error.message, 400)
 
-    # Scope strictly to the requested (visible) rows, uncategorized only.
-    where: str = (
-        f"WHERE deleted_at IS NULL AND category IS NULL "
-        f"AND id IN ({placeholders_for(len(requested_ids))})"
-    )
-    params: list[int] = requested_ids
-
+    # Scope strictly to the requested (visible) rows, uncategorized only. The id
+    # list is client-supplied and unbounded (page_size=all posts the whole table),
+    # so query in chunks below SQLite's variable limit rather than binding every id
+    # in one statement, exactly as /bulk-update and /bulk-delete do.
     try:
         with db_cursor() as cursor:
-            cursor.execute(f"SELECT COUNT(*) AS total FROM invoices {where}", params)
-            total: int = cursor.fetchone()["total"]
+            total: int = 0
+            for chunk in chunked(requested_ids):
+                cursor.execute(
+                    f"SELECT COUNT(*) AS total FROM invoices "
+                    f"WHERE deleted_at IS NULL AND category IS NULL "
+                    f"AND id IN ({placeholders_for(len(chunk))})",
+                    chunk,
+                )
+                total += cursor.fetchone()["total"]
 
-            cursor.execute(
-                f"SELECT id, store, total FROM invoices {where} ORDER BY id LIMIT ?",
-                [*params, CATEGORIZE_SUGGEST_LIMIT],
-            )
-            rows: list[sqlite3.Row] = cursor.fetchall()
+            # Each chunk yields its own lowest-id candidates; the global lowest
+            # CATEGORIZE_SUGGEST_LIMIT are guaranteed among them, so a Python
+            # sort + slice reproduces a single ORDER BY id LIMIT over all ids.
+            candidates: list[sqlite3.Row] = []
+            for chunk in chunked(requested_ids):
+                cursor.execute(
+                    f"SELECT id, store, total FROM invoices "
+                    f"WHERE deleted_at IS NULL AND category IS NULL "
+                    f"AND id IN ({placeholders_for(len(chunk))}) ORDER BY id LIMIT ?",
+                    [*chunk, CATEGORIZE_SUGGEST_LIMIT],
+                )
+                candidates.extend(cursor.fetchall())
+            candidates.sort(key=lambda row: row["id"])
+            rows: list[sqlite3.Row] = candidates[:CATEGORIZE_SUGGEST_LIMIT]
 
             # Full per-invoice info for the response (store, amount, items); the
             # items double as the model input and the client's summary/accordion.

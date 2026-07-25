@@ -143,6 +143,30 @@ def test_run_is_capped_and_reports_total(
     assert len(captured[0]) == 3
 
 
+def test_large_id_list_is_chunked(
+    client: FlaskClient,
+    seed_invoice: SeedInvoice,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An id list spanning several chunks is counted and ordered correctly."""
+    _enable_ai(monkeypatch)
+    # Force multiple chunks (size 2) and a small cap so the cross-chunk merge and
+    # the global ORDER BY id LIMIT are both exercised without seeding 900+ rows.
+    monkeypatch.setattr(invoices_route, "chunked", lambda items: db.chunked(items, 2))
+    monkeypatch.setattr(invoices_route, "CATEGORIZE_SUGGEST_LIMIT", 3)
+    captured = _stub_suggestions(monkeypatch)
+
+    ids = [seed_invoice(store=f"Store {index}", category=None) for index in range(5)]
+
+    response = client.post("/api/invoices/categorize-suggest", json={"ids": ids})
+
+    body = response.get_json()
+    assert body["total"] == 5  # summed across chunks
+    assert body["count"] == 3  # capped
+    # The three lowest ids overall, merged correctly across chunk boundaries.
+    assert [invoice["id"] for invoice in captured[0]] == sorted(ids)[:3]
+
+
 def test_no_uncategorized_returns_empty(
     client: FlaskClient,
     seed_invoice: SeedInvoice,
