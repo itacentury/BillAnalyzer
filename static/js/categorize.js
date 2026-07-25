@@ -386,15 +386,12 @@ export async function runAnalysis() {
     .map((invoice) => invoice.id);
   try {
     const [suggestResponse, categoriesResponse] = await Promise.all([
-      fetch(
-        `/api/invoices/categorize-suggest?model=${encodeURIComponent(getAiModel())}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ids }),
-          signal: current.signal,
-        },
-      ),
+      fetch("/api/invoices/categorize-suggest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids, model: getAiModel() }),
+        signal: current.signal,
+      }),
       fetch("/api/categories"),
     ]);
 

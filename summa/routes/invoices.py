@@ -390,7 +390,8 @@ def categorize_suggest() -> ApiResponse:
     if not invoices:
         return jsonify({"suggestions": [], "count": 0, "total": 0})
 
-    model: str = resolve_model(request.args.get("model"))
+    model_key: Any = data.get("model")
+    model: str = resolve_model(model_key if isinstance(model_key, str) else None)
     cache_by_id: dict[int, sqlite3.Row] = {
         row["invoice_id"]: row for row in cached_rows
     }

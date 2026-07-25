@@ -318,9 +318,14 @@ def test_model_switch_rechecks(
     captured = _stub_suggestions(monkeypatch)
     invoice_id = seed_invoice(store="Bakery", category=None)
 
-    payload: dict[str, Any] = {"ids": [invoice_id]}
-    client.post("/api/invoices/categorize-suggest?model=haiku", json=payload)
-    client.post("/api/invoices/categorize-suggest?model=opus", json=payload)
+    client.post(
+        "/api/invoices/categorize-suggest",
+        json={"ids": [invoice_id], "model": "haiku"},
+    )
+    client.post(
+        "/api/invoices/categorize-suggest",
+        json={"ids": [invoice_id], "model": "opus"},
+    )
 
     assert len(captured) == 2
     assert [invoice["id"] for invoice in captured[1]] == [invoice_id]
