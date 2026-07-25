@@ -47,7 +47,7 @@ check .`, `ruff format --check .`, `mypy`), `test` (`pytest`) and `frontend`
 (`npm run lint`). Run them before pushing.
 
 Docker: `docker compose up -d` serves on `http://localhost:8000` with the DB
-persisted in the `summa_data` volume.
+persisted in the `./data` bind mount.
 
 ## Architecture
 

@@ -1,0 +1,647 @@
+/* AI category suggestions: trigger pill, review modal / bottom sheet, banners.
+   Warm-Sand tokens from variables.css; a few terracotta/purple accents from the
+   handoff have no exact token and are kept as literals. */
+
+/* Trigger (design 9c) — secondary pill, a peer of the Filter button (fixed 42px
+   height, single line) rather than a hero button. */
+.ai-trigger {
+  box-sizing: border-box;
+  display: inline-flex;
+  flex: none;
+  gap: 7px;
+  align-items: center;
+  height: 42px;
+  padding: 0 14px;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #a5643c;
+  white-space: nowrap;
+  cursor: pointer;
+  background: var(--bg-card);
+  border: 1px solid #d9b8a2;
+  border-radius: var(--radius-md);
+  transition: all var(--transition);
+}
+
+.ai-trigger:hover:not(:disabled) {
+  background: var(--bg-hover);
+}
+
+/* Nothing to categorize in the current view: greyed out but kept in place. */
+.ai-trigger:disabled {
+  color: var(--text-muted);
+  cursor: not-allowed;
+  border-color: var(--border-color);
+  opacity: 0.7;
+}
+
+.ai-trigger-icon {
+  color: var(--accent);
+}
+
+.ai-trigger:disabled .ai-trigger-icon {
+  color: currentcolor;
+}
+
+.ai-trigger-badge {
+  padding: 1px 7px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--cat-baecker-text);
+  background: var(--cat-baecker);
+  border-radius: 999px;
+}
+
+.ai-trigger:disabled .ai-trigger-badge {
+  color: var(--text-muted);
+  background: var(--border-color);
+}
+
+/* Mobile (13a): drop the label and become a sparkle-icon + count-badge button,
+   matching the Filter button beside it, so it no longer wraps onto its own row. */
+@media (width <= 640px) {
+  .ai-trigger {
+    box-sizing: border-box;
+    height: 46px;
+    padding: 0 13px;
+    border-radius: 12px;
+  }
+
+  .ai-trigger-label {
+    display: none;
+  }
+
+  .ai-trigger-badge {
+    font-size: 10.5px;
+  }
+}
+
+/* Model picker (design 11a) — compact select in the modal header, grouped with
+   the close button on the right. */
+.categorize-header-actions {
+  display: flex;
+  flex: none;
+  gap: 12px;
+  align-items: center;
+}
+
+.model-picker {
+  position: relative;
+}
+
+.model-picker-trigger {
+  box-sizing: border-box;
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  padding: 7px 11px;
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #6b5f4a;
+  white-space: nowrap;
+  cursor: pointer;
+  background: #faf5e9;
+  border: 1px solid #e2d8c2;
+  border-radius: 9px;
+  transition: all var(--transition-fast);
+}
+
+.model-picker-trigger:hover {
+  background: var(--bg-hover);
+}
+
+.model-picker-gear,
+.model-picker-chevron {
+  flex: none;
+  color: #a3947a;
+}
+
+/* Dropdown — hidden until the trigger toggles `.is-open` on the root. */
+.model-picker-menu {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1005;
+  display: none;
+  width: 280px;
+  max-height: 320px;
+  padding: 5px;
+  overflow-y: auto;
+  background: #fdf9f1;
+  border: 1px solid #e2d8c2;
+  border-radius: 12px;
+  box-shadow: 0 14px 36px rgb(58 51 42 / 20%);
+}
+
+.model-picker.is-open .model-picker-menu {
+  display: block;
+}
+
+.model-picker-section-label {
+  display: block;
+  padding: 6px 10px 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #a3947a;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.model-picker-option {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 9px 10px;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  background: none;
+  border: none;
+  border-radius: 8px;
+}
+
+.model-picker-option:hover {
+  background: var(--bg-hover);
+}
+
+.model-picker-option.is-selected {
+  background: #f6ecda;
+}
+
+.model-picker-option-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.model-picker-option-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.model-picker-option-desc {
+  font-size: 10.5px;
+  color: #8a7c62;
+}
+
+.model-picker-check {
+  flex: none;
+  color: #a5643c;
+  opacity: 0;
+}
+
+.model-picker-option.is-selected .model-picker-check {
+  opacity: 1;
+}
+
+.model-picker-note {
+  display: block;
+  padding: 8px 10px;
+  margin-top: 4px;
+  font-size: 10.5px;
+  color: #8a7c62;
+  background: #faf5e9;
+  border-radius: 8px;
+}
+
+/* Modal shell — fixed header/footer with a scrolling body */
+.categorize-modal {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 640px;
+  max-height: 85vh;
+  overflow: hidden;
+  border-radius: 16px;
+}
+
+.categorize-header {
+  flex: none;
+}
+
+.categorize-heading {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.categorize-heading-icon {
+  margin-top: 2px;
+  color: var(--accent);
+}
+
+.categorize-subtitle {
+  margin-top: 2px;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+.categorize-content {
+  flex: 1 1 auto;
+  overflow-y: auto;
+}
+
+/* Inline banners (loading / error / empty) */
+.categorize-banner {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 18px 24px;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.categorize-banner code {
+  padding: 1px 5px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.8125em;
+  background: var(--bg-inset);
+  border-radius: 5px;
+}
+
+.categorize-banner-loading {
+  margin: 18px 24px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+}
+
+.categorize-banner-error {
+  margin: 18px 24px;
+  color: var(--danger-subtle-text);
+  background: var(--danger-subtle-bg);
+  border: 1px solid #e0bfae;
+  border-radius: var(--radius-md);
+}
+
+.categorize-banner-action {
+  margin-left: auto;
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  background: none;
+  border: none;
+}
+
+.categorize-spinner {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--border-color);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: categorize-spin 0.7s linear infinite;
+}
+
+@keyframes categorize-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Capped-run note */
+.categorize-note {
+  padding: 10px 24px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  background: var(--bg-inset);
+}
+
+/* Select-all header (sticky at the top of the scroll area) */
+.categorize-selectall {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 24px;
+  background: var(--bg-hover);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.categorize-selectall-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* Custom checkbox (shared by the select-all header and each row) */
+.categorize-check {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  cursor: pointer;
+}
+
+.categorize-check input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.categorize-check-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  background: var(--bg-card);
+  border: 1.5px solid var(--border-dashed);
+  border-radius: 5px;
+  transition: all var(--transition-fast);
+}
+
+.categorize-check-mark::after {
+  width: 5px;
+  height: 9px;
+  content: "";
+  border: solid var(--accent-text-on);
+  border-width: 0 2px 2px 0;
+  opacity: 0;
+  transform: rotate(45deg) translateY(-1px);
+}
+
+.categorize-check input:checked + .categorize-check-mark,
+.categorize-check input:indeterminate + .categorize-check-mark {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.categorize-check input:checked + .categorize-check-mark::after {
+  opacity: 1;
+}
+
+.categorize-check input:indeterminate + .categorize-check-mark::after {
+  width: 9px;
+  height: 0;
+  border-width: 0 0 2px;
+  opacity: 1;
+  transform: none;
+}
+
+/* Suggestion rows */
+.categorize-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: flex-start;
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.categorize-row > .categorize-check {
+  margin-top: 2px;
+}
+
+.categorize-row.is-deselected {
+  opacity: 0.45;
+}
+
+.categorize-info {
+  min-width: 0;
+}
+
+.categorize-topline {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+}
+
+.categorize-store {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.categorize-amount {
+  display: none;
+  flex: none;
+  margin-left: auto;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.875rem;
+  color: var(--amount);
+}
+
+.categorize-meta-button {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 6px 8px 0;
+  margin-top: -8px;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  background: none;
+  border: none;
+}
+
+.categorize-meta-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  color: #8a7c62;
+  white-space: nowrap;
+}
+
+.categorize-meta-toggle {
+  flex: none;
+  font-size: 12px;
+  font-weight: 600;
+  color: #a5643c;
+}
+
+.categorize-meta-sep {
+  flex: none;
+  font-size: 12px;
+  color: #8a7c62;
+}
+
+.categorize-items {
+  display: none;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 6px;
+}
+
+.categorize-row.expanded .categorize-items {
+  display: flex;
+}
+
+.categorize-item-line {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-size: 11.5px;
+  color: #6b5f4a;
+}
+
+.categorize-item-line-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.categorize-item-line-price {
+  flex: none;
+  font-family: "JetBrains Mono", monospace;
+  color: #8a7c62;
+  text-align: right;
+}
+
+/* Category combobox column + NEW badge. The badge sits to the left of the
+   fixed-width field, right-aligned against its edge, so a long category value
+   keeps the full input width. */
+.categorize-combobox {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.categorize-combobox .combobox {
+  flex: none;
+  width: 190px;
+}
+
+.categorize-new-badge {
+  display: none;
+  flex: none;
+  padding: 2px 7px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--cat-technik-text);
+  letter-spacing: 0.04em;
+  background: var(--cat-technik);
+  border-radius: 5px;
+}
+
+.categorize-combobox.is-new .categorize-new-badge {
+  display: inline-flex;
+}
+
+.categorize-combobox.is-new .combobox-control {
+  border-color: #b39bd0;
+}
+
+/* The search magnifier is redundant chrome here; hide it to reclaim width for
+   the category value in the fixed-width column. */
+.categorize-combobox .combobox-search {
+  display: none;
+}
+
+/* Footer */
+.categorize-footer {
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.categorize-summary-text {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+
+.categorize-footer-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+/* Bottom sheet (design 9b / 10a) */
+@media (width <= 640px) {
+  .categorize-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .categorize-modal {
+    max-width: none;
+    max-height: 90vh;
+    border-radius: 18px 18px 0 0;
+  }
+
+  .categorize-modal::before {
+    flex: none;
+    width: 36px;
+    height: 4px;
+    margin: 10px auto 0;
+    content: "";
+    background: var(--border-strong);
+    border-radius: 2px;
+  }
+
+  /* Keep the trigger's tap target at least 44px without enlarging the visual. */
+  .model-picker-trigger {
+    min-height: 44px;
+  }
+
+  .model-picker-menu {
+    width: min(280px, calc(100vw - 32px));
+  }
+
+  .categorize-row {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 8px 12px;
+    align-items: flex-start;
+    padding: 14px 20px;
+  }
+
+  .categorize-amount {
+    display: block;
+  }
+
+  .categorize-meta-button {
+    max-width: 100%;
+  }
+
+  .categorize-meta-text {
+    white-space: normal;
+  }
+
+  .categorize-combobox {
+    grid-column: 1 / -1;
+    margin-left: 30px;
+  }
+
+  /* Full-width field on mobile; the NEW badge stays to its left. */
+  .categorize-combobox .combobox {
+    flex: 1;
+    width: auto;
+  }
+
+  .categorize-footer {
+    padding-bottom: max(24px, env(safe-area-inset-bottom));
+  }
+
+  .categorize-footer-actions {
+    flex: 1;
+  }
+
+  .categorize-footer-actions .btn {
+    flex: 1;
+    justify-content: center;
+    padding: 12px;
+  }
+
+  .categorize-apply-suffix {
+    display: none;
+  }
+}

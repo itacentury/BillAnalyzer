@@ -22,6 +22,7 @@ import { setupInvoiceListListeners } from "./render.js";
 import { setupBulkListeners } from "./bulk.js";
 import { setupStatsListeners } from "./stats.js";
 import { setupImportListeners } from "./import.js";
+import { setupCategorizeListeners } from "./categorize.js";
 import { setupComboboxes } from "./combobox.js";
 import { initToastListeners } from "./toast.js";
 import { setupKeyboardListeners } from "./keyboard.js";
@@ -91,6 +92,7 @@ function init() {
   setupBulkListeners();
   setupStatsListeners();
   setupImportListeners();
+  setupCategorizeListeners();
   initToastListeners();
   setupKeyboardListeners();
   setupDrawerListeners();

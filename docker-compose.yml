@@ -6,12 +6,11 @@ services:
     # Serves plain HTTP only — put a TLS-terminating reverse proxy in front for
     # any non-localhost deployment (see "Production Deployment" in README.md).
     ports:
-      - "8000:8000"
+      - 8000:8000/tcp
     volumes:
-      - summa_data:/data
-    environment:
-      - DATABASE_PATH=/data/invoices.db
-    # Healthcheck is inherited from the Dockerfile's HEALTHCHECK instruction.
-
-volumes:
-  summa_data:
+      - ./data:/data
+    # Optional .env supplies ANTHROPIC_API_KEY, ENABLE_AI_SUGGESTIONS, and any
+    # other overrides. Missing file is fine — copy .env.example to .env.
+    env_file:
+      - path: .env
+        required: false

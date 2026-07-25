@@ -15,6 +15,11 @@ from summa.helpers import (
 )
 
 
+def _valid_items() -> list[dict[str, Any]]:
+    """Return a minimal valid items list for invoice parsing tests."""
+    return [{"item_name": "Item", "item_price": 1.0}]
+
+
 @pytest.mark.parametrize(
     ("value", "expected"),
     [
@@ -52,8 +57,18 @@ def test_parse_invoice_batch_all_valid() -> None:
     """A fully valid batch parses every entry and reports no errors."""
     result = parse_invoice_batch(
         [
-            {"date": "2024-01-01", "store": "A", "total": 1.0, "items": []},
-            {"date": "2024-01-02", "store": "B", "total": 2.0, "items": []},
+            {
+                "date": "2024-01-01",
+                "store": "A",
+                "total": 1.0,
+                "items": _valid_items(),
+            },
+            {
+                "date": "2024-01-02",
+                "store": "B",
+                "total": 2.0,
+                "items": _valid_items(),
+            },
         ]
     )
     assert [invoice.store for invoice in result.invoices] == ["A", "B"]
@@ -65,7 +80,12 @@ def test_parse_invoice_batch_collects_errors_with_index_and_field() -> None:
     raw_bad = {"date": "2024-01-01", "store": "Bad", "total": "abc"}
     result = parse_invoice_batch(
         [
-            {"date": "2024-01-01", "store": "Good", "total": 1.0, "items": []},
+            {
+                "date": "2024-01-01",
+                "store": "Good",
+                "total": 1.0,
+                "items": _valid_items(),
+            },
             {"store": "NoDate", "total": 1.0},
             raw_bad,
         ]
@@ -92,7 +112,9 @@ def test_parse_invoice_rejects_future_date() -> None:
     with pytest.raises(
         ValidationError, match="Invoice date cannot be in the future"
     ) as info:
-        parse_invoice({"date": tomorrow, "store": "A", "total": 1.0, "items": []})
+        parse_invoice(
+            {"date": tomorrow, "store": "A", "total": 1.0, "items": _valid_items()}
+        )
     assert info.value.field == "date"
 
 
@@ -101,7 +123,9 @@ def test_parse_invoice_accepts_today_and_past_dates(offset: int) -> None:
     """Today and any past date parse without error (no future bound violated)."""
     day: str = (date.today() + timedelta(days=offset)).isoformat()
     assert (
-        parse_invoice({"date": day, "store": "A", "total": 1.0, "items": []}).date
+        parse_invoice(
+            {"date": day, "store": "A", "total": 1.0, "items": _valid_items()}
+        ).date
         == day
     )
 
@@ -109,9 +133,18 @@ def test_parse_invoice_accepts_today_and_past_dates(offset: int) -> None:
 def test_parse_invoice_tolerates_non_iso_date() -> None:
     """A non-ISO date string keeps the parser's existing tolerance (no future guard)."""
     invoice = parse_invoice(
-        {"date": "not-a-date", "store": "A", "total": 1.0, "items": []}
+        {"date": "not-a-date", "store": "A", "total": 1.0, "items": _valid_items()}
     )
     assert invoice.date == "not-a-date"
+
+
+def test_parse_invoice_rejects_empty_items() -> None:
+    """An invoice without line items is rejected on the items field."""
+    with pytest.raises(
+        ValidationError, match="Invoice must contain at least one item"
+    ) as info:
+        parse_invoice({"date": "2024-01-01", "store": "A", "total": 1.0, "items": []})
+    assert info.value.field == "items"
 
 
 def test_parse_invoice_batch_collects_future_date_error() -> None:
@@ -119,8 +152,18 @@ def test_parse_invoice_batch_collects_future_date_error() -> None:
     tomorrow: str = (date.today() + timedelta(days=1)).isoformat()
     result = parse_invoice_batch(
         [
-            {"date": "2024-01-01", "store": "Good", "total": 1.0, "items": []},
-            {"date": tomorrow, "store": "Future", "total": 2.0, "items": []},
+            {
+                "date": "2024-01-01",
+                "store": "Good",
+                "total": 1.0,
+                "items": _valid_items(),
+            },
+            {
+                "date": tomorrow,
+                "store": "Future",
+                "total": 2.0,
+                "items": _valid_items(),
+            },
         ]
     )
     assert [invoice.store for invoice in result.invoices] == ["Good"]
@@ -131,8 +174,30 @@ def test_parse_invoice_batch_non_list_items_does_not_abort_batch() -> None:
     """A bad `items` field is collected per-entry; sibling valid entries still parse."""
     result = parse_invoice_batch(
         [
-            {"date": "2024-01-01", "store": "Good", "total": 1.0, "items": []},
+            {
+                "date": "2024-01-01",
+                "store": "Good",
+                "total": 1.0,
+                "items": _valid_items(),
+            },
             {"date": "2024-01-02", "store": "Bad", "total": 2.0, "items": 5},
+        ]
+    )
+    assert [invoice.store for invoice in result.invoices] == ["Good"]
+    assert [(error.index, error.field) for error in result.errors] == [(1, "items")]
+
+
+def test_parse_invoice_batch_collects_empty_items_error() -> None:
+    """An entry with empty items is reported while valid siblings still parse."""
+    result = parse_invoice_batch(
+        [
+            {
+                "date": "2024-01-01",
+                "store": "Good",
+                "total": 1.0,
+                "items": _valid_items(),
+            },
+            {"date": "2024-01-02", "store": "Bad", "total": 2.0, "items": []},
         ]
     )
     assert [invoice.store for invoice in result.invoices] == ["Good"]

@@ -42,8 +42,22 @@
 
 .invoice-list {
   min-height: 150px;
-  max-height: min(600px, calc(100dvh - 260px));
+
+  /* Keep scrolling inside the list, not the whole page; chrome budget lives
+     in variables.css (--list-chrome-desktop). */
+  max-height: min(600px, calc(100dvh - var(--list-chrome-desktop)));
   overflow-y: auto;
+}
+
+/* The compact search opens a second row, so add its chrome to the budget to
+   keep any page-level mini scrollbar away. */
+@media (width > 640px) {
+  body:has(.search-filter-group.search-open) .invoice-list {
+    max-height: min(
+      600px,
+      calc(100dvh - var(--list-chrome-desktop) - var(--search-row-chrome))
+    );
+  }
 }
 
 .pagination {
@@ -202,7 +216,6 @@
   display: flex;
   gap: 1rem;
   align-items: center;
-  justify-content: space-between;
   padding: 1rem 1.25rem;
   cursor: pointer;
 }
@@ -263,10 +276,12 @@
 }
 
 .invoice-total {
+  min-width: 72px;
   font-family: "JetBrains Mono", monospace;
   font-size: 1rem;
   font-weight: 500;
   color: var(--amount);
+  text-align: right;
 }
 
 .invoice-total::before {
@@ -533,17 +548,17 @@
     font-size: 14px;
   }
 
-  /* The mobile chrome around the list (sticky top bar + container padding +
-     the two filter rows + section header + pagination) measures ~306px, well
-     above the 260px desktop budget — without this the page overflows the
-     viewport and clips the pagination. */
+  /* Mobile carries a larger chrome budget (--list-chrome-mobile in
+     variables.css) so scrolling stays inside the list. */
   .invoice-list {
-    max-height: calc(100dvh - 310px);
+    max-height: calc(100dvh - var(--list-chrome-mobile));
   }
 
   /* The expanded search row adds its height + 8px row spacing. */
   body.mobile-search-open .invoice-list {
-    max-height: calc(100dvh - 310px - var(--mobile-search-height) - 8px);
+    max-height: calc(
+      100dvh - var(--list-chrome-mobile) - var(--mobile-search-height) - 8px
+    );
   }
 
   .invoice-header {

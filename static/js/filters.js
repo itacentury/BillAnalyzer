@@ -139,7 +139,156 @@ export function setupFilterListeners() {
   dateTo.addEventListener("change", switchToCustomMode);
 
   setupSortPills();
+  setupToolbarSearch();
   updateFilterBadge();
+}
+
+/**
+ * Two-state toolbar search (12a), desktop only: the field is either a full
+ * inline input or — when the toolbar is tight — a persistent icon button that
+ * toggles a slide-down bar in its own full-width row below the toolbar
+ * (mirroring the mobile search). A ResizeObserver on the toolbar switches
+ * states by the width actually left for the field; at <= 640px the mobile
+ * slide-in (drawer.js) owns the search.
+ */
+function setupToolbarSearch() {
+  const row = document.querySelector(".filters-row");
+  const group = document.querySelector(".search-filter-group");
+  const quickFilters = document.querySelector(".quick-filters");
+  const monthNavigator = document.querySelector(".month-navigator");
+  const todayButton = document.querySelector('[data-action="nav-today"]');
+  const toggleButton = document.querySelector(
+    '[data-el="search-toggle-compact"]',
+  );
+  const aiTrigger = document.querySelector('[data-el="ai-categories-trigger"]');
+  const filterButton = document.querySelector('[data-el="filters-toggle"]');
+  const closeButton = document.querySelector('[data-el="search-close"]');
+  const { searchInput } = els();
+
+  // Empirical tuning constants, coupled to the toolbar's inline layout — the
+  // thing to re-tune if a toolbar item is added or resized. collapseBelow and
+  // expandAbove straddle a 50px hysteresis band (expandAbove - collapseBelow)
+  // that stops the field flickering between states at the threshold.
+  const rowGap = 8; // .filters-row column gap
+  const collapseBelow = 210; // box width under which the input is unusable
+  const expandAbove = 260; // re-expand only past this (hysteresis band top)
+  const closeAnimationMs = 200; // keep in sync with --transition (0.2s)
+  let closeRowTimer = null;
+
+  const clearCloseRowTimer = () => {
+    if (closeRowTimer === null) return;
+    clearTimeout(closeRowTimer);
+    closeRowTimer = null;
+  };
+
+  const finishClosing = (restoreFocus = false) => {
+    clearCloseRowTimer();
+    group.classList.remove("search-closing");
+    group.classList.remove("search-open");
+    toggleButton.setAttribute("aria-expanded", "false");
+    if (restoreFocus && group.classList.contains("search-compact")) {
+      toggleButton.focus();
+    }
+  };
+
+  // restoreFocus returns focus to the toggle button after an explicit close
+  // (Esc, ✕, second toggle click) so keyboard users are not stranded.
+  const closeSearchRow = (restoreFocus = false, immediate = false) => {
+    if (
+      !group.classList.contains("search-open") &&
+      !group.classList.contains("search-closing")
+    ) {
+      return;
+    }
+
+    if (immediate) {
+      finishClosing(restoreFocus);
+      return;
+    }
+
+    clearCloseRowTimer();
+    group.classList.add("search-closing");
+    toggleButton.setAttribute("aria-expanded", "false");
+    closeRowTimer = setTimeout(() => {
+      finishClosing(restoreFocus);
+    }, closeAnimationMs);
+  };
+
+  const openSearchRow = () => {
+    clearCloseRowTimer();
+    group.classList.remove("search-closing");
+    group.classList.add("search-open");
+    toggleButton.setAttribute("aria-expanded", "true");
+    searchInput.focus();
+  };
+
+  // Field-box width an inline search would get, measured against the group's
+  // *current* row. Row-based, so it is independent of the group's flex state
+  // (compact = flex:none, inline = flex:1) — which also removes a source of
+  // expand/collapse oscillation.
+  const availableForSearch = () => {
+    const aiWidth = aiTrigger.hidden ? 0 : aiTrigger.offsetWidth;
+    // Wrapped: flex-wrap has dropped the group onto its own second row, where it
+    // shares the width only with AI + Filter (2 gaps). Measure that row — not the
+    // single-row layout — or the field stays needlessly collapsed to an icon on a
+    // near-empty line. filterButton always has a box (never display:contents), so
+    // it is the state-independent probe for the wrap.
+    const wrapped = filterButton.offsetTop > quickFilters.offsetTop + 2;
+    if (wrapped) {
+      return row.clientWidth - aiWidth - filterButton.offsetWidth - rowGap * 2;
+    }
+    // Single row: the field's share is the row minus the fixed chips, with the
+    // pills shrunk to their min-width floor. inlineGapCount ≈ the inline
+    // layout's inter-item gaps (4 row items + 2 group gaps); the hysteresis
+    // band absorbs the minor variance when the today button is display:none'd
+    // (all/custom).
+    const inlineGapCount = 5;
+    const quickFloor = parseFloat(getComputedStyle(quickFilters).minWidth) || 0;
+    const todayWidth = todayButton.offsetWidth; // 0 when .is-hidden (all/custom)
+    const fixed =
+      quickFloor +
+      monthNavigator.offsetWidth +
+      todayWidth +
+      aiWidth +
+      filterButton.offsetWidth;
+    return row.clientWidth - fixed - rowGap * inlineGapCount;
+  };
+
+  const syncState = () => {
+    if (window.innerWidth <= 640) {
+      group.classList.remove("search-compact");
+      closeSearchRow(false, true);
+      return;
+    }
+    const compact = group.classList.contains("search-compact");
+    const available = availableForSearch();
+    if (compact && available > expandAbove) {
+      group.classList.remove("search-compact");
+      closeSearchRow(false, true);
+    } else if (!compact && available < collapseBelow) {
+      group.classList.add("search-compact");
+    }
+  };
+
+  toggleButton.addEventListener("click", () => {
+    if (group.classList.contains("search-open")) {
+      closeSearchRow(true);
+    } else {
+      openSearchRow();
+    }
+  });
+  closeButton.addEventListener("click", () => closeSearchRow(true));
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") closeSearchRow(true);
+  });
+
+  // Observe the AI trigger too: it is unhidden asynchronously once the
+  // uncategorized count arrives, which shrinks the field's room without
+  // changing the row's own size (so observing the row alone would miss it).
+  const observer = new ResizeObserver(syncState);
+  observer.observe(row);
+  observer.observe(aiTrigger);
+  syncState();
 }
 
 // Sort/order are rendered as pill groups backed by hidden inputs (data-el

@@ -13,6 +13,7 @@ export const state = {
   effectivePageSize: 25, // Server-clamped page size from the last response; drives totalPages
   totalCount: 0, // Total invoices matching the active filters
   totalSum: 0, // Sum of totals across all matching invoices
+  uncategorizedCount: 0, // Uncategorized invoices in view (backs the AI trigger badge)
   currentDate: new Date(), // Current date for navigation reference
   editingInvoiceId: null, // Track if we're editing an invoice
   filterMode: "month", // 'week', 'month', 'year', 'all', 'custom'

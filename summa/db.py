@@ -12,6 +12,7 @@ from summa.helpers import InvoiceItem
 logger: logging.Logger = logging.getLogger(__name__)
 
 DATABASE: Final[str] = os.environ.get("DATABASE_PATH", "invoices.db")
+LEGACY_PLACEHOLDER_ITEM_NAME: Final[str] = "Placeholder"
 
 
 def get_db() -> sqlite3.Connection:
@@ -94,6 +95,25 @@ def init_db() -> None:
     """
     )
 
+    # Per-invoice cache of AI category suggestions. Keyed by invoice_id (one
+    # suggestion per invoice); the fingerprint captures the invoice content the
+    # model saw, so an edit invalidates the entry, and the model is stored so a
+    # model switch re-checks. category may be NULL (the model returned none) and
+    # is cached as such to avoid re-asking. Rows are pruned via ON DELETE CASCADE
+    # on hard delete; soft-deleted invoices are excluded by the read filter.
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS invoice_category_suggestions (
+            invoice_id INTEGER PRIMARY KEY,
+            category TEXT,
+            model TEXT NOT NULL,
+            fingerprint TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (invoice_id) REFERENCES invoices (id) ON DELETE CASCADE
+        )
+    """
+    )
+
     # Migration: Add deleted_at column if it doesn't exist (for existing databases)
     cursor.execute("PRAGMA table_info(invoices)")
     columns: list[str] = [column[1] for column in cursor.fetchall()]
@@ -132,6 +152,24 @@ def init_db() -> None:
         "CREATE INDEX IF NOT EXISTS idx_invoices_active_category "
         "ON invoices (category) WHERE deleted_at IS NULL"
     )
+
+    # Backfill legacy active invoices that predate the items constraint.
+    cursor.execute(
+        "INSERT INTO invoice_items (invoice_id, item_name, item_price) "
+        "SELECT invoices.id, ?, invoices.total "
+        "FROM invoices "
+        "WHERE invoices.deleted_at IS NULL "
+        "AND NOT EXISTS ("
+        "SELECT 1 FROM invoice_items WHERE invoice_items.invoice_id = invoices.id"
+        ")",
+        (LEGACY_PLACEHOLDER_ITEM_NAME,),
+    )
+    backfilled_items: int = cursor.rowcount if cursor.rowcount != -1 else 0
+    if backfilled_items:
+        logger.info(
+            "Migration applied: backfilled %d placeholder invoice items",
+            backfilled_items,
+        )
 
     conn.commit()
     conn.close()

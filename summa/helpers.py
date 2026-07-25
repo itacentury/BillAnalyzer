@@ -13,6 +13,11 @@ ApiResponse = Response | tuple[Response, int]
 # payload can still hold tens of thousands of rows, each a SELECT + INSERT.
 MAX_IMPORT_BATCH: Final[int] = 10_000
 
+# Categories are meant to be short and general; the cap also bounds the residual
+# prompt-injection surface of the AI suggestion path (an injected store/item name
+# cannot make an oversized category persist). See summa/ai.py.
+MAX_CATEGORY_LENGTH: Final[int] = 64
+
 
 def error_response(message: str, status: int) -> tuple[Response, int]:
     """Build a standard {success: False, error: …} JSON error response."""
@@ -76,6 +81,21 @@ def require_non_empty_str(value: Any, field: str) -> str:
     return stripped
 
 
+def clean_category(value: Any) -> str | None:
+    """Normalize a category: collapse whitespace runs, cap length, empty -> None.
+
+    Stricter than :func:`strip_text`: it also collapses interior whitespace
+    (including newlines) and truncates to :data:`MAX_CATEGORY_LENGTH`.
+    """
+    if value is None:
+        return None
+    collapsed: str = " ".join(str(value).split())
+    if not collapsed:
+        return None
+    # .strip() again in case truncation lands mid-space.
+    return collapsed[:MAX_CATEGORY_LENGTH].strip() or None
+
+
 def escape_like(value: str) -> str:
     """Escape LIKE wildcards so a search term matches literally."""
     # Escape the escape char first, then the two LIKE wildcards.
@@ -130,8 +150,17 @@ def parse_invoice(data: Any) -> Invoice:
     if not isinstance(data, dict):
         raise ValidationError("Invoice must be a JSON object")
 
+    invoice_date: str = require_non_empty_str(_require(data, "date"), "date")
+    _reject_future_date(invoice_date)
+
+    store: str = require_non_empty_str(_require(data, "store"), "store")
+    category: str | None = strip_text(
+        require_optional_str(data.get("category"), "category")
+    )
+    total: float = _parse_float(_require(data, "total"), "total")
+
     items: list[InvoiceItem] = []
-    raw_items: Any = data.get("items") or []
+    raw_items: Any = data.get("items", [])
     if not isinstance(raw_items, list):
         raise ValidationError("Field 'items' must be a list", field="items")
     for raw_item in raw_items:
@@ -141,14 +170,14 @@ def parse_invoice(data: Any) -> Invoice:
         price: float = _parse_float(_require(raw_item, "item_price"), "item_price")
         items.append(InvoiceItem(item_name=name, item_price=price))
 
-    invoice_date: str = require_non_empty_str(_require(data, "date"), "date")
-    _reject_future_date(invoice_date)
+    if not items:
+        raise ValidationError("Invoice must contain at least one item", field="items")
 
     return Invoice(
         date=invoice_date,
-        store=require_non_empty_str(_require(data, "store"), "store"),
-        category=strip_text(require_optional_str(data.get("category"), "category")),
-        total=_parse_float(_require(data, "total"), "total"),
+        store=store,
+        category=category,
+        total=total,
         items=items,
     )
 

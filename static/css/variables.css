@@ -15,6 +15,7 @@
   --border-strong: #ddd2ba; /* sidebar separation */
   --border-subtle: #efe7d5; /* row dividers */
   --border-dashed: #cdbfa3; /* checkboxes, dropzone */
+  --border-search-open: #d9b8a2; /* active desktop open-search row outline */
 
   /* Text */
   --text-primary: #3a332a;
@@ -72,6 +73,14 @@
      Max-height transition target; must stay >= the row's natural height
      or the open state clips. Also budgeted in .invoice-list (invoices.css). */
   --mobile-search-height: 48px;
+
+  /* Fixed chrome subtracted from the viewport height to size the scrollable
+     invoice list, so scrolling stays inside the list rather than the page
+     (top bar + container padding + filter rows + section header + pagination).
+     Re-tune these if that chrome is resized; consumed in invoices.css. */
+  --list-chrome-desktop: 291px;
+  --list-chrome-mobile: 329px; /* mobile top bar makes the chrome taller */
+  --search-row-chrome: 84px; /* desktop search 2nd row: gap + field + spacing */
 
   /* Legacy compatibility shim — remapped to warm equivalents so component
      stylesheets keep rendering until each is restyled in its own milestone.

@@ -163,6 +163,13 @@
   color: var(--text-faint);
 }
 
+/* Compact-only search toggle (see the >640px block): off everywhere by default;
+   the mobile top bar has its own search button, and a wide toolbar shows the
+   field inline instead. */
+.filter-search-toggle {
+  display: none;
+}
+
 /* Filter panel toggle */
 .filter-button {
   display: flex;
@@ -283,11 +290,178 @@
   border-color: var(--accent);
 }
 
-/* Mobile-only chrome (search ✕, sheet scrim/header) is hidden on desktop. */
+/* Mobile-only chrome (search ✕, sheet scrim/header) and the open-only hint
+   are hidden by default; the desktop open state (12a) re-shows ✕ + hint. */
 .filter-search-close,
+.filter-search-hint,
 .filter-sheet-scrim,
 .filters-collapsible .sheet-header {
   display: none;
+}
+
+/* Search two-state behavior (12a), desktop only. setupToolbarSearch() toggles
+   .search-compact / .search-open on .search-filter-group by available toolbar
+   width; below 640px the mobile slide-in (drawer.js) owns the search instead. */
+@media (width > 640px) {
+  /* Let the group shrink inline (Design 7a wrapped it to its own line instead):
+     12a keeps it on one row and collapses the search to an icon when tight.
+     min-content is the icon + AI + Filter cluster, so once the search is an icon
+     the group stops shrinking and wraps as a whole rather than overflowing. */
+  .search-filter-group {
+    min-width: min-content;
+  }
+
+  /* Compact toolbar: the field is hidden, so the group shrinks to just its icon
+     cluster (toggle + AI + Filter). With flex:none it no longer claims half the
+     row's free space as a trailing gap — .quick-filters (flex:1) absorbs all of
+     it, pushing the navigator/today/cluster flush right, exactly like the open
+     state. The two states thus share one layout. availableForSearch() no longer
+     relies on this box growing (it measures the row directly, see filters.js). */
+  .search-compact {
+    flex: none;
+  }
+
+  /* Compact state: the field would shrink to a truncated sliver, so it hides and
+     a persistent 42x42 icon button (matching the ⊙ jump-to-current chip) takes
+     its place in the toolbar and toggles the slide-down bar. */
+  .search-compact .filter-search-toggle {
+    box-sizing: border-box;
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    color: var(--text-muted);
+    cursor: pointer;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+  }
+
+  .search-compact .filter-search-toggle svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .search-compact .filter-search-toggle:hover {
+    background: var(--bg-hover);
+  }
+
+  .search-compact .filter-search-toggle:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  /* Collapsed bar: hidden and flattened. Mirrors the mobile slide-in so the
+     desktop bar animates the same way; the open state below expands it. Unlike
+      mobile it must NOT set flex-basis/order here: a 100% basis
+     would inflate the group's width and fight the width-measuring
+     ResizeObserver (endless compact/expand loop). Those belong to the open
+     state only, where the group is display:contents and unmeasured. */
+  .search-compact .filter-search {
+    display: none;
+    visibility: hidden;
+    flex: none;
+    width: 0;
+    min-width: 0;
+    max-height: 0;
+    padding-block: 0;
+    margin-bottom: 0;
+    overflow: clip;
+    border-block-width: 0;
+    opacity: 0;
+    transform: translateY(-8px);
+    transition:
+      max-height var(--transition),
+      padding var(--transition),
+      margin var(--transition),
+      border-width var(--transition),
+      opacity var(--transition),
+      transform var(--transition);
+  }
+
+  /* Open state: dissolve the wrapper so the field, AI and filter buttons become
+     direct children of .filters-row. The buttons keep the toolbar row (default
+     order 0); the field takes order 1 to drop onto its own line below. */
+  .search-filter-group.search-open {
+    display: contents;
+  }
+
+  /* Open state: the bar slides in-flow into its own full-width row below the
+     toolbar (order 1 + flex-basis 100% wraps it), pushing the list down. Same
+     animated end values as the mobile slide-in; @starting-style runs it on open. */
+  .search-open .filter-search {
+    display: flex;
+    visibility: visible;
+    flex-basis: 100%;
+    order: 1;
+    max-height: var(--mobile-search-height);
+    padding-block: 9px;
+    margin-bottom: 8px;
+    border-color: var(--border-search-open);
+    border-block-width: 1px;
+    border-radius: 12px;
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* Closing state: keep the row in flow for the transition, then JS removes
+     .search-open after 0.2s so compact state can snap to display:none cleanly. */
+  .search-open.search-closing .filter-search {
+    max-height: 0;
+    padding-block: 0;
+    margin-bottom: 0;
+    border-block-width: 0;
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+
+  @starting-style {
+    .search-open .filter-search {
+      max-height: 0;
+      padding-block: 0;
+      margin-bottom: 0;
+      border-block-width: 0;
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+  }
+
+  .search-open .filter-search svg {
+    width: 14px;
+    height: 14px;
+    color: #a5643c;
+  }
+
+  .search-open .filter-search-input {
+    display: block;
+    flex: 1;
+    font-size: 13px;
+  }
+
+  .search-open .filter-search-hint {
+    display: block;
+    flex: none;
+    font-size: 11px;
+    color: var(--text-faint);
+    white-space: nowrap;
+  }
+
+  .search-open .filter-search-close {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    color: var(--text-muted);
+    cursor: pointer;
+    background: #faf5e9;
+    border: none;
+    border-radius: var(--radius-sm);
+  }
 }
 
 /* Stats view: only the period controls remain; search + filter panel hidden. */
@@ -315,7 +489,7 @@ body.stats-mode .filters-collapsible {
   .filters-row {
     display: flex;
     flex-wrap: wrap;
-    gap: 0 8px;
+    gap: 0 10px;
   }
 
   /* Dissolve the wrapper so search and filter button reflow as direct children
@@ -341,7 +515,9 @@ body.stats-mode .filters-collapsible {
   .month-navigator {
     display: flex;
     flex: 1;
-    border-radius: 10px;
+    min-width: 0;
+    min-height: 46px;
+    border-radius: 12px;
   }
 
   /* The label absorbs the flexible width so the nav buttons stay compact at
@@ -352,22 +528,23 @@ body.stats-mode .filters-collapsible {
   }
 
   .month-nav-btn {
-    width: 31px;
-    height: 31px;
+    width: 36px;
+    height: 36px;
   }
 
-  /* Match the navigator/filter boxes, which round to 10px on mobile. */
+  /* Toolbar row targets are >= 44px on mobile (13a); the boxes round to 12px. */
   .today-button {
-    border-radius: 10px;
+    width: 46px;
+    height: 46px;
+    border-radius: 12px;
   }
 
-  /* The row's align-items: center would collapse the button to its content
-     height; stretch it to match the month navigator instead. */
   .filter-button {
+    box-sizing: border-box;
     gap: 6px;
-    align-self: stretch;
+    height: 46px;
     padding: 0 13px;
-    border-radius: 10px;
+    border-radius: 12px;
   }
 
   .filter-button-label {

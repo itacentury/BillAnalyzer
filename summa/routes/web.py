@@ -4,13 +4,15 @@ from pathlib import Path
 
 from flask import Blueprint, Response, current_app, jsonify, render_template
 
+from summa.ai import suggestions_enabled
+
 web_bp: Blueprint = Blueprint("web", __name__)
 
 
 @web_bp.route("/")
 def index() -> str:
     """Render the main web interface."""
-    return render_template("index.html")
+    return render_template("index.html", ai_suggestions_enabled=suggestions_enabled())
 
 
 def _asset_manifest(subdirectory: str, suffix: str) -> Response:

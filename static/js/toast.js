@@ -90,6 +90,21 @@ export function hasPendingToast() {
 }
 
 /**
+ * Finalize a pending deferred action and await its commit. Unlike the fire-and-
+ * forget commitPendingToast(), this returns the commit's promise so a caller can
+ * wait for the server write (PUT/DELETE) to complete before reading fresh data —
+ * used when opening AI Categories so a just-edited invoice is analyzed, not its
+ * pre-edit content. Hides the toast, since the undo window is over.
+ */
+export async function flushPendingToast() {
+  const commit = toastCommitCallback;
+  toastCommitCallback = null;
+  hideUndoToast();
+  if (commit) await commit();
+  return Boolean(commit);
+}
+
+/**
  * Show an undo toast with the given message.
  *
  * @param {string} message - Text to display in the toast.
