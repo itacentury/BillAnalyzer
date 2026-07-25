@@ -123,6 +123,29 @@ def test_only_requested_ids_are_scoped(
     assert body["suggestions"][0]["invoice_id"] == on_page
 
 
+def test_soft_deleted_ids_are_excluded(
+    client: FlaskClient,
+    seed_invoice: SeedInvoice,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A soft-deleted id in the request is excluded from both count and analysis."""
+    _enable_ai(monkeypatch)
+    captured = _stub_suggestions(monkeypatch)
+
+    visible_id = seed_invoice(store="Bakery", category=None)
+    deleted_id = seed_invoice(store="Gone", category=None, deleted=True)
+
+    response = client.post(
+        "/api/invoices/categorize-suggest",
+        json={"ids": [visible_id, deleted_id]},
+    )
+
+    body = response.get_json()
+    assert body["count"] == 1
+    assert body["total"] == 1  # the deleted row is filtered out of COUNT too
+    assert [invoice["id"] for invoice in captured[0]] == [visible_id]
+
+
 def test_run_is_capped_and_reports_total(
     client: FlaskClient,
     seed_invoice: SeedInvoice,

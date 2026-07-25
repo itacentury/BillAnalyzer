@@ -376,7 +376,7 @@ async function rerunForModel() {
  * caller shows the loading banner first; this owns the request lifecycle and
  * aborts any in-flight request so a rapid model switch never double-renders.
  */
-async function runAnalysis() {
+export async function runAnalysis() {
   controller?.abort();
   controller = new AbortController();
   const current = controller;
