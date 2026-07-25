@@ -173,6 +173,9 @@ function setupToolbarSearch() {
   const collapseBelow = 210; // box width under which the input is unusable
   const expandAbove = 260; // re-expand only past this (hysteresis band top)
   const closeAnimationMs = 200; // keep in sync with --transition (0.2s)
+  // The AI trigger is one flex item inside the group, so its absence (AI
+  // suggestions disabled) also removes one inter-item gap from both layouts.
+  const aiGapCount = aiTrigger ? 1 : 0;
   let closeRowTimer = null;
 
   const clearCloseRowTimer = () => {
@@ -229,20 +232,25 @@ function setupToolbarSearch() {
   const availableForSearch = () => {
     const aiWidth = !aiTrigger || aiTrigger.hidden ? 0 : aiTrigger.offsetWidth;
     // Wrapped: flex-wrap has dropped the group onto its own second row, where it
-    // shares the width only with AI + Filter (2 gaps). Measure that row — not the
-    // single-row layout — or the field stays needlessly collapsed to an icon on a
-    // near-empty line. filterButton always has a box (never display:contents), so
-    // it is the state-independent probe for the wrap.
+    // shares the width only with Filter and — when present — AI. Measure that row
+    // — not the single-row layout — or the field stays needlessly collapsed to an
+    // icon on a near-empty line. filterButton always has a box (never
+    // display:contents), so it is the state-independent probe for the wrap.
     const wrapped = filterButton.offsetTop > quickFilters.offsetTop + 2;
     if (wrapped) {
-      return row.clientWidth - aiWidth - filterButton.offsetWidth - rowGap * 2;
+      return (
+        row.clientWidth -
+        aiWidth -
+        filterButton.offsetWidth -
+        rowGap * (1 + aiGapCount)
+      );
     }
     // Single row: the field's share is the row minus the fixed chips, with the
     // pills shrunk to their min-width floor. inlineGapCount ≈ the inline
-    // layout's inter-item gaps (4 row items + 2 group gaps); the hysteresis
-    // band absorbs the minor variance when the today button is display:none'd
-    // (all/custom).
-    const inlineGapCount = 5;
+    // layout's inter-item gaps (4 row items + 2 group gaps, one fewer group gap
+    // without the AI trigger); the hysteresis band absorbs the minor variance
+    // when the today button is display:none'd (all/custom).
+    const inlineGapCount = 4 + aiGapCount;
     const quickFloor = parseFloat(getComputedStyle(quickFilters).minWidth) || 0;
     const todayWidth = todayButton.offsetWidth; // 0 when .is-hidden (all/custom)
     const fixed =
