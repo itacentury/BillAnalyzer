@@ -294,10 +294,10 @@ def categorize_suggest() -> ApiResponse:
         return error_response("AI categorization not configured", 503)
 
     data: Any = request.get_json(silent=True) or {}
-    # An empty/missing page is a valid empty result; a non-empty but malformed
-    # ids payload is a client error. Reuse parse_id_list (as /bulk-* do) so the
-    # same strict int/list/bool validation applies here instead of raising a 500.
-    if not (isinstance(data, dict) and data.get("ids")):
+    # A missing or empty ids list is a legitimately empty page: 200, no work.
+    # Everything else goes through parse_id_list (as /bulk-* do) so the same strict
+    # validation applies and a malformed payload is a 400, not a silent success.
+    if isinstance(data, dict) and data.get("ids", []) == []:
         return jsonify({"suggestions": [], "count": 0, "total": 0})
     try:
         # Dedupe once: IN dedupes within a chunk, but the same id split across two

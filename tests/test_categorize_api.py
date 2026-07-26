@@ -221,22 +221,40 @@ def test_empty_ids_returns_empty(
     assert captured == []
 
 
+def test_missing_body_returns_empty(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A body-less POST is treated like an empty page, not as a malformed payload."""
+    _enable_ai(monkeypatch)
+    captured = _stub_suggestions(monkeypatch)
+
+    response = client.post("/api/invoices/categorize-suggest")
+
+    assert response.status_code == 200
+    assert response.get_json() == {"suggestions": [], "count": 0, "total": 0}
+    assert captured == []
+
+
 @pytest.mark.parametrize(
     "payload",
     [
         {"ids": "abc"},
         {"ids": 5},
+        {"ids": 0},
+        {"ids": ""},
+        {"ids": {}},
         {"ids": [None]},
         {"ids": [1.9]},
         {"ids": [True]},
+        [1, 2],
     ],
 )
 def test_malformed_ids_return_400(
     client: FlaskClient,
     monkeypatch: pytest.MonkeyPatch,
-    payload: dict[str, Any],
+    payload: Any,
 ) -> None:
-    """A non-empty but malformed ids body is a client error, not a 500."""
+    """A malformed ids body is a client error, not a silent empty success."""
     _enable_ai(monkeypatch)
     captured = _stub_suggestions(monkeypatch)
 
