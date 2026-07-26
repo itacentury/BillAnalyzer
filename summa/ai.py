@@ -56,6 +56,13 @@ _TOKEN_BUDGET_BASE: Final[int] = 4096
 _TOKENS_PER_INVOICE: Final[int] = 64
 _TOKEN_BUDGET_CAP: Final[int] = 15000
 
+# The largest batch _max_tokens_for can fully fund before the cap clamps the
+# per-invoice allowance. Callers cap their batch to this so a run never requests
+# more tokens than the budget grants — which would truncate the response.
+MAX_FULLY_BUDGETED_BATCH: Final[int] = (
+    _TOKEN_BUDGET_CAP - _TOKEN_BUDGET_BASE
+) // _TOKENS_PER_INVOICE  # (15000 - 4096) // 64 = 170
+
 SYSTEM_PROMPT: Final[str] = (
     "You assign exactly one spending category to each invoice, based on its store "
     "name and purchased items. Prefer a category from the provided list of existing "

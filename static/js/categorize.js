@@ -9,7 +9,7 @@
  */
 
 import { state } from "./state.js";
-import { buildFilterParams, refreshAllData } from "./api.js";
+import { refreshAllData } from "./api.js";
 import { escapeHtml, formatCurrency } from "./dom.js";
 import { showUndoToast, showErrorToast, flushPendingToast } from "./toast.js";
 import { renderInvoices, restoreRows } from "./render.js";
@@ -25,18 +25,30 @@ let reviewRows = [];
 let existingLower = new Set(); // lowercased existing categories, for is-new recompute
 
 /**
- * Enable/disable the trigger button and update its badge from
- * `state.uncategorizedCount`. Called after every invoice-list load so it stays
- * live. When nothing is uncategorized the button is greyed out (disabled), not
- * hidden, so it keeps its place in the toolbar.
+ * Update the trigger button's badge and damped state from the uncategorized
+ * invoices on the current page (`state.invoices`), matching what the AI action
+ * analyzes. Called after every invoice-list load so it stays live. When nothing
+ * is uncategorized the button is greyed out (`is-empty`) but stays clickable and
+ * enabled: a disabled button could not open the dialog, and the dialog's empty
+ * state is what explains that other pages in the period may still have some.
  */
 export function updateAiTriggerBadge() {
   const button = document.querySelector('[data-el="ai-categories-trigger"]');
   if (!button) return;
-  const count = state.uncategorizedCount || 0;
-  button.disabled = count === 0;
+  const count = state.invoices.filter((invoice) => !invoice.category).length;
+  button.classList.toggle("is-empty", count === 0);
+  // aria-label wins the accessible name over title, so both carry the hint —
+  // and both lead with the control name so the empty state still identifies it.
+  const label =
+    count === 0
+      ? "AI Categories — none uncategorized on this page, other pages in this period may still have some"
+      : "AI Categories";
+  button.title = label;
+  button.setAttribute("aria-label", label);
   const badge = button.querySelector('[data-el="ai-categories-badge"]');
-  if (badge) badge.textContent = count;
+  // String() is load-bearing: happy-dom's textContent setter renders the number
+  // 0 as "" (not "0"), so the badge would blank out on a page with none.
+  if (badge) badge.textContent = String(count);
 }
 
 // --- Item aggregation & summary ---------------------------------------------
@@ -135,6 +147,21 @@ function renderError(message) {
   `;
 }
 
+/**
+ * The reachable "nothing to analyze" state: the trigger stays clickable on a
+ * fully categorized page, so this is what opening it lands on.
+ */
+function renderPageScopedEmpty() {
+  setFooterVisible(false);
+  contentEl().innerHTML = `
+    <div class="categorize-banner">No uncategorized invoices on this page — other pages in this period may still have some.</div>`;
+}
+
+function setSubtitle(total) {
+  document.querySelector('[data-el="categorize-subtitle"]').textContent =
+    `${total} uncategorized invoice${total !== 1 ? "s" : ""} on this page`;
+}
+
 function rowHtml(row, index) {
   const groups = aggregateItems(row.items);
   const itemCount = groups.length;
@@ -195,15 +222,13 @@ function renderReview(data, categories) {
   existingLower = new Set(categories.map((category) => category.toLowerCase()));
 
   if (reviewRows.length === 0) {
-    setFooterVisible(false);
-    contentEl().innerHTML = `
-      <div class="categorize-banner">Nothing to categorize in this period.</div>`;
+    renderPageScopedEmpty();
     return;
   }
 
   const cappedNote =
     data.total > data.count
-      ? `<div class="categorize-note">First ${data.count} of ${data.total} — run again for the rest.</div>`
+      ? `<div class="categorize-note">First ${data.count} of ${data.total} — apply these, then run again for the rest.</div>`
       : "";
 
   contentEl().innerHTML = `
@@ -374,20 +399,38 @@ async function rerunForModel() {
  * Fetch suggestions for the current filter + model and render the review. The
  * caller shows the loading banner first; this owns the request lifecycle and
  * aborts any in-flight request so a rapid model switch never double-renders.
+ * Returns without any request when the page has nothing uncategorized.
+ * Exported only for tests/frontend/categorize.test.js — both production callers
+ * (openCategorize, rerunForModel) are in this module.
  */
-async function runAnalysis() {
+export async function runAnalysis() {
   controller?.abort();
+  controller = null;
+  // Scope the analysis to exactly the uncategorized invoices on the current page.
+  const ids = state.invoices
+    .filter((invoice) => !invoice.category)
+    .map((invoice) => invoice.id);
+
+  // Nothing to analyze: both requests are knowable no-ops here (the route
+  // short-circuits before the DB and the category list only fills the per-row
+  // comboboxes), so skip the pair and render the same empty state.
+  if (ids.length === 0) {
+    reviewRows = [];
+    setSubtitle(0);
+    renderPageScopedEmpty();
+    return;
+  }
+
   controller = new AbortController();
   const current = controller;
   try {
     const [suggestResponse, categoriesResponse] = await Promise.all([
-      fetch(
-        `/api/invoices/categorize-suggest?${buildFilterParams()}&model=${encodeURIComponent(getAiModel())}`,
-        {
-          method: "POST",
-          signal: current.signal,
-        },
-      ),
+      fetch("/api/invoices/categorize-suggest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids, model: getAiModel() }),
+        signal: current.signal,
+      }),
       fetch("/api/categories"),
     ]);
 
@@ -404,11 +447,7 @@ async function runAnalysis() {
     const data = await suggestResponse.json();
     const categories = await categoriesResponse.json();
 
-    const period =
-      document.querySelector('[data-el="month-display"]')?.textContent || "";
-    document.querySelector('[data-el="categorize-subtitle"]').textContent =
-      `${data.total} uncategorized invoice${data.total !== 1 ? "s" : ""}${period ? ` · ${period}` : ""}`;
-
+    setSubtitle(data.total);
     renderReview(data, categories);
   } catch (error) {
     if (error.name === "AbortError") return; // user cancelled; modal already closed

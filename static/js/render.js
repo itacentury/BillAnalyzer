@@ -2,8 +2,11 @@
  * Invoice list rendering and the bulk-action toolbar state.
  *
  * `updateBulkActionToolbar` lives here (rather than in bulk.js) because
- * renderInvoices calls it; keeping it co-located avoids an import cycle —
- * this module depends only on the leaf modules.
+ * renderInvoices calls it on every render and both write the same list DOM.
+ * This module is deliberately not import-cycle-free: it forms cycles with
+ * bulk.js, categorize.js, api.js and invoices.js. They are harmless — all of
+ * those bindings are hoisted `export function` declarations that are only
+ * called at runtime, never during module evaluation.
  */
 
 import { state, selectedInvoices } from "./state.js";
@@ -19,6 +22,7 @@ import { editInvoice } from "./modals.js";
 import { deleteInvoice } from "./invoices.js";
 import { fetchInvoiceItems } from "./api.js";
 import { toggleInvoiceSelection } from "./bulk.js";
+import { updateAiTriggerBadge } from "./categorize.js";
 import { renderPageSizeControl } from "./pagesize.js";
 
 /**
@@ -203,6 +207,10 @@ export function renderInvoices() {
 
   renderPagination();
   updateBulkActionToolbar();
+  // Every optimistic mutation (edit/delete/bulk/categorize/undo) re-renders
+  // through here, so refreshing the AI trigger badge at this single choke point
+  // keeps its page-scoped count live without a call at each mutation site.
+  updateAiTriggerBadge();
 }
 
 /**

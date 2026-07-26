@@ -95,8 +95,8 @@ Two operational caveats:
 ## AI Category Suggestions
 
 Summa can suggest a spending category for uncategorized invoices using Claude.
-From the categorize dialog you trigger a run over the currently filtered
-uncategorized invoices; the model returns one category per invoice and you review
+From the categorize dialog you trigger a run over the uncategorized invoices on
+the current page; the model returns one category per invoice and you review
 and confirm the suggestions before anything is written — the request itself never
 mutates your data.
 

@@ -8,6 +8,7 @@ from typing import Any, Final
 from flask import Blueprint, Response, jsonify, request
 
 from summa.ai import (
+    MAX_FULLY_BUDGETED_BATCH,
     AiCategorizationError,
     CategorySuggestion,
     invoice_fingerprint,
@@ -40,9 +41,13 @@ invoices_bp: Blueprint = Blueprint("invoices", __name__)
 DEFAULT_PAGE_SIZE: Final[int] = 25
 MAX_PAGE_SIZE: Final[int] = 200
 ALL_PAGE_SIZE_TOKEN: Final[str] = "all"
-# Cap per categorize-suggest run to bound Claude token use and cost; the rest are
-# reported via the response `total` so the client can prompt a re-run.
-CATEGORIZE_SUGGEST_LIMIT: Final[int] = 100
+# Cap per categorize-suggest run to bound Claude token use and cost. The AI
+# layer's fully-budgeted batch is the term that binds today (170 < 200), keeping a
+# run inside the token budget so the response is never truncated; MAX_PAGE_SIZE is
+# the second term only so a future budget increase cannot push the cap past one
+# page. The response `total` lets the client prompt a re-run when a larger view is
+# capped.
+CATEGORIZE_SUGGEST_LIMIT: Final[int] = min(MAX_PAGE_SIZE, MAX_FULLY_BUDGETED_BATCH)
 
 
 def _build_invoice_filter(args: Any) -> tuple[str, list[str]]:
@@ -115,19 +120,13 @@ def get_invoices() -> Response:
 
     with db_cursor() as cursor:
         cursor.execute(
-            f"SELECT COUNT(*) AS total_count, COALESCE(SUM(total), 0) AS total_sum, "
-            f"SUM(CASE WHEN category IS NULL THEN 1 ELSE 0 END) AS uncategorized_count "
+            f"SELECT COUNT(*) AS total_count, COALESCE(SUM(total), 0) AS total_sum "
             f"FROM invoices {where}",
             params,
         )
         totals: sqlite3.Row = cursor.fetchone()
         total_count: int = totals["total_count"]
         total_sum: float = totals["total_sum"]
-        # Backs the "AI Categories" trigger badge. Deliberately computed under the
-        # full `where`, mirroring the categorize-suggest scope (same filter params)
-        # so the badge always matches what the AI action will touch. Consequence: an
-        # active category filter yields 0 (no NULL row can match `category = ?`).
-        uncategorized_count: int = totals["uncategorized_count"] or 0
 
         if fetch_all:
             # Report the served size so the client's ceil(total/size) collapses to
@@ -161,7 +160,6 @@ def get_invoices() -> Response:
             "page_size": page_size,
             "total_count": total_count,
             "total_sum": total_sum,
-            "uncategorized_count": uncategorized_count,
         }
     )
 
@@ -283,30 +281,67 @@ def _cache_suggestions(
 
 @invoices_bp.route("/api/invoices/categorize-suggest", methods=["POST"])
 def categorize_suggest() -> ApiResponse:
-    """Suggest categories for the uncategorized invoices in the current filter.
+    """Suggest categories for the invoices visible on the caller's current page.
 
-    Read-only: this collects the uncategorized invoices (with items) matching the
-    same query params as the list endpoint, asks Claude for one category each, and
-    returns the suggestions for review. The actual write goes through the existing
-    ``/api/invoices/bulk-update`` path once the user confirms.
+    Read-only: the client sends the ids of the invoices currently shown (POST body
+    ``{"ids": [...]}``); this collects the uncategorized ones among them (with
+    items), asks Claude for one category each, and returns the suggestions for
+    review. Scoping by explicit ids keeps the analysis limited to exactly the
+    rows on the current page rather than the whole filtered period. The actual
+    write goes through the existing ``/api/invoices/bulk-update`` path once the
+    user confirms.
+
+    A body-less POST and ``{"ids": []}`` both mean "empty page" and return an empty
+    result; any other body must carry a valid ``ids`` or it is a 400.
     """
     if not suggestions_available():
         return error_response("AI categorization not configured", 503)
 
-    # Reuse the shared filter, restricted to uncategorized invoices only.
-    where, params = _build_invoice_filter(request.args)
-    where += " AND category IS NULL"
+    # An absent body is a legitimately empty page: 200, no work. A body that *is*
+    # present must carry a valid `ids` (an empty list included), so a typo'd key or
+    # malformed JSON is a 400 rather than a silent empty success -- the raw body is
+    # what tells the two apart, since get_json(silent=True) returns None for both.
+    # Everything past the empty case goes through parse_id_list, as /bulk-* do.
+    if not request.get_data():
+        return jsonify({"suggestions": [], "count": 0, "total": 0})
+    data: Any = request.get_json(silent=True)
+    if isinstance(data, dict) and data.get("ids") == []:
+        return jsonify({"suggestions": [], "count": 0, "total": 0})
+    try:
+        # Dedupe once: IN dedupes within a chunk, but the same id split across two
+        # chunks would double-count the summed total (and duplicate work).
+        requested_ids: list[int] = list(dict.fromkeys(parse_id_list(data)))
+    except ValidationError as error:
+        return error_response(error.message, 400)
 
+    # Scope strictly to the requested (visible) rows, uncategorized only. The id
+    # list is client-supplied and unbounded (page_size=all posts the whole table),
+    # so query in chunks below SQLite's variable limit rather than binding every id
+    # in one statement, exactly as /bulk-update and /bulk-delete do.
     try:
         with db_cursor() as cursor:
-            cursor.execute(f"SELECT COUNT(*) AS total FROM invoices {where}", params)
-            total: int = cursor.fetchone()["total"]
-
-            cursor.execute(
-                f"SELECT id, store, total FROM invoices {where} ORDER BY id LIMIT ?",
-                [*params, CATEGORIZE_SUGGEST_LIMIT],
-            )
-            rows: list[sqlite3.Row] = cursor.fetchall()
+            total: int = 0
+            # Each chunk yields its own lowest-id candidates; the global lowest
+            # CATEGORIZE_SUGGEST_LIMIT are guaranteed among them, so a Python
+            # sort + slice reproduces a single ORDER BY id LIMIT over all ids.
+            candidates: list[sqlite3.Row] = []
+            for chunk in chunked(requested_ids):
+                uncategorized_in_chunk: str = (
+                    f"FROM invoices WHERE deleted_at IS NULL AND category IS NULL "
+                    f"AND id IN ({placeholders_for(len(chunk))})"
+                )
+                cursor.execute(
+                    f"SELECT COUNT(*) AS total {uncategorized_in_chunk}", chunk
+                )
+                total += cursor.fetchone()["total"]
+                cursor.execute(
+                    f"SELECT id, store, total {uncategorized_in_chunk} "
+                    f"ORDER BY id LIMIT ?",
+                    [*chunk, CATEGORIZE_SUGGEST_LIMIT],
+                )
+                candidates.extend(cursor.fetchall())
+            candidates.sort(key=lambda row: row["id"])
+            rows: list[sqlite3.Row] = candidates[:CATEGORIZE_SUGGEST_LIMIT]
 
             # Full per-invoice info for the response (store, amount, items); the
             # items double as the model input and the client's summary/accordion.
@@ -365,7 +400,8 @@ def categorize_suggest() -> ApiResponse:
     if not invoices:
         return jsonify({"suggestions": [], "count": 0, "total": 0})
 
-    model: str = resolve_model(request.args.get("model"))
+    model_key: Any = data.get("model")
+    model: str = resolve_model(model_key if isinstance(model_key, str) else None)
     cache_by_id: dict[int, sqlite3.Row] = {
         row["invoice_id"]: row for row in cached_rows
     }

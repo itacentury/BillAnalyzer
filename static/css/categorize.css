@@ -24,14 +24,14 @@
   transition: all var(--transition);
 }
 
-.ai-trigger:hover:not(:disabled) {
+.ai-trigger:hover {
   background: var(--bg-hover);
 }
 
-/* Nothing to categorize in the current view: greyed out but kept in place. */
-.ai-trigger:disabled {
+/* Nothing to categorize in the current view: greyed out but kept in place — and
+   still clickable, so the dialog can explain that the count is page-scoped. */
+.ai-trigger.is-empty {
   color: var(--text-muted);
-  cursor: not-allowed;
   border-color: var(--border-color);
   opacity: 0.7;
 }
@@ -40,7 +40,7 @@
   color: var(--accent);
 }
 
-.ai-trigger:disabled .ai-trigger-icon {
+.ai-trigger.is-empty .ai-trigger-icon {
   color: currentcolor;
 }
 
@@ -53,7 +53,7 @@
   border-radius: 999px;
 }
 
-.ai-trigger:disabled .ai-trigger-badge {
+.ai-trigger.is-empty .ai-trigger-badge {
   color: var(--text-muted);
   background: var(--border-color);
 }

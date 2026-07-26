@@ -131,17 +131,19 @@
       </div>
 
       {% if ai_suggestions_enabled %}
-        <!-- AI category suggestions trigger; disabled (greyed out) when nothing is
-             uncategorized. Starts disabled until the first invoice load reports the
-             real count. aria-label + title carry the name/tooltip when the label is
-             hidden on mobile. -->
+        <!-- AI category suggestions trigger; greyed out (is-empty) when nothing on
+             the page is uncategorized, but never disabled — it must stay clickable
+             so the dialog can explain that the count is page-scoped. Ships the
+             damped state with a 0 badge; updateAiTriggerBadge (categorize.js) owns
+             class, title, aria-label and badge from state.invoices after every
+             invoice render — the values here are only the pre-render default.
+             aria-label carries the name when the label is hidden on mobile. -->
         <button
-          class="ai-trigger"
+          class="ai-trigger is-empty"
           data-el="ai-categories-trigger"
           data-action="open-categorize"
           aria-label="AI Categories"
           title="AI Categories"
-          disabled
         >
           <svg
             class="ai-trigger-icon"

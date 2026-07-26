@@ -90,6 +90,37 @@ describe("renderInvoices", () => {
       document.querySelector('[data-el="results-total"]').textContent,
     ).toBe("15.50");
   });
+
+  it("refreshes the AI trigger badge from the rendered invoices", () => {
+    // The badge is page-scoped, so every optimistic re-render (not just a server
+    // load) must update it. mountListFixture omits the trigger, so add it here.
+    const button = document.createElement("button");
+    button.dataset.el = "ai-categories-trigger";
+    button.innerHTML = '<span data-el="ai-categories-badge"></span>';
+    document.body.appendChild(button);
+
+    state.invoices = [
+      { id: 1, date: "2026-01-05", store: "Aldi", category: null, total: "1" },
+      {
+        id: 2,
+        date: "2026-01-06",
+        store: "Rewe",
+        category: "Food",
+        total: "2",
+      },
+      { id: 3, date: "2026-01-07", store: "Lidl", category: null, total: "3" },
+    ];
+    state.totalCount = 3;
+
+    renderInvoices();
+
+    expect(
+      button.querySelector('[data-el="ai-categories-badge"]').textContent,
+    ).toBe("2");
+    expect(button.classList.contains("is-empty")).toBe(false);
+
+    button.remove();
+  });
 });
 
 describe("itemRowsHtml", () => {
