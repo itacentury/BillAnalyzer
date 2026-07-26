@@ -289,15 +289,22 @@ def categorize_suggest() -> ApiResponse:
     rows on the current page rather than the whole filtered period. The actual
     write goes through the existing ``/api/invoices/bulk-update`` path once the
     user confirms.
+
+    A body-less POST and ``{"ids": []}`` both mean "empty page" and return an empty
+    result; any other body must carry a valid ``ids`` or it is a 400.
     """
     if not suggestions_available():
         return error_response("AI categorization not configured", 503)
 
-    data: Any = request.get_json(silent=True) or {}
-    # A missing or empty ids list is a legitimately empty page: 200, no work.
-    # Everything else goes through parse_id_list (as /bulk-* do) so the same strict
-    # validation applies and a malformed payload is a 400, not a silent success.
-    if isinstance(data, dict) and data.get("ids", []) == []:
+    # An absent body is a legitimately empty page: 200, no work. A body that *is*
+    # present must carry a valid `ids` (an empty list included), so a typo'd key or
+    # malformed JSON is a 400 rather than a silent empty success -- the raw body is
+    # what tells the two apart, since get_json(silent=True) returns None for both.
+    # Everything past the empty case goes through parse_id_list, as /bulk-* do.
+    if not request.get_data():
+        return jsonify({"suggestions": [], "count": 0, "total": 0})
+    data: Any = request.get_json(silent=True)
+    if isinstance(data, dict) and data.get("ids") == []:
         return jsonify({"suggestions": [], "count": 0, "total": 0})
     try:
         # Dedupe once: IN dedupes within a chunk, but the same id split across two

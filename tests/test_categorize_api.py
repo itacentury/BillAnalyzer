@@ -246,6 +246,8 @@ def test_missing_body_returns_empty(
         {"ids": [None]},
         {"ids": [1.9]},
         {"ids": [True]},
+        {"nope": [1]},
+        {},
         [1, 2],
     ],
 )
@@ -262,6 +264,23 @@ def test_malformed_ids_return_400(
 
     assert response.status_code == 400
     assert captured == []  # never reached the model
+
+
+def test_malformed_json_body_returns_400(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An unparseable body is a client error -- only an *absent* body means empty page."""
+    _enable_ai(monkeypatch)
+    captured = _stub_suggestions(monkeypatch)
+
+    response = client.post(
+        "/api/invoices/categorize-suggest",
+        data="{",
+        content_type="application/json",
+    )
+
+    assert response.status_code == 400
+    assert captured == []
 
 
 def test_second_call_reuses_cache(
