@@ -123,20 +123,14 @@ describe("runAnalysis", () => {
     // a clean page, so opening it must land on the explanation, not a blank body.
     state.invoices = [{ id: 1, category: "Groceries" }];
 
-    const jsonFor = (url) =>
-      url.startsWith("/api/invoices/categorize-suggest")
-        ? { suggestions: [], total: 0, count: 0 }
-        : [];
-    vi.stubGlobal(
-      "fetch",
-      vi.fn((url) =>
-        Promise.resolve({
-          ok: true,
-          status: 200,
-          json: () => Promise.resolve(jsonFor(url)),
-        }),
-      ),
+    const fetchMock = vi.fn(() =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ suggestions: [], total: 0, count: 0 }),
+      }),
     );
+    vi.stubGlobal("fetch", fetchMock);
 
     await runAnalysis();
 
@@ -145,5 +139,10 @@ describe("runAnalysis", () => {
     expect(document.querySelector('[data-el="categorize-footer"]').hidden).toBe(
       true,
     );
+    // The outcome is knowable without the network: no suggest POST, no category GET.
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(
+      document.querySelector('[data-el="categorize-subtitle"]').textContent,
+    ).toBe("0 uncategorized invoices on this page");
   });
 });
