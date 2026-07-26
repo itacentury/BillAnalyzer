@@ -135,7 +135,8 @@
              the page is uncategorized, but never disabled — it must stay clickable
              so the dialog can explain that the count is page-scoped. Ships the
              damped state with a 0 badge; updateAiTriggerBadge (categorize.js) owns
-             class, title and badge from state.invoices after every invoice render.
+             class, title, aria-label and badge from state.invoices after every
+             invoice render — the values here are only the pre-render default.
              aria-label carries the name when the label is hidden on mobile. -->
         <button
           class="ai-trigger is-empty"

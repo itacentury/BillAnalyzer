@@ -37,10 +37,14 @@ export function updateAiTriggerBadge() {
   if (!button) return;
   const count = state.invoices.filter((invoice) => !invoice.category).length;
   button.classList.toggle("is-empty", count === 0);
-  button.title =
+  // aria-label wins the accessible name over title, so both carry the hint —
+  // and both lead with the control name so the empty state still identifies it.
+  const label =
     count === 0
-      ? "No uncategorized invoices on this page — other pages in this period may still have some"
+      ? "AI Categories — none uncategorized on this page, other pages in this period may still have some"
       : "AI Categories";
+  button.title = label;
+  button.setAttribute("aria-label", label);
   const badge = button.querySelector('[data-el="ai-categories-badge"]');
   // String() is load-bearing: happy-dom's textContent setter renders the number
   // 0 as "" (not "0"), so the badge would blank out on a page with none.

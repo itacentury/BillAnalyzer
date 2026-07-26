@@ -58,6 +58,7 @@ describe("updateAiTriggerBadge", () => {
     expect(badge().textContent).toBe("2");
     expect(button().classList.contains("is-empty")).toBe(false);
     expect(button().title).toBe("AI Categories");
+    expect(button().getAttribute("aria-label")).toBe("AI Categories");
   });
 
   it("damps but keeps the trigger clickable when the page has none", () => {
@@ -71,6 +72,11 @@ describe("updateAiTriggerBadge", () => {
     expect(button().disabled).toBe(false);
     expect(button().classList.contains("is-empty")).toBe(true);
     expect(button().title).toContain("other pages in this period");
+    // aria-label wins the accessible name, so it must carry the hint too — while
+    // still naming the control, which a verbatim copy of the tooltip would not.
+    const label = button().getAttribute("aria-label");
+    expect(label).toContain("AI Categories");
+    expect(label).toContain("other pages in this period");
   });
 });
 
