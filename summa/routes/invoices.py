@@ -41,11 +41,12 @@ invoices_bp: Blueprint = Blueprint("invoices", __name__)
 DEFAULT_PAGE_SIZE: Final[int] = 25
 MAX_PAGE_SIZE: Final[int] = 200
 ALL_PAGE_SIZE_TOKEN: Final[str] = "all"
-# Cap per categorize-suggest run to bound Claude token use and cost. Bounded by
-# MAX_PAGE_SIZE (so an ordinary paginated view fits) and by the AI layer's
-# fully-budgeted batch (so a run never exceeds the token budget and truncates the
-# response). Whichever is smaller wins; the response `total` lets the client
-# prompt a re-run when a larger view is capped.
+# Cap per categorize-suggest run to bound Claude token use and cost. The AI
+# layer's fully-budgeted batch is the term that binds today (170 < 200), keeping a
+# run inside the token budget so the response is never truncated; MAX_PAGE_SIZE is
+# the second term only so a future budget increase cannot push the cap past one
+# page. The response `total` lets the client prompt a re-run when a larger view is
+# capped.
 CATEGORIZE_SUGGEST_LIMIT: Final[int] = min(MAX_PAGE_SIZE, MAX_FULLY_BUDGETED_BATCH)
 
 
