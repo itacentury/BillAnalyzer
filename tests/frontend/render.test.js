@@ -117,7 +117,7 @@ describe("renderInvoices", () => {
     expect(
       button.querySelector('[data-el="ai-categories-badge"]').textContent,
     ).toBe("2");
-    expect(button.disabled).toBe(false);
+    expect(button.classList.contains("is-empty")).toBe(false);
 
     button.remove();
   });

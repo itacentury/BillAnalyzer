@@ -25,17 +25,22 @@ let reviewRows = [];
 let existingLower = new Set(); // lowercased existing categories, for is-new recompute
 
 /**
- * Enable/disable the trigger button and update its badge from the uncategorized
+ * Update the trigger button's badge and damped state from the uncategorized
  * invoices on the current page (`state.invoices`), matching what the AI action
  * analyzes. Called after every invoice-list load so it stays live. When nothing
- * is uncategorized the button is greyed out (disabled), not hidden, so it keeps
- * its place in the toolbar.
+ * is uncategorized the button is greyed out (`is-empty`) but stays clickable and
+ * enabled: a disabled button could not open the dialog, and the dialog's empty
+ * state is what explains that other pages in the period may still have some.
  */
 export function updateAiTriggerBadge() {
   const button = document.querySelector('[data-el="ai-categories-trigger"]');
   if (!button) return;
   const count = state.invoices.filter((invoice) => !invoice.category).length;
-  button.disabled = count === 0;
+  button.classList.toggle("is-empty", count === 0);
+  button.title =
+    count === 0
+      ? "No uncategorized invoices on this page — other pages in this period may still have some"
+      : "AI Categories";
   const badge = button.querySelector('[data-el="ai-categories-badge"]');
   // String() is load-bearing: happy-dom's textContent setter renders the number
   // 0 as "" (not "0"), so the badge would blank out on a page with none.

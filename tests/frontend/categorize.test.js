@@ -56,16 +56,21 @@ describe("updateAiTriggerBadge", () => {
     updateAiTriggerBadge();
 
     expect(badge().textContent).toBe("2");
-    expect(button().disabled).toBe(false);
+    expect(button().classList.contains("is-empty")).toBe(false);
+    expect(button().title).toBe("AI Categories");
   });
 
-  it("disables the trigger when the page has no uncategorized invoices", () => {
+  it("damps but keeps the trigger clickable when the page has none", () => {
+    // Never disabled: a disabled button could not open the dialog, and the
+    // dialog's empty state is the only place the page-scoping is explained.
     state.invoices = [{ id: 1, category: "Groceries" }];
 
     updateAiTriggerBadge();
 
     expect(badge().textContent).toBe("0");
-    expect(button().disabled).toBe(true);
+    expect(button().disabled).toBe(false);
+    expect(button().classList.contains("is-empty")).toBe(true);
+    expect(button().title).toContain("other pages in this period");
   });
 });
 
@@ -105,5 +110,34 @@ describe("runAnalysis", () => {
       url.startsWith("/api/invoices/categorize-suggest"),
     );
     expect(JSON.parse(suggestCall[1].body).ids).toEqual([1, 3]);
+  });
+
+  it("renders the page-scoping empty state for a fully categorized page", async () => {
+    // The reachable path for the softened banner: the trigger stays clickable on
+    // a clean page, so opening it must land on the explanation, not a blank body.
+    state.invoices = [{ id: 1, category: "Groceries" }];
+
+    const jsonFor = (url) =>
+      url.startsWith("/api/invoices/categorize-suggest")
+        ? { suggestions: [], total: 0, count: 0 }
+        : [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url) =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve(jsonFor(url)),
+        }),
+      ),
+    );
+
+    await runAnalysis();
+
+    const content = document.querySelector('[data-el="categorize-content"]');
+    expect(content.textContent).toContain("other pages in this period");
+    expect(document.querySelector('[data-el="categorize-footer"]').hidden).toBe(
+      true,
+    );
   });
 });
