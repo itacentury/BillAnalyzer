@@ -313,24 +313,22 @@ def categorize_suggest() -> ApiResponse:
     try:
         with db_cursor() as cursor:
             total: int = 0
-            for chunk in chunked(requested_ids):
-                cursor.execute(
-                    f"SELECT COUNT(*) AS total FROM invoices "
-                    f"WHERE deleted_at IS NULL AND category IS NULL "
-                    f"AND id IN ({placeholders_for(len(chunk))})",
-                    chunk,
-                )
-                total += cursor.fetchone()["total"]
-
             # Each chunk yields its own lowest-id candidates; the global lowest
             # CATEGORIZE_SUGGEST_LIMIT are guaranteed among them, so a Python
             # sort + slice reproduces a single ORDER BY id LIMIT over all ids.
             candidates: list[sqlite3.Row] = []
             for chunk in chunked(requested_ids):
+                uncategorized_in_chunk: str = (
+                    f"FROM invoices WHERE deleted_at IS NULL AND category IS NULL "
+                    f"AND id IN ({placeholders_for(len(chunk))})"
+                )
                 cursor.execute(
-                    f"SELECT id, store, total FROM invoices "
-                    f"WHERE deleted_at IS NULL AND category IS NULL "
-                    f"AND id IN ({placeholders_for(len(chunk))}) ORDER BY id LIMIT ?",
+                    f"SELECT COUNT(*) AS total {uncategorized_in_chunk}", chunk
+                )
+                total += cursor.fetchone()["total"]
+                cursor.execute(
+                    f"SELECT id, store, total {uncategorized_in_chunk} "
+                    f"ORDER BY id LIMIT ?",
                     [*chunk, CATEGORIZE_SUGGEST_LIMIT],
                 )
                 candidates.extend(cursor.fetchall())
