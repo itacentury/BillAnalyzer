@@ -377,6 +377,8 @@ async function rerunForModel() {
  * Fetch suggestions for the current filter + model and render the review. The
  * caller shows the loading banner first; this owns the request lifecycle and
  * aborts any in-flight request so a rapid model switch never double-renders.
+ * Exported only for tests/frontend/categorize.test.js — both production callers
+ * (openCategorize, rerunForModel) are in this module.
  */
 export async function runAnalysis() {
   controller?.abort();
