@@ -349,6 +349,34 @@ def test_model_switch_rechecks(
     assert [invoice["id"] for invoice in captured[1]] == [invoice_id]
 
 
+@pytest.mark.parametrize("model_key", [5, True, [], {}, None, "gpt-4"])
+def test_unusable_model_falls_back_to_the_default(
+    client: FlaskClient,
+    seed_invoice: SeedInvoice,
+    monkeypatch: pytest.MonkeyPatch,
+    model_key: Any,
+) -> None:
+    """An unusable model key is not a client error: it silently uses the default."""
+    _enable_ai(monkeypatch)
+    _stub_suggestions(monkeypatch)
+    invoice_id = seed_invoice(store="Bakery", category=None)
+
+    response = client.post(
+        "/api/invoices/categorize-suggest",
+        json={"ids": [invoice_id], "model": model_key},
+    )
+
+    assert response.status_code == 200
+    # The cached row carries the resolved model, so it reports what the route picked.
+    conn = db.get_db()
+    cached = conn.execute(
+        "SELECT model FROM invoice_category_suggestions WHERE invoice_id = ?",
+        (invoice_id,),
+    ).fetchone()
+    conn.close()
+    assert cached["model"] == ai.MODELS[ai.DEFAULT_MODEL_KEY]
+
+
 def test_is_new_recomputed_for_cached_suggestion(
     client: FlaskClient,
     seed_invoice: SeedInvoice,
