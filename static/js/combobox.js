@@ -235,17 +235,20 @@ export function createCombobox(root, { onChange } = {}) {
   // paddings, the filter panel's row track) and drags the control with it, so
   // the rect read on the event itself is stale. Keep re-anchoring for the length
   // of those transitions. A resize mid-settle only extends the deadline, so a
-  // drag-resize still runs a single loop.
+  // drag-resize still runs a single loop. Like the scroll listener, the loop
+  // runs only while the menu actually floats: otherwise every frame would just
+  // rewrite empty inline styles.
   const settleDuration = 350;
   let settleDeadline = 0;
   let settling = false;
 
   const settleMenuPosition = () => {
+    if (!shouldFloatMenu()) return;
     settleDeadline = performance.now() + settleDuration;
     if (settling) return;
     settling = true;
     const step = () => {
-      if (!open || performance.now() >= settleDeadline) {
+      if (!open || !shouldFloatMenu() || performance.now() >= settleDeadline) {
         settling = false;
         return;
       }

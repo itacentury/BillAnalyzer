@@ -103,6 +103,23 @@ describe('data-menu-float="desktop"', () => {
 
     closeMenu(input);
   });
+
+  it("starts no settle loop on a resize below the breakpoint", () => {
+    mobileViewport.matches = true;
+    const root = mountCombobox("desktop");
+    createCombobox(root);
+    const input = root.querySelector(".combobox-input");
+    openMenu(input);
+
+    // Spy after opening: the settle loop is the only rAF user on this path, so
+    // any frame scheduled here would be one that can never reach positionMenu().
+    const raf = vi.spyOn(window, "requestAnimationFrame");
+    window.dispatchEvent(new Event("resize"));
+
+    expect(raf).not.toHaveBeenCalled();
+
+    closeMenu(input);
+  });
 });
 
 describe('data-menu-float="true"', () => {
