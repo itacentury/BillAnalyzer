@@ -104,13 +104,61 @@ export function todayIso() {
   return dateToIso(new Date());
 }
 
+// Mirrors `_OVERLONG_YEAR` in `summa/helpers.py`: a year of five or more
+// significant digits is past 9999 and so future by definition. A date field
+// really can emit one ("275760-09-13"), and those sort *below* a 4-digit year
+// as plain strings, so they can't be range-compared. Leading zeros are skipped,
+// so only the significant digits decide.
+const OVERLONG_YEAR = /^0*[1-9]\d{4,}-/;
+
+/**
+ * Whether an ISO day string (YYYY-MM-DD, optionally followed by a time) lies
+ * after today. ISO day strings compare correctly as plain strings; an empty
+ * value is never future. Reads `todayIso()` at call time so long-lived PWA
+ * sessions stay correct across midnight.
+ */
+export function isFutureIsoDate(value) {
+  if (!value) return false;
+  if (OVERLONG_YEAR.test(value)) return true;
+  // A value whose first `-` isn't at index 4 is not a recognizable ISO day (a
+  // zero-padded year, say) — tolerated rather than called future, matching the
+  // backend's non-ISO fall-through.
+  if (value.indexOf("-") !== 4) return false;
+  // Compare only the day part, matching the backend's `date_value[:10]` — a
+  // trailing time would otherwise sort today above the bare `todayIso()`.
+  return value.slice(0, 10) > todayIso();
+}
+
+/**
+ * Whether this is Firefox for Android, which greys out a date input's `max` day
+ * itself — a cap of today would make today unpickable there. Desktop Firefox is
+ * unaffected, hence the Android check; Firefox for iOS ("FxiOS") is a WebKit
+ * shell and also fine.
+ */
+function isAndroidFirefox() {
+  const ua = navigator.userAgent;
+  return /Android/.test(ua) && /Firefox\//.test(ua);
+}
+
+// Built at local noon so a DST shift can't move the calendar day.
+function tomorrowIso() {
+  const date = new Date();
+  date.setHours(12, 0, 0, 0);
+  date.setDate(date.getDate() + 1);
+  return dateToIso(date);
+}
+
 /**
  * Cap a date input's selectable range at today (there are no future invoices).
- * Reads `todayIso()` at call time so long-lived PWA sessions don't go stale
- * across midnight, when a once-set `max` would still hold yesterday.
+ * On Firefox for Android the cap is tomorrow instead, so that browser greys out
+ * tomorrow rather than today; the one extra day it lets through is still
+ * rejected by `isFutureIsoDate` and by the backend.
+ *
+ * Reads the date at call time so long-lived PWA sessions don't go stale across
+ * midnight, when a once-set `max` would still hold yesterday.
  */
 export function capAtToday(input) {
-  input.max = todayIso();
+  input.max = isAndroidFirefox() ? tomorrowIso() : todayIso();
 }
 
 /**

@@ -5,6 +5,8 @@
  * file and mutate values/state between cases rather than re-mounting.
  */
 
+import { dateToIso } from "../../static/js/dom.js";
+
 /**
  * A stand-in for a `fetch` Response carrying a JSON body. Only the members the
  * app touches (`ok`, `status`, `json()`) are provided.
@@ -103,6 +105,17 @@ export function mountToolbarFixture({ aiTrigger = true } = {}) {
  */
 export function flushUi() {
   return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+/**
+ * The ISO day `days` away from today. Built at local noon so the Berlin offset
+ * can't shift the calendar day.
+ */
+export function dayOffset(days) {
+  const date = new Date();
+  date.setHours(12, 0, 0, 0);
+  date.setDate(date.getDate() + days);
+  return dateToIso(date);
 }
 
 /**

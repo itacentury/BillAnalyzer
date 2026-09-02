@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   applyCategoryBadge,
+  capAtToday,
   categoryColorVar,
   dateToIso,
   debounce,
@@ -9,8 +10,10 @@ import {
   formatCurrency,
   formatDate,
   formatDateShort,
+  isFutureIsoDate,
   todayIso,
 } from "../../static/js/dom.js";
+import { dayOffset } from "./helpers.js";
 
 describe("formatDate / formatDateShort", () => {
   it("renders a bare ISO day as DD/MM/YYYY", () => {
@@ -55,6 +58,83 @@ describe("dateToIso / todayIso", () => {
 
   it("returns today as a valid ISO day", () => {
     expect(todayIso()).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+});
+
+describe("isFutureIsoDate", () => {
+  it("accepts today — the day the picker previously greyed out", () => {
+    expect(isFutureIsoDate(todayIso())).toBe(false);
+  });
+
+  it("accepts past days", () => {
+    expect(isFutureIsoDate(dayOffset(-1))).toBe(false);
+    expect(isFutureIsoDate("2024-03-01")).toBe(false);
+  });
+
+  it("rejects future days", () => {
+    expect(isFutureIsoDate(dayOffset(1))).toBe(true);
+    expect(isFutureIsoDate(dayOffset(400))).toBe(true);
+  });
+
+  it("treats an empty value as not future", () => {
+    expect(isFutureIsoDate("")).toBe(false);
+  });
+
+  // A date field accepts 5+ digit years, which a plain string comparison sorts
+  // below a 4-digit year ("1" < "2") and would wrongly call past.
+  it("rejects years past 9999", () => {
+    expect(isFutureIsoDate("10000-01-01")).toBe(true);
+    expect(isFutureIsoDate("99999-12-31")).toBe(true);
+    expect(isFutureIsoDate("275760-09-13")).toBe(true);
+    expect(isFutureIsoDate("10000-01-01T00:00")).toBe(true);
+    expect(isFutureIsoDate("010000-01-01")).toBe(true);
+  });
+
+  // A zero-padded year is not past 9999; the backend keeps its non-ISO
+  // tolerance for it, so the client must not call it future either.
+  it("tolerates a zero-padded year, like the backend", () => {
+    expect(isFutureIsoDate("02026-01-01")).toBe(false);
+  });
+
+  // A datetime string sorts above the bare day it falls on, so today with a
+  // time would read as future unless the day part is compared on its own —
+  // which is what the backend's `date_value[:10]` does.
+  it("compares only the day part of a datetime string", () => {
+    expect(isFutureIsoDate(`${todayIso()}T10:00`)).toBe(false);
+    expect(isFutureIsoDate(`${todayIso()}T23:59:59`)).toBe(false);
+    expect(isFutureIsoDate(`${dayOffset(1)}T00:00`)).toBe(true);
+  });
+});
+
+describe("capAtToday", () => {
+  const ANDROID_FIREFOX =
+    "Mozilla/5.0 (Android 14; Mobile; rv:121.0) Gecko/121.0 Firefox/121.0";
+  const DESKTOP_FIREFOX =
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0";
+  const ANDROID_CHROME =
+    "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Mobile Safari/537.36";
+
+  const capWithUserAgent = (userAgent) => {
+    vi.stubGlobal("navigator", { userAgent });
+    const input = document.createElement("input");
+    input.type = "date";
+    capAtToday(input);
+    return input.max;
+  };
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("caps at today on an ordinary browser", () => {
+    expect(capWithUserAgent(DESKTOP_FIREFOX)).toBe(todayIso());
+    expect(capWithUserAgent(ANDROID_CHROME)).toBe(todayIso());
+  });
+
+  // Firefox for Android greys out the `max` day itself, so capping at today
+  // would make today unpickable — cap a day later there.
+  it("caps at tomorrow on Firefox for Android", () => {
+    expect(capWithUserAgent(ANDROID_FIREFOX)).toBe(dayOffset(1));
   });
 });
 

@@ -1,5 +1,6 @@
 """Shared types and helper functions for the Summa backend."""
 
+import re
 from dataclasses import dataclass
 from datetime import date
 from typing import Any, Final
@@ -17,6 +18,13 @@ MAX_IMPORT_BATCH: Final[int] = 10_000
 # prompt-injection surface of the AI suggestion path (an injected store/item name
 # cannot make an oversized category persist). See summa/ai.py.
 MAX_CATEGORY_LENGTH: Final[int] = 64
+
+# A year past 9999 is a valid HTML date-field value but unparseable by
+# `date.fromisoformat`, so it would otherwise slip through the non-ISO tolerance
+# branch of `_reject_future_date`. Such a date is by definition in the future.
+# Only the significant digits decide: leading zeros are skipped, so "02026-…"
+# stays in range while a padded overlong year ("010000-…") does not.
+_OVERLONG_YEAR: Final[re.Pattern[str]] = re.compile(r"0*[1-9]\d{4,}-")
 
 
 def error_response(message: str, status: int) -> tuple[Response, int]:
@@ -130,6 +138,8 @@ def _parse_float(value: Any, field: str) -> float:
 
 def _reject_future_date(date_value: str) -> None:
     """Reject invoice dates in the future — the app has no future invoices."""
+    if _OVERLONG_YEAR.match(date_value):
+        raise ValidationError("Invoice date cannot be in the future", field="date")
     try:
         parsed: date = date.fromisoformat(date_value[:10])
     except ValueError:
