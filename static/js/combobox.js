@@ -256,7 +256,10 @@ export function createCombobox(root, { onChange } = {}) {
   };
 
   // resize stays bound whenever the menu may float: it is the event that flips
-  // shouldFloatMenu(), so it has to re-evaluate the scroll binding too.
+  // shouldFloatMenu(), so it has to re-evaluate the scroll binding too. It is
+  // deliberately not mobileViewport's "change" event (which stats.js uses for
+  // the same breakpoint): a resize that never crosses the breakpoint still
+  // moves the control's rect, and every crossing fires a resize anyway.
   const onViewportResize = () => {
     syncScrollTracking();
     reposition();

@@ -105,6 +105,37 @@ describe('data-menu-float="desktop"', () => {
   });
 });
 
+describe('data-menu-float="true"', () => {
+  it("binds the scroll listener above the breakpoint and releases it on close", () => {
+    const root = mountCombobox("true");
+    createCombobox(root);
+    const input = root.querySelector(".combobox-input");
+
+    openMenu(input);
+    expect(scrollListenerCalls(documentAdd)).toHaveLength(1);
+    expect(scrollListenerCalls(documentAdd)[0][2]).toBe(true);
+    expect(resizeListenerCalls(windowAdd)).toHaveLength(1);
+
+    closeMenu(input);
+    expect(scrollListenerCalls(documentRemove)).toHaveLength(1);
+  });
+
+  it("keeps floating below the breakpoint", () => {
+    // The "desktop" mode skips the scroll listener under this exact viewport,
+    // so this pins the unconditional short-circuit in shouldFloatMenu().
+    mobileViewport.matches = true;
+    const root = mountCombobox("true");
+    createCombobox(root);
+    const input = root.querySelector(".combobox-input");
+
+    openMenu(input);
+
+    expect(scrollListenerCalls(documentAdd)).toHaveLength(1);
+
+    closeMenu(input);
+  });
+});
+
 describe("data-menu-float unset", () => {
   it("binds no reposition listeners at all", () => {
     const root = mountCombobox("");
