@@ -85,6 +85,13 @@
   display: block;
 }
 
+/* A floating menu leaves its ancestor's stacking context and competes with page
+   chrome, so lift it to the page-level menu layer (cf. .page-size-menu). */
+.combobox[data-menu-float="true"] .combobox-menu,
+.combobox[data-menu-float="desktop"] .combobox-menu {
+  z-index: 700;
+}
+
 .combobox-option {
   display: flex;
   gap: 9px;

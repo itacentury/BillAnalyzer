@@ -35,10 +35,12 @@
     {% set empty_label = "No Category" %}
     {% set allow_create = true %}
   {% endif %}
+  {% set menu_float = "desktop" if variant == "filter" else "" %}
   <div
     class="combobox"
     data-combobox
     data-kind="{{ kind }}"
+    data-menu-float="{{ menu_float }}"
     data-empty-label="{{ empty_label }}"
     data-allow-create="{{ 'true' if allow_create else 'false' }}"
   >

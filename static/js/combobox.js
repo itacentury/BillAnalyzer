@@ -9,7 +9,7 @@
  * keeps working unchanged. Leaf-ish module: imports only from `dom.js`.
  */
 
-import { escapeHtml, categoryColorVar } from "./dom.js";
+import { escapeHtml, categoryColorVar, mobileViewport } from "./dom.js";
 
 // Registry of live instances, keyed by the wrapped hidden input's data-el name,
 // plus a flat list for fanning category options out to every category instance.
@@ -49,7 +49,13 @@ export function createCombobox(root, { onChange } = {}) {
   // Opt-in: anchor the menu to the viewport (position: fixed) so it can escape a
   // clipping/scrolling ancestor and float over sibling chrome (e.g. the sticky
   // footer in the categorize modal) instead of forcing that ancestor to scroll.
-  const floatMenu = root.dataset.menuFloat === "true";
+  // "true" floats always; "desktop" floats only above the mobile breakpoint,
+  // below which the filter bottom sheet's transform would re-anchor (and then
+  // clip) a fixed menu.
+  const menuFloatMode = root.dataset.menuFloat || "";
+  const shouldFloatMenu = () =>
+    menuFloatMode === "true" ||
+    (menuFloatMode === "desktop" && !mobileViewport.matches);
 
   const menuId = `combobox-menu-${dataEl}`;
   menu.id = menuId;
@@ -143,7 +149,7 @@ export function createCombobox(root, { onChange } = {}) {
     });
     applyHighlight();
     // Re-anchor a floating menu whenever its contents (and thus height) change.
-    if (floatMenu && open) positionMenu();
+    if (open) syncMenuPosition();
   };
 
   const applyHighlight = () => {
@@ -202,8 +208,15 @@ export function createCombobox(root, { onChange } = {}) {
     menu.style.maxHeight = "";
   };
 
+  // Apply or drop the fixed anchoring, so crossing the breakpoint while the menu
+  // is open never leaves a stale inline position behind.
+  const syncMenuPosition = () => {
+    if (shouldFloatMenu()) positionMenu();
+    else clearMenuPosition();
+  };
+
   const reposition = () => {
-    if (open) positionMenu();
+    if (open) syncMenuPosition();
   };
 
   const bindReposition = () => {
@@ -228,7 +241,7 @@ export function createCombobox(root, { onChange } = {}) {
     const current = entries.findIndex((entry) => entry.value === hidden.value);
     highlighted = current >= 0 ? current : 0;
     applyHighlight();
-    if (floatMenu) bindReposition();
+    if (menuFloatMode) bindReposition();
   };
 
   // Close the menu and restore the display to the committed value (a typed but
@@ -240,7 +253,7 @@ export function createCombobox(root, { onChange } = {}) {
     textInput.setAttribute("aria-expanded", "false");
     textInput.removeAttribute("aria-activedescendant");
     highlighted = -1;
-    if (floatMenu) {
+    if (menuFloatMode) {
       unbindReposition();
       clearMenuPosition();
     }
@@ -254,7 +267,7 @@ export function createCombobox(root, { onChange } = {}) {
     textInput.setAttribute("aria-expanded", "false");
     textInput.removeAttribute("aria-activedescendant");
     highlighted = -1;
-    if (floatMenu) {
+    if (menuFloatMode) {
       unbindReposition();
       clearMenuPosition();
     }
