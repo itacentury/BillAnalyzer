@@ -238,6 +238,10 @@ export function createCombobox(root, { onChange } = {}) {
   // drag-resize still runs a single loop. Like the scroll listener, the loop
   // runs only while the menu actually floats: otherwise every frame would just
   // rewrite empty inline styles.
+  // 350ms is not arbitrary: it has to outlast every transition a resize can
+  // start on chrome above the control — `--transition` (0.2s, variables.css),
+  // the `.filters-collapsible` row track (0.3s, filters.css) and
+  // `modal-slide-up` (0.3s, modals.css). Raise it if any of those grows.
   const settleDuration = 350;
   let settleDeadline = 0;
   let settling = false;

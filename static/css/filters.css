@@ -217,7 +217,9 @@
   background: var(--accent-text-on);
 }
 
-/* Collapsible panel (animated open/close on all widths) */
+/* Collapsible panel (animated open/close on all widths). Lengthening the row
+   track transition means raising `settleDuration` in static/js/combobox.js,
+   which must outlast it. */
 .filters-collapsible {
   display: grid;
   grid-template-rows: 0fr;
