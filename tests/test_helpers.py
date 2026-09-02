@@ -130,6 +130,14 @@ def test_parse_invoice_rejects_year_past_9999(day: str) -> None:
     assert info.value.field == "date"
 
 
+def test_parse_invoice_tolerates_zero_padded_year() -> None:
+    """A zero-padded year is not past 9999 — it keeps the non-ISO tolerance."""
+    invoice = parse_invoice(
+        {"date": "02026-01-01", "store": "A", "total": 1.0, "items": _valid_items()}
+    )
+    assert invoice.date == "02026-01-01"
+
+
 @pytest.mark.parametrize("offset", [0, -1, -365])
 def test_parse_invoice_accepts_today_and_past_dates(offset: int) -> None:
     """Today and any past date parse without error (no future bound violated)."""

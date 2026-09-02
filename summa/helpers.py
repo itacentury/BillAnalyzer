@@ -21,8 +21,9 @@ MAX_CATEGORY_LENGTH: Final[int] = 64
 
 # A year past 9999 is a valid HTML date-field value but unparseable by
 # `date.fromisoformat`, so it would otherwise slip through the non-ISO tolerance
-# branch of `_reject_future_date`. Such a date is by definition in the future.
-_OVERLONG_YEAR: Final[re.Pattern[str]] = re.compile(r"\d{5,}-")
+# branch of `_reject_future_date`. Such a date is by definition in the future — but
+# a zero-padded year ("02026-…") is not past 9999, so a leading zero is excluded.
+_OVERLONG_YEAR: Final[re.Pattern[str]] = re.compile(r"(?!0)\d{5,}-")
 
 
 def error_response(message: str, status: int) -> tuple[Response, int]:
