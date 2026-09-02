@@ -86,6 +86,16 @@ describe("isFutureIsoDate", () => {
     expect(isFutureIsoDate("10000-01-01")).toBe(true);
     expect(isFutureIsoDate("99999-12-31")).toBe(true);
     expect(isFutureIsoDate("275760-09-13")).toBe(true);
+    expect(isFutureIsoDate("10000-01-01T00:00")).toBe(true);
+  });
+
+  // A datetime string sorts above the bare day it falls on, so today with a
+  // time would read as future unless the day part is compared on its own —
+  // which is what the backend's `date_value[:10]` does.
+  it("compares only the day part of a datetime string", () => {
+    expect(isFutureIsoDate(`${todayIso()}T10:00`)).toBe(false);
+    expect(isFutureIsoDate(`${todayIso()}T23:59:59`)).toBe(false);
+    expect(isFutureIsoDate(`${dayOffset(1)}T00:00`)).toBe(true);
   });
 });
 

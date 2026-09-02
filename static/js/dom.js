@@ -105,17 +105,19 @@ export function todayIso() {
 }
 
 /**
- * Whether an ISO day string (YYYY-MM-DD) lies after today. ISO day strings
- * compare correctly as plain strings; an empty value is never future. Reads
- * `todayIso()` at call time so long-lived PWA sessions stay correct across
- * midnight.
+ * Whether an ISO day string (YYYY-MM-DD, optionally followed by a time) lies
+ * after today. ISO day strings compare correctly as plain strings; an empty
+ * value is never future. Reads `todayIso()` at call time so long-lived PWA
+ * sessions stay correct across midnight.
  */
 export function isFutureIsoDate(value) {
   if (!value) return false;
   // A date field accepts years past 9999 ("10000-01-01"), which sort *below* a
   // 4-digit year as plain strings and so can't be range-compared. The first `-`
   // of a well-formed ISO day sits at index 4; anything else is out of range.
-  return value.indexOf("-") !== 4 || value > todayIso();
+  // Compare only the day part, matching the backend's `date_value[:10]` — a
+  // trailing time would otherwise sort today above the bare `todayIso()`.
+  return value.indexOf("-") !== 4 || value.slice(0, 10) > todayIso();
 }
 
 /**
