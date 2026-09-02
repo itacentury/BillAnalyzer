@@ -13,6 +13,7 @@ import {
   isFutureIsoDate,
   todayIso,
 } from "../../static/js/dom.js";
+import { dayOffset } from "./helpers.js";
 
 describe("formatDate / formatDateShort", () => {
   it("renders a bare ISO day as DD/MM/YYYY", () => {
@@ -59,14 +60,6 @@ describe("dateToIso / todayIso", () => {
     expect(todayIso()).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 });
-
-// Built at local noon so the Berlin offset can't shift the calendar day.
-const dayOffset = (days) => {
-  const date = new Date();
-  date.setHours(12, 0, 0, 0);
-  date.setDate(date.getDate() + days);
-  return dateToIso(date);
-};
 
 describe("isFutureIsoDate", () => {
   it("accepts today — the day the picker previously greyed out", () => {

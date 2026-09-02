@@ -8,16 +8,9 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { dateToIso, todayIso } from "../../static/js/dom.js";
+import { todayIso } from "../../static/js/dom.js";
 import { validateInvoiceDate } from "../../static/js/modals.js";
-
-// Built at local noon so the Berlin offset can't shift the calendar day.
-function dayOffset(days) {
-  const date = new Date();
-  date.setHours(12, 0, 0, 0);
-  date.setDate(date.getDate() + days);
-  return dateToIso(date);
-}
+import { dayOffset } from "./helpers.js";
 
 function mountDateFixture() {
   document.body.innerHTML = `

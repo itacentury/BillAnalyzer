@@ -136,6 +136,7 @@ export function setupFilterListeners() {
   capAtToday(dateTo);
   dateFrom.addEventListener("focus", () => capAtToday(dateFrom));
   dateTo.addEventListener("focus", () => capAtToday(dateTo));
+
   // Manually changing a date filter switches to custom mode
   dateFrom.addEventListener("change", switchToCustomMode);
   dateTo.addEventListener("change", switchToCustomMode);
