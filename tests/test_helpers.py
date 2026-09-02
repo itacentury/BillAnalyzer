@@ -118,9 +118,9 @@ def test_parse_invoice_rejects_future_date() -> None:
     assert info.value.field == "date"
 
 
-@pytest.mark.parametrize("day", ["10000-01-01", "275760-09-13"])
+@pytest.mark.parametrize("day", ["10000-01-01", "275760-09-13", "010000-01-01"])
 def test_parse_invoice_rejects_year_past_9999(day: str) -> None:
-    """A 5+ digit year is future, not a tolerated non-ISO string."""
+    """A 5+ significant-digit year is future, even zero-padded."""
     with pytest.raises(
         ValidationError, match="Invoice date cannot be in the future"
     ) as info:

@@ -87,6 +87,13 @@ describe("isFutureIsoDate", () => {
     expect(isFutureIsoDate("99999-12-31")).toBe(true);
     expect(isFutureIsoDate("275760-09-13")).toBe(true);
     expect(isFutureIsoDate("10000-01-01T00:00")).toBe(true);
+    expect(isFutureIsoDate("010000-01-01")).toBe(true);
+  });
+
+  // A zero-padded year is not past 9999; the backend keeps its non-ISO
+  // tolerance for it, so the client must not call it future either.
+  it("tolerates a zero-padded year, like the backend", () => {
+    expect(isFutureIsoDate("02026-01-01")).toBe(false);
   });
 
   // A datetime string sorts above the bare day it falls on, so today with a
