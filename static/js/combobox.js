@@ -149,7 +149,7 @@ export function createCombobox(root, { onChange } = {}) {
     });
     applyHighlight();
     // Re-anchor a floating menu whenever its contents (and thus height) change.
-    if (open) syncMenuPosition();
+    if (menuFloatMode && open) syncMenuPosition();
   };
 
   const applyHighlight = () => {

@@ -118,4 +118,23 @@ describe("data-menu-float unset", () => {
 
     closeMenu(input);
   });
+
+  it("leaves menu.style untouched while typing", () => {
+    const root = mountCombobox("");
+    createCombobox(root);
+    const input = root.querySelector(".combobox-input");
+    const menu = root.querySelector(".combobox-menu");
+
+    openMenu(input);
+    // Sentinel: clearing an already-empty property leaves no trace, so mark the
+    // style object and check renderMenu() does not wipe it. This menu never
+    // floats, so it must not run the re-anchor (and its clear branch) at all.
+    menu.style.position = "sticky";
+    input.value = "Re";
+    input.dispatchEvent(new Event("input"));
+
+    expect(menu.style.position).toBe("sticky");
+
+    closeMenu(input);
+  });
 });
