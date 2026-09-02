@@ -105,12 +105,15 @@ export function todayIso() {
 }
 
 /**
- * Cap a date input's selectable range at today (there are no future invoices).
- * Reads `todayIso()` at call time so long-lived PWA sessions don't go stale
- * across midnight, when a once-set `max` would still hold yesterday.
+ * Whether an ISO day string (YYYY-MM-DD) lies after today. This replaces a
+ * `max` attribute on the date inputs: Firefox for Android greys out the `max`
+ * day itself, which made today unpickable once the user moved off it. ISO day
+ * strings compare correctly as plain strings; an empty value is never future.
+ * Reads `todayIso()` at call time so long-lived PWA sessions stay correct
+ * across midnight.
  */
-export function capAtToday(input) {
-  input.max = todayIso();
+export function isFutureIsoDate(value) {
+  return Boolean(value) && value > todayIso();
 }
 
 /**

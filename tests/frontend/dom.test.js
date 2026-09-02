@@ -9,6 +9,7 @@ import {
   formatCurrency,
   formatDate,
   formatDateShort,
+  isFutureIsoDate,
   todayIso,
 } from "../../static/js/dom.js";
 
@@ -55,6 +56,34 @@ describe("dateToIso / todayIso", () => {
 
   it("returns today as a valid ISO day", () => {
     expect(todayIso()).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+});
+
+describe("isFutureIsoDate", () => {
+  // Built at local noon so the Berlin offset can't shift the calendar day.
+  const dayOffset = (days) => {
+    const date = new Date();
+    date.setHours(12, 0, 0, 0);
+    date.setDate(date.getDate() + days);
+    return dateToIso(date);
+  };
+
+  it("accepts today — the day the picker previously greyed out", () => {
+    expect(isFutureIsoDate(todayIso())).toBe(false);
+  });
+
+  it("accepts past days", () => {
+    expect(isFutureIsoDate(dayOffset(-1))).toBe(false);
+    expect(isFutureIsoDate("2024-03-01")).toBe(false);
+  });
+
+  it("rejects future days", () => {
+    expect(isFutureIsoDate(dayOffset(1))).toBe(true);
+    expect(isFutureIsoDate(dayOffset(400))).toBe(true);
+  });
+
+  it("treats an empty value as not future", () => {
+    expect(isFutureIsoDate("")).toBe(false);
   });
 });
 
