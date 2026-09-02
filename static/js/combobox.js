@@ -9,7 +9,7 @@
  * keeps working unchanged. Leaf-ish module: imports only from `dom.js`.
  */
 
-import { escapeHtml, categoryColorVar } from "./dom.js";
+import { escapeHtml, categoryColorVar, mobileViewport } from "./dom.js";
 
 // Registry of live instances, keyed by the wrapped hidden input's data-el name,
 // plus a flat list for fanning category options out to every category instance.
@@ -49,7 +49,13 @@ export function createCombobox(root, { onChange } = {}) {
   // Opt-in: anchor the menu to the viewport (position: fixed) so it can escape a
   // clipping/scrolling ancestor and float over sibling chrome (e.g. the sticky
   // footer in the categorize modal) instead of forcing that ancestor to scroll.
-  const floatMenu = root.dataset.menuFloat === "true";
+  // "true" floats always; "desktop" floats only above the mobile breakpoint,
+  // below which the filter bottom sheet's transform would re-anchor (and then
+  // clip) a fixed menu.
+  const menuFloatMode = root.dataset.menuFloat || "";
+  const shouldFloatMenu = () =>
+    menuFloatMode === "true" ||
+    (menuFloatMode === "desktop" && !mobileViewport.matches);
 
   const menuId = `combobox-menu-${dataEl}`;
   menu.id = menuId;
@@ -143,7 +149,7 @@ export function createCombobox(root, { onChange } = {}) {
     });
     applyHighlight();
     // Re-anchor a floating menu whenever its contents (and thus height) change.
-    if (floatMenu && open) positionMenu();
+    if (menuFloatMode && open) syncMenuPosition();
   };
 
   const applyHighlight = () => {
@@ -202,19 +208,78 @@ export function createCombobox(root, { onChange } = {}) {
     menu.style.maxHeight = "";
   };
 
+  // Apply or drop the fixed anchoring, so crossing the breakpoint while the menu
+  // is open never leaves a stale inline position behind.
+  const syncMenuPosition = () => {
+    if (shouldFloatMenu()) positionMenu();
+    else clearMenuPosition();
+  };
+
   const reposition = () => {
-    if (open) positionMenu();
+    if (open) syncMenuPosition();
+  };
+
+  // Capture so a scroll of any ancestor (the modal's scroll container) keeps the
+  // fixed menu glued to its control. Only bound while the menu actually floats:
+  // in "desktop" mode below the breakpoint the handler would just rewrite empty
+  // inline styles on every scroll of the bottom sheet. Re-adding the same
+  // handler with the same capture flag is a no-op, so this is safe to re-run.
+  const syncScrollTracking = () => {
+    if (shouldFloatMenu())
+      document.addEventListener("scroll", reposition, true);
+    else document.removeEventListener("scroll", reposition, true);
+  };
+
+  // A resize is not the end of the layout change it triggers: chrome above the
+  // control keeps transitioning for a few hundred ms afterwards (toolbar button
+  // paddings, the filter panel's row track) and drags the control with it, so
+  // the rect read on the event itself is stale. Keep re-anchoring for the length
+  // of those transitions. A resize mid-settle only extends the deadline, so a
+  // drag-resize still runs a single loop. Like the scroll listener, the loop
+  // runs only while the menu actually floats: otherwise every frame would just
+  // rewrite empty inline styles.
+  // 350ms is not arbitrary: it has to outlast every transition a resize can
+  // start on chrome above the control — `--transition` (0.2s, variables.css),
+  // the `.filters-collapsible` row track (0.3s, filters.css) and
+  // `modal-slide-up` (0.3s, modals.css). Raise it if any of those grows.
+  const settleDuration = 350;
+  let settleDeadline = 0;
+  let settling = false;
+
+  const settleMenuPosition = () => {
+    if (!shouldFloatMenu()) return;
+    settleDeadline = performance.now() + settleDuration;
+    if (settling) return;
+    settling = true;
+    const step = () => {
+      if (!open || !shouldFloatMenu() || performance.now() >= settleDeadline) {
+        settling = false;
+        return;
+      }
+      syncMenuPosition();
+      requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  };
+
+  // resize stays bound whenever the menu may float: it is the event that flips
+  // shouldFloatMenu(), so it has to re-evaluate the scroll binding too. It is
+  // deliberately not mobileViewport's "change" event (which stats.js uses for
+  // the same breakpoint): a resize that never crosses the breakpoint still
+  // moves the control's rect, and every crossing fires a resize anyway.
+  const onViewportResize = () => {
+    syncScrollTracking();
+    reposition();
+    settleMenuPosition();
   };
 
   const bindReposition = () => {
-    window.addEventListener("resize", reposition);
-    // Capture so a scroll of any ancestor (the modal's scroll container) keeps
-    // the fixed menu glued to its control.
-    document.addEventListener("scroll", reposition, true);
+    window.addEventListener("resize", onViewportResize);
+    syncScrollTracking();
   };
 
   const unbindReposition = () => {
-    window.removeEventListener("resize", reposition);
+    window.removeEventListener("resize", onViewportResize);
     document.removeEventListener("scroll", reposition, true);
   };
 
@@ -228,7 +293,7 @@ export function createCombobox(root, { onChange } = {}) {
     const current = entries.findIndex((entry) => entry.value === hidden.value);
     highlighted = current >= 0 ? current : 0;
     applyHighlight();
-    if (floatMenu) bindReposition();
+    if (menuFloatMode) bindReposition();
   };
 
   // Close the menu and restore the display to the committed value (a typed but
@@ -240,7 +305,7 @@ export function createCombobox(root, { onChange } = {}) {
     textInput.setAttribute("aria-expanded", "false");
     textInput.removeAttribute("aria-activedescendant");
     highlighted = -1;
-    if (floatMenu) {
+    if (menuFloatMode) {
       unbindReposition();
       clearMenuPosition();
     }
@@ -254,7 +319,7 @@ export function createCombobox(root, { onChange } = {}) {
     textInput.setAttribute("aria-expanded", "false");
     textInput.removeAttribute("aria-activedescendant");
     highlighted = -1;
-    if (floatMenu) {
+    if (menuFloatMode) {
       unbindReposition();
       clearMenuPosition();
     }

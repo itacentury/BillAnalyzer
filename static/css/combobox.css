@@ -85,6 +85,20 @@
   display: block;
 }
 
+/* A floating menu leaves its ancestor's stacking context and competes with page
+   chrome, so lift it to the page-level menu layer (cf. .page-size-menu). The
+   "desktop" mode only floats above the mobile breakpoint (see shouldFloatMenu in
+   combobox.js), so its lift is scoped to the same width. */
+.combobox[data-menu-float="true"] .combobox-menu {
+  z-index: 700;
+}
+
+@media (width > 640px) {
+  .combobox[data-menu-float="desktop"] .combobox-menu {
+    z-index: 700;
+  }
+}
+
 .combobox-option {
   display: flex;
   gap: 9px;

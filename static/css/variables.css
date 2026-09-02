@@ -65,6 +65,9 @@
   --shadow-dropdown: 0 10px 28px rgb(90 70 40 / 16%);
   --shadow-modal: 0 24px 60px rgb(58 51 42 / 35%);
   --shadow-toolbar: 0 10px 28px rgb(58 51 42 / 35%);
+
+  /* Transitions. Lengthening these means raising `settleDuration` in
+     static/js/combobox.js, which must outlast them. */
   --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-fast: 0.15s;
   --transition-normal: 0.25s;
