@@ -31,8 +31,16 @@ export function toggleAdvancedFilters() {
   const collapsible = document.querySelector('[data-el="filters-collapsible"]');
   const toggleBtn = document.querySelector('[data-el="filters-toggle"]');
 
-  collapsible.classList.toggle("visible");
-  toggleBtn.classList.toggle("active");
+  const isOpen = collapsible.classList.toggle("visible");
+  // Setting inert on a subtree that holds focus blurs to <body>, so hand focus
+  // back to the toggle first and keyboard users are not stranded.
+  if (!isOpen && collapsible.contains(document.activeElement))
+    toggleBtn.focus();
+  // A collapsed panel is only transparent, not hidden: without inert its
+  // controls stay tabbable and keep swallowing clicks meant for the list below.
+  collapsible.inert = !isOpen;
+  toggleBtn.setAttribute("aria-expanded", String(isOpen));
+  toggleBtn.classList.toggle("active", isOpen);
   syncFilterSheetChrome();
 }
 

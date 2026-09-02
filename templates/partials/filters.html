@@ -163,7 +163,12 @@
       {% endif %}
 
       <!-- Filter panel toggle -->
-      <button class="filter-button" data-el="filters-toggle">
+      <button
+        class="filter-button"
+        data-el="filters-toggle"
+        aria-expanded="false"
+        aria-controls="filters-panel"
+      >
         <svg
           width="13"
           height="13"
@@ -189,7 +194,12 @@
   ></button>
 
   <!-- Collapsible filter panel (bottom sheet on mobile) -->
-  <div class="filters-collapsible" data-el="filters-collapsible">
+  <div
+    class="filters-collapsible"
+    id="filters-panel"
+    data-el="filters-collapsible"
+    inert
+  >
     <div class="filters-collapsible-inner">
       <div class="sheet-grabber" aria-hidden="true"></div>
       <div class="sheet-header">
