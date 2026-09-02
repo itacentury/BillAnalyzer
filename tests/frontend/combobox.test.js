@@ -104,6 +104,26 @@ describe('data-menu-float="desktop"', () => {
     closeMenu(input);
   });
 
+  it("stops scroll tracking when a resize crosses into mobile", () => {
+    const root = mountCombobox("desktop");
+    createCombobox(root);
+    const input = root.querySelector(".combobox-input");
+    const menu = root.querySelector(".combobox-menu");
+    openMenu(input);
+    expect(scrollListenerCalls(documentAdd)).toHaveLength(1);
+    expect(menu.style.position).toBe("fixed");
+
+    mobileViewport.matches = true;
+    window.dispatchEvent(new Event("resize"));
+
+    // Assert before closing: unbindReposition() releases the scroll listener
+    // too, so a post-close count could not tell the two callers apart.
+    expect(scrollListenerCalls(documentRemove)).toHaveLength(1);
+    expect(menu.style.position).toBe("");
+
+    closeMenu(input);
+  });
+
   it("starts no settle loop on a resize below the breakpoint", () => {
     mobileViewport.matches = true;
     const root = mountCombobox("desktop");
