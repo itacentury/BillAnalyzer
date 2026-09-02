@@ -219,15 +219,31 @@ export function createCombobox(root, { onChange } = {}) {
     if (open) syncMenuPosition();
   };
 
+  // Capture so a scroll of any ancestor (the modal's scroll container) keeps the
+  // fixed menu glued to its control. Only bound while the menu actually floats:
+  // in "desktop" mode below the breakpoint the handler would just rewrite empty
+  // inline styles on every scroll of the bottom sheet. Re-adding the same
+  // handler with the same capture flag is a no-op, so this is safe to re-run.
+  const syncScrollTracking = () => {
+    if (shouldFloatMenu())
+      document.addEventListener("scroll", reposition, true);
+    else document.removeEventListener("scroll", reposition, true);
+  };
+
+  // resize stays bound whenever the menu may float: it is the event that flips
+  // shouldFloatMenu(), so it has to re-evaluate the scroll binding too.
+  const onViewportResize = () => {
+    syncScrollTracking();
+    reposition();
+  };
+
   const bindReposition = () => {
-    window.addEventListener("resize", reposition);
-    // Capture so a scroll of any ancestor (the modal's scroll container) keeps
-    // the fixed menu glued to its control.
-    document.addEventListener("scroll", reposition, true);
+    window.addEventListener("resize", onViewportResize);
+    syncScrollTracking();
   };
 
   const unbindReposition = () => {
-    window.removeEventListener("resize", reposition);
+    window.removeEventListener("resize", onViewportResize);
     document.removeEventListener("scroll", reposition, true);
   };
 
