@@ -230,11 +230,37 @@ export function createCombobox(root, { onChange } = {}) {
     else document.removeEventListener("scroll", reposition, true);
   };
 
+  // A resize is not the end of the layout change it triggers: chrome above the
+  // control keeps transitioning for a few hundred ms afterwards (toolbar button
+  // paddings, the filter panel's row track) and drags the control with it, so
+  // the rect read on the event itself is stale. Keep re-anchoring for the length
+  // of those transitions. A resize mid-settle only extends the deadline, so a
+  // drag-resize still runs a single loop.
+  const settleDuration = 350;
+  let settleDeadline = 0;
+  let settling = false;
+
+  const settleMenuPosition = () => {
+    settleDeadline = performance.now() + settleDuration;
+    if (settling) return;
+    settling = true;
+    const step = () => {
+      if (!open || performance.now() >= settleDeadline) {
+        settling = false;
+        return;
+      }
+      syncMenuPosition();
+      requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  };
+
   // resize stays bound whenever the menu may float: it is the event that flips
   // shouldFloatMenu(), so it has to re-evaluate the scroll binding too.
   const onViewportResize = () => {
     syncScrollTracking();
     reposition();
+    settleMenuPosition();
   };
 
   const bindReposition = () => {
