@@ -9,6 +9,7 @@ import {
   formatCurrency,
   todayIso,
   isFutureIsoDate,
+  capAtToday,
 } from "./dom.js";
 import { showErrorToast } from "./toast.js";
 import { saveInvoice } from "./invoices.js";
@@ -72,6 +73,7 @@ export function openAddModal() {
   lockScroll();
   resetAddForm();
   const dateInput = document.querySelector('[data-el="invoice-date"]');
+  capAtToday(dateInput);
   dateInput.value = todayIso();
   validateInvoiceDate();
 }
@@ -115,6 +117,7 @@ export async function editInvoice(id) {
 
   // Fill in the form
   const dateInput = document.querySelector('[data-el="invoice-date"]');
+  capAtToday(dateInput);
   dateInput.value = invoice.date;
   validateInvoiceDate();
   document.querySelector('[data-el="invoice-store"]').value = invoice.store;
@@ -226,8 +229,10 @@ export function setupModalListeners() {
 
   // Add/edit invoice modal
   const addModal = document.querySelector('[data-el="add-invoice-modal"]');
-  // Future dates are rejected by validateInvoiceDate (and the backend) rather
-  // than by a `max` attribute on the input — see isFutureIsoDate in dom.js.
+  // Two guards: the input's `max` narrows the picker (set on modal open, see
+  // openAddModal / editInvoice, so it stays fresh across midnight in long-lived
+  // PWA sessions), and validateInvoiceDate is the actual future-date check —
+  // `max` alone can't be trusted, see capAtToday in dom.js.
   addModal
     .querySelector(".modal-close")
     .addEventListener("click", closeAddModal);

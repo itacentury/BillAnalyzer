@@ -105,15 +105,45 @@ export function todayIso() {
 }
 
 /**
- * Whether an ISO day string (YYYY-MM-DD) lies after today. This replaces a
- * `max` attribute on the date inputs: Firefox for Android greys out the `max`
- * day itself, which made today unpickable once the user moved off it. ISO day
- * strings compare correctly as plain strings; an empty value is never future.
- * Reads `todayIso()` at call time so long-lived PWA sessions stay correct
- * across midnight.
+ * Whether an ISO day string (YYYY-MM-DD) lies after today. ISO day strings
+ * compare correctly as plain strings; an empty value is never future. Reads
+ * `todayIso()` at call time so long-lived PWA sessions stay correct across
+ * midnight.
  */
 export function isFutureIsoDate(value) {
   return Boolean(value) && value > todayIso();
+}
+
+/**
+ * Whether this is Firefox for Android, which greys out a date input's `max` day
+ * itself — a cap of today would make today unpickable there. Desktop Firefox is
+ * unaffected, hence the Android check; Firefox for iOS ("FxiOS") is a WebKit
+ * shell and also fine.
+ */
+function isAndroidFirefox() {
+  const ua = navigator.userAgent;
+  return /Android/.test(ua) && /Firefox\//.test(ua);
+}
+
+// Built at local noon so a DST shift can't move the calendar day.
+function tomorrowIso() {
+  const date = new Date();
+  date.setHours(12, 0, 0, 0);
+  date.setDate(date.getDate() + 1);
+  return dateToIso(date);
+}
+
+/**
+ * Cap a date input's selectable range at today (there are no future invoices).
+ * On Firefox for Android the cap is tomorrow instead, so that browser greys out
+ * tomorrow rather than today; the one extra day it lets through is still
+ * rejected by `isFutureIsoDate` and by the backend.
+ *
+ * Reads the date at call time so long-lived PWA sessions don't go stale across
+ * midnight, when a once-set `max` would still hold yesterday.
+ */
+export function capAtToday(input) {
+  input.max = isAndroidFirefox() ? tomorrowIso() : todayIso();
 }
 
 /**

@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   applyCategoryBadge,
+  capAtToday,
   categoryColorVar,
   dateToIso,
   debounce,
@@ -59,15 +60,15 @@ describe("dateToIso / todayIso", () => {
   });
 });
 
-describe("isFutureIsoDate", () => {
-  // Built at local noon so the Berlin offset can't shift the calendar day.
-  const dayOffset = (days) => {
-    const date = new Date();
-    date.setHours(12, 0, 0, 0);
-    date.setDate(date.getDate() + days);
-    return dateToIso(date);
-  };
+// Built at local noon so the Berlin offset can't shift the calendar day.
+const dayOffset = (days) => {
+  const date = new Date();
+  date.setHours(12, 0, 0, 0);
+  date.setDate(date.getDate() + days);
+  return dateToIso(date);
+};
 
+describe("isFutureIsoDate", () => {
   it("accepts today — the day the picker previously greyed out", () => {
     expect(isFutureIsoDate(todayIso())).toBe(false);
   });
@@ -84,6 +85,38 @@ describe("isFutureIsoDate", () => {
 
   it("treats an empty value as not future", () => {
     expect(isFutureIsoDate("")).toBe(false);
+  });
+});
+
+describe("capAtToday", () => {
+  const ANDROID_FIREFOX =
+    "Mozilla/5.0 (Android 14; Mobile; rv:121.0) Gecko/121.0 Firefox/121.0";
+  const DESKTOP_FIREFOX =
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0";
+  const ANDROID_CHROME =
+    "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Mobile Safari/537.36";
+
+  const capWithUserAgent = (userAgent) => {
+    vi.stubGlobal("navigator", { userAgent });
+    const input = document.createElement("input");
+    input.type = "date";
+    capAtToday(input);
+    return input.max;
+  };
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("caps at today on an ordinary browser", () => {
+    expect(capWithUserAgent(DESKTOP_FIREFOX)).toBe(todayIso());
+    expect(capWithUserAgent(ANDROID_CHROME)).toBe(todayIso());
+  });
+
+  // Firefox for Android greys out the `max` day itself, so capping at today
+  // would make today unpickable — cap a day later there.
+  it("caps at tomorrow on Firefox for Android", () => {
+    expect(capWithUserAgent(ANDROID_FIREFOX)).toBe(dayOffset(1));
   });
 });
 

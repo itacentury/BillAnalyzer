@@ -4,7 +4,7 @@
  */
 
 import { state } from "./state.js";
-import { els, debounce, dateToIso } from "./dom.js";
+import { els, debounce, dateToIso, capAtToday } from "./dom.js";
 import { loadInvoices } from "./api.js";
 import { getCombobox } from "./combobox.js";
 
@@ -127,9 +127,15 @@ export function setupFilterListeners() {
   const { searchInput, dateFrom, dateTo } = els();
 
   searchInput.addEventListener("input", debounce(loadInvoices, 300));
-  // No `max` cap on the date filters: Firefox for Android greys out the `max`
-  // day itself, which made today unpickable. A future end date is harmless here
-  // — it simply matches no extra rows.
+  // Cap both date pickers at today — there are no future invoices to filter for
+  // (`capAtToday` shifts that to tomorrow on Firefox for Android, which is
+  // harmless here: a future end date simply matches no extra rows).
+  // These inputs stay mounted, so also refresh `max` on focus: a session left
+  // open across midnight would otherwise cap at yesterday until reload.
+  capAtToday(dateFrom);
+  capAtToday(dateTo);
+  dateFrom.addEventListener("focus", () => capAtToday(dateFrom));
+  dateTo.addEventListener("focus", () => capAtToday(dateTo));
   // Manually changing a date filter switches to custom mode
   dateFrom.addEventListener("change", switchToCustomMode);
   dateTo.addEventListener("change", switchToCustomMode);

@@ -1,8 +1,9 @@
 /**
- * Frontend unit tests for the invoice date guard. The date input carries no
- * `max` attribute (Firefox for Android greys out the `max` day itself, making
- * today unpickable), so `validateInvoiceDate` is the only client-side check that
- * a future date is flagged — these cases cover it directly.
+ * Frontend unit tests for the invoice date guard. The date input's `max` only
+ * narrows the picker and can't be trusted on its own (on Firefox for Android it
+ * is shifted to tomorrow, see capAtToday in dom.js), so `validateInvoiceDate` is
+ * the client-side check that a future date is flagged — these cases cover it
+ * directly, including the tomorrow that cap lets through.
  */
 
 import { beforeEach, describe, expect, it } from "vitest";
