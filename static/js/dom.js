@@ -111,7 +111,11 @@ export function todayIso() {
  * midnight.
  */
 export function isFutureIsoDate(value) {
-  return Boolean(value) && value > todayIso();
+  if (!value) return false;
+  // A date field accepts years past 9999 ("10000-01-01"), which sort *below* a
+  // 4-digit year as plain strings and so can't be range-compared. The first `-`
+  // of a well-formed ISO day sits at index 4; anything else is out of range.
+  return value.indexOf("-") !== 4 || value > todayIso();
 }
 
 /**

@@ -86,6 +86,14 @@ describe("isFutureIsoDate", () => {
   it("treats an empty value as not future", () => {
     expect(isFutureIsoDate("")).toBe(false);
   });
+
+  // A date field accepts 5+ digit years, which a plain string comparison sorts
+  // below a 4-digit year ("1" < "2") and would wrongly call past.
+  it("rejects years past 9999", () => {
+    expect(isFutureIsoDate("10000-01-01")).toBe(true);
+    expect(isFutureIsoDate("99999-12-31")).toBe(true);
+    expect(isFutureIsoDate("275760-09-13")).toBe(true);
+  });
 });
 
 describe("capAtToday", () => {
