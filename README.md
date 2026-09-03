@@ -177,18 +177,18 @@ per client (ten failures per five minutes).
 
 Copy [`.env.example`](.env.example) to `.env` and fill in the values you need.
 
-| Environment Variable    | Default       | Description                                                                                                                   |
-| ----------------------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `ANTHROPIC_API_KEY`     | _(unset)_     | Configures [AI category suggestions](#ai-category-suggestions). Required for requests once the master switch is enabled.      |
-| `ENABLE_AI_SUGGESTIONS` | _(unset)_     | Master switch for AI category suggestions. Unset/`0` disables the feature; set to `1` to show the trigger and allow requests. |
-| `DATABASE_PATH`         | `invoices.db` | Path to SQLite database                                                                                                       |
-| `CORS_ALLOWED_ORIGINS`  | _(empty)_     | Cross-origin allowlist — a comma-separated list of origins, or `*` for the wildcard. Empty = same-origin only. A named list also permits credentialed (cookie-bearing) requests; `*` does not. |
-| `FLASK_DEBUG`           | `0` (off)     | Set to `1` to enable the Flask/Werkzeug debugger on the dev server. Never enable in production — it allows RCE.               |
-| `AUTH_ENABLED`          | `0` (off)     | Master switch for [password protection](#password-protection). Unset/`0` leaves the app open to anyone who can reach it.      |
-| `AUTH_PASSWORD_HASH`    | _(unset)_     | Hash of the login password, from `uv run python -m summa.hashpw`. Without it nobody can log in — the gate fails closed.       |
-| `SESSION_SECRET`        | _(unset)_     | Key used to sign the session cookie. Required once the gate is on; otherwise sessions die on every restart and per worker.    |
-| `SESSION_DAYS`          | `30`          | How long "Stay signed in" keeps a session alive, in days. The login screen states the configured value.                        |
-| `COOKIE_SECURE`         | `1` (on)      | `Secure` flag on the session cookie. Set to `0` for plain-HTTP testing — a Secure cookie is dropped over `http://`.           |
+| Environment Variable    | Default       | Description                                                                                                                                                                                                    |
+| ----------------------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ANTHROPIC_API_KEY`     | _(unset)_     | Configures [AI category suggestions](#ai-category-suggestions). Required for requests once the master switch is enabled.                                                                                       |
+| `ENABLE_AI_SUGGESTIONS` | _(unset)_     | Master switch for AI category suggestions. Unset/`0` disables the feature; set to `1` to show the trigger and allow requests.                                                                                  |
+| `DATABASE_PATH`         | `invoices.db` | Path to SQLite database                                                                                                                                                                                        |
+| `CORS_ALLOWED_ORIGINS`  | _(empty)_     | Cross-origin allowlist — a comma-separated list of origins, or `*` for the wildcard. Empty = same-origin only. A named list also permits credentialed (cookie-bearing) requests; `*` does not.                 |
+| `FLASK_DEBUG`           | `0` (off)     | Set to `1` to enable the Flask/Werkzeug debugger on the dev server. Never enable in production — it allows RCE.                                                                                                |
+| `AUTH_ENABLED`          | `0` (off)     | Master switch for [password protection](#password-protection). Unset/`0` leaves the app open to anyone who can reach it.                                                                                       |
+| `AUTH_PASSWORD_HASH`    | _(unset)_     | Hash of the login password, from `uv run python -m summa.hashpw`. Without it nobody can log in — the gate fails closed.                                                                                        |
+| `SESSION_SECRET`        | _(unset)_     | Key used to sign the session cookie. Required once the gate is on; otherwise sessions die on every restart and per worker.                                                                                     |
+| `SESSION_DAYS`          | `30`          | How long "Stay signed in" keeps a session alive, in days. The login screen states the configured value.                                                                                                        |
+| `COOKIE_SECURE`         | `1` (on)      | `Secure` flag on the session cookie. Set to `0` for plain-HTTP testing — a Secure cookie is dropped over `http://`.                                                                                            |
 | `COOKIE_SAMESITE`       | `lax`         | `SameSite` flag on the session cookie. `lax` is what defends against CSRF here; there is no CSRF token. A cross-site browser client needs `none` (which browsers only accept together with `COOKIE_SECURE=1`). |
 
 ## API
