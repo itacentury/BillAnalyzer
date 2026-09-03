@@ -31,6 +31,7 @@ import { setupSheetGestures } from "./sheet.js";
 import { setupViewportListeners } from "./viewport.js";
 import { setupPageSizeListeners } from "./pagesize.js";
 import { getAuthStatus, renderLoginView, setupSignOut } from "./auth.js";
+import { clearAuthExpired, onAuthExpired } from "./http.js";
 import {
   state,
   PAGE_SIZE_OPTIONS,
@@ -151,6 +152,16 @@ function startApp() {
  * login gate. Nothing that talks to the API may run before this resolves.
  */
 function boot() {
+  // A session can expire while the app is running. Re-login then reloads the
+  // data in place rather than re-running init(), whose listeners are still
+  // wired from the first start.
+  onAuthExpired(() => {
+    renderLoginView(() => {
+      clearAuthExpired();
+      refreshAllData();
+    });
+  });
+
   getAuthStatus()
     .then(({ authed, enabled }) => {
       setupSignOut(enabled);
