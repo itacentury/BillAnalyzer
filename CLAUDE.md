@@ -83,7 +83,12 @@ and shared types/helpers in `summa/helpers.py`. Key conventions:
   would only stop the browser from ever sending the real request. The session rides on Flask's own
   signed cookie (configured in `_configure_sessions()`), and every config value
   is read inside its accessor, never at import, so tests can toggle the gate
-  with `monkeypatch.setenv`.
+  with `monkeypatch.setenv`. What `create_app()` snapshots at boot (the cookie
+  attributes, `PERMANENT_SESSION_LIFETIME`, the CORS allowlist) is frozen for the
+  process, so a test changing one of those must build the client with the value
+  (the `build_client` fixture) rather than setting the env afterwards — and code
+  serving such a value to clients should read it back from `app.config`, not from
+  the environment, so the two can never disagree.
 - **REST API under `/api/`** (invoices CRUD, `/import`, `/bulk-update`,
   `/bulk-delete`, `/stores`, `/categories`, `/stats`). Handlers return
   `Response | tuple[Response, int]` (the `ApiResponse` alias) and wrap writes in

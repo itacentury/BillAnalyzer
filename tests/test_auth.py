@@ -350,13 +350,28 @@ def test_me_reports_everyone_as_authed_when_the_gate_is_off(
 
 
 def test_me_reports_the_configured_session_lifetime(
-    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+    build_client: BuildClient,
 ) -> None:
     """A custom SESSION_DAYS reaches the client, which labels the login screen."""
-    # Set after the client exists: me() reads the config on every request.
-    monkeypatch.setenv(config.SESSION_DAYS_ENV, "7")
+    # Built with the value: create_app() freezes the lifetime that me() reports.
+    client: FlaskClient = build_client({config.SESSION_DAYS_ENV: "7"})
 
     assert client.get("/api/auth/me").get_json()["session_days"] == 7
+
+
+def test_the_reported_lifetime_is_the_one_the_gate_enforces(
+    auth_enabled: str, build_client: BuildClient
+) -> None:
+    """The label the login screen prints is the expiry the cookie is checked against."""
+    client: FlaskClient = build_client({config.SESSION_DAYS_ENV: "7"})
+    reported: int = client.get("/api/auth/me").get_json()["session_days"]
+    client.set_cookie(
+        "summa_session",
+        _backdated_session_cookie(client.application, timedelta(days=reported + 1)),
+    )
+
+    assert reported == 7
+    assert client.get("/api/invoices").status_code == 401
 
 
 def test_repeated_wrong_passwords_are_throttled(gated_client: FlaskClient) -> None:

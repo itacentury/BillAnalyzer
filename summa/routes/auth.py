@@ -4,9 +4,10 @@ These routes stay reachable without a session (see the public allowlist in
 :mod:`summa.auth`) — otherwise there would be no way to obtain one.
 """
 
+from datetime import timedelta
 from typing import Any
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, current_app, jsonify, request
 
 from summa import config
 from summa.auth import end_session, is_authenticated, start_session, verify_password
@@ -66,10 +67,14 @@ def me() -> ApiResponse:
     the lifetime this deployment actually configured instead of a hardcoded one.
     """
     enabled: bool = config.auth_enabled()
+    # Read from the app rather than from the environment: this is the same value
+    # the cookie expiry was derived from at boot, so the label the login screen
+    # prints can never promise a lifetime the gate does not enforce.
+    lifetime: timedelta = current_app.config["PERMANENT_SESSION_LIFETIME"]
     return jsonify(
         {
             "authed": not enabled or is_authenticated(),
             "enabled": enabled,
-            "session_days": config.session_days(),
+            "session_days": lifetime.days,
         }
     )
