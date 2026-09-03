@@ -34,6 +34,9 @@ const submitLogin = async (password, { remember = false } = {}) => {
   await Promise.resolve();
 };
 
+const rememberText = () =>
+  document.querySelector(".login-remember span").textContent;
+
 const errorText = () =>
   document.querySelector(".login-error").hidden
     ? null
@@ -47,12 +50,13 @@ beforeEach(() => {
 describe("getAuthStatus", () => {
   it("reports the server's answer", async () => {
     global.fetch.mockResolvedValue(
-      jsonResponse({ authed: true, enabled: true }),
+      jsonResponse({ authed: true, enabled: true, session_days: 7 }),
     );
 
     await expect(getAuthStatus()).resolves.toEqual({
       authed: true,
       enabled: true,
+      sessionDays: 7,
     });
   });
 
@@ -64,6 +68,7 @@ describe("getAuthStatus", () => {
     await expect(getAuthStatus()).resolves.toEqual({
       authed: false,
       enabled: true,
+      sessionDays: null,
     });
   });
 
@@ -77,6 +82,7 @@ describe("getAuthStatus", () => {
     await expect(getAuthStatus()).resolves.toEqual({
       authed: true,
       enabled: false,
+      sessionDays: null,
     });
   });
 
@@ -86,6 +92,7 @@ describe("getAuthStatus", () => {
     await expect(getAuthStatus()).resolves.toEqual({
       authed: true,
       enabled: false,
+      sessionDays: null,
     });
   });
 
@@ -95,7 +102,16 @@ describe("getAuthStatus", () => {
     await expect(getAuthStatus()).resolves.toEqual({
       authed: false,
       enabled: false,
+      sessionDays: null,
     });
+  });
+
+  it("ignores a session lifetime that is not a positive whole number", async () => {
+    global.fetch.mockResolvedValue(
+      jsonResponse({ authed: true, enabled: true, session_days: "soon" }),
+    );
+
+    await expect(getAuthStatus()).resolves.toMatchObject({ sessionDays: null });
   });
 });
 
@@ -121,6 +137,41 @@ describe("renderLoginView", () => {
     renderLoginView(vi.fn());
 
     expect(document.querySelectorAll('[data-el="login-gate"]')).toHaveLength(1);
+  });
+
+  it("states the lifetime the server reported", async () => {
+    // The label is built from the cached status, so the fetch has to happen
+    // first — exactly the boot order in app.js.
+    global.fetch.mockResolvedValue(
+      jsonResponse({ authed: false, enabled: true, session_days: 7 }),
+    );
+    await getAuthStatus();
+
+    renderLoginView(vi.fn());
+
+    expect(rememberText()).toBe("Stay signed in for 7 days");
+  });
+
+  it("says day, not days, for a one-day lifetime", async () => {
+    global.fetch.mockResolvedValue(
+      jsonResponse({ authed: false, enabled: true, session_days: 1 }),
+    );
+    await getAuthStatus();
+
+    renderLoginView(vi.fn());
+
+    expect(rememberText()).toBe("Stay signed in for 1 day");
+  });
+
+  it("promises no duration it does not know", async () => {
+    // A status request that failed leaves the lifetime unknown; inventing a
+    // number here is the bug this replaced.
+    global.fetch.mockRejectedValue(new Error("offline"));
+    await getAuthStatus();
+
+    renderLoginView(vi.fn());
+
+    expect(rememberText()).toBe("Stay signed in on this device");
   });
 
   it("sends the password and the remember flag", async () => {

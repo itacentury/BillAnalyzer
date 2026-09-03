@@ -17,25 +17,46 @@ const EYE_OFF =
   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c6.5 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3.5 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/><line x1="2" y1="2" x2="22" y2="22"/></svg>';
 
 /**
+ * Last session lifetime reported by the server, or null while it is unknown.
+ *
+ * Cached at module scope because `renderLoginView()` is also called from the
+ * session-expiry path in app.js, which has no status object in hand.
+ * `getAuthStatus()` always runs first at boot, so the value is known by then.
+ */
+let knownSessionDays = null;
+
+/**
  * Fetch the current authentication status.
  *
- * @returns {Promise<{authed: boolean, enabled: boolean}>} `authed` is whether
- *   the app may start, `enabled` whether the password gate exists at all (which
- *   is what decides if the sign-out control is shown).
+ * @returns {Promise<{authed: boolean, enabled: boolean, sessionDays: number|null}>}
+ *   `authed` is whether the app may start, `enabled` whether the password gate
+ *   exists at all (which is what decides if the sign-out control is shown), and
+ *   `sessionDays` how long "stay signed in" lasts (null when unknown).
  */
 export async function getAuthStatus() {
+  // Cleared up front so a failed status never leaves a stale duration behind to
+  // be printed as fact on the next gate.
+  knownSessionDays = null;
   try {
     const response = await fetch("/api/auth/me");
     // The service worker answers /api/* with a synthetic 503 while offline.
     // Treating that as "not logged in" would show a login form that cannot
     // possibly succeed, so an offline PWA is let through instead.
-    if (response.status === 503) return { authed: true, enabled: false };
-    if (!response.ok) return { authed: false, enabled: true };
+    if (response.status === 503)
+      return { authed: true, enabled: false, sessionDays: null };
+    if (!response.ok)
+      return { authed: false, enabled: true, sessionDays: null };
     const data = await response.json();
-    return { authed: data.authed === true, enabled: data.enabled === true };
+    const days = Number(data.session_days);
+    knownSessionDays = Number.isInteger(days) && days > 0 ? days : null;
+    return {
+      authed: data.authed === true,
+      enabled: data.enabled === true,
+      sessionDays: knownSessionDays,
+    };
   } catch {
     // Network error without a service worker: same reasoning as the 503 above.
-    return { authed: true, enabled: false };
+    return { authed: true, enabled: false, sessionDays: null };
   }
 }
 
@@ -134,9 +155,11 @@ function buildPasswordField() {
 /**
  * Build the "stay signed in" row.
  *
+ * @param {number|null} days - The configured session lifetime. When it is
+ *   unknown the label states no duration at all rather than inventing one.
  * @returns {{label: HTMLLabelElement, checkbox: HTMLInputElement}}
  */
-function buildRememberField() {
+function buildRememberField(days) {
   const label = document.createElement("label");
   label.className = "login-remember";
 
@@ -144,7 +167,9 @@ function buildRememberField() {
   checkbox.type = "checkbox";
 
   const text = document.createElement("span");
-  text.textContent = "Stay signed in for 30 days";
+  text.textContent = days
+    ? `Stay signed in for ${days} ${days === 1 ? "day" : "days"}`
+    : "Stay signed in on this device";
 
   label.append(checkbox, text);
   return { label, checkbox };
@@ -188,7 +213,7 @@ export function renderLoginView(onSuccess) {
 
   const { wrap: passwordWrap, input: passwordInput } = buildPasswordField();
   const { label: rememberLabel, checkbox: rememberCheckbox } =
-    buildRememberField();
+    buildRememberField(knownSessionDays);
 
   const error = document.createElement("p");
   error.className = "login-error";

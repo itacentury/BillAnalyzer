@@ -156,6 +156,7 @@ def test_logout_clears_the_session(authed_client: FlaskClient) -> None:
     assert authed_client.get("/api/auth/me").get_json() == {
         "authed": False,
         "enabled": True,
+        "session_days": 30,
     }
 
 
@@ -169,7 +170,11 @@ def test_me_reports_an_authenticated_client(authed_client: FlaskClient) -> None:
     response = authed_client.get("/api/auth/me")
 
     assert response.status_code == 200
-    assert response.get_json() == {"authed": True, "enabled": True}
+    assert response.get_json() == {
+        "authed": True,
+        "enabled": True,
+        "session_days": 30,
+    }
 
 
 def test_me_reports_a_missing_session_with_200(gated_client: FlaskClient) -> None:
@@ -177,7 +182,11 @@ def test_me_reports_a_missing_session_with_200(gated_client: FlaskClient) -> Non
     response = gated_client.get("/api/auth/me")
 
     assert response.status_code == 200
-    assert response.get_json() == {"authed": False, "enabled": True}
+    assert response.get_json() == {
+        "authed": False,
+        "enabled": True,
+        "session_days": 30,
+    }
 
 
 def test_me_reports_everyone_as_authed_when_the_gate_is_off(
@@ -187,7 +196,21 @@ def test_me_reports_everyone_as_authed_when_the_gate_is_off(
     response = client.get("/api/auth/me")
 
     assert response.status_code == 200
-    assert response.get_json() == {"authed": True, "enabled": False}
+    assert response.get_json() == {
+        "authed": True,
+        "enabled": False,
+        "session_days": 30,
+    }
+
+
+def test_me_reports_the_configured_session_lifetime(
+    client: FlaskClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A custom SESSION_DAYS reaches the client, which labels the login screen."""
+    # Set after the client exists: me() reads the config on every request.
+    monkeypatch.setenv(config.SESSION_DAYS_ENV, "7")
+
+    assert client.get("/api/auth/me").get_json()["session_days"] == 7
 
 
 def test_repeated_wrong_passwords_are_throttled(gated_client: FlaskClient) -> None:

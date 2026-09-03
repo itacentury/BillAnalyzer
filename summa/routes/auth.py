@@ -58,7 +58,14 @@ def me() -> ApiResponse:
     Answers 200 in every case (never 401) so the gate can ask on each page load
     without producing console errors. ``enabled`` tells the client whether the
     password feature exists at all, which is what hides the sign-out control on
-    an unauthenticated deployment.
+    an unauthenticated deployment. ``session_days`` lets the login screen state
+    the lifetime this deployment actually configured instead of a hardcoded one.
     """
     enabled: bool = config.auth_enabled()
-    return jsonify({"authed": not enabled or is_authenticated(), "enabled": enabled})
+    return jsonify(
+        {
+            "authed": not enabled or is_authenticated(),
+            "enabled": enabled,
+            "session_days": config.session_days(),
+        }
+    )
