@@ -96,10 +96,13 @@ framework, no bundler) talking to the API. `app.js` boots behind the login gate:
 login view is rendered first, so nothing touches the API before the session is
 known. **Every API call goes through `apiFetch()` in `static/js/http.js`** — it
 latches the first 401 and re-raises the gate, so a new call site must use it
-rather than bare `fetch`. Styling is split per component under
-`static/css/` (`variables`, `base`, `header`, `filters`, `invoices`, `modals`,
-`components`, `stats`), loaded via ordered `<link>` tags in `index.html` — the
-order is cascade-significant, and each file co-locates its own responsive
+rather than bare `fetch` — except the auth endpoints themselves, whose 401s are
+answers, not expiries: `auth.js` calls `/api/auth/*` with bare `fetch` on
+purpose, because latching a wrong password would re-enter the login view
+mid-submit and then swallow every genuine expiry. Styling is split per
+component under `static/css/` (`variables`, `base`, `header`, `filters`,
+`invoices`, `modals`, `components`, `stats`), loaded via ordered `<link>` tags
+in `index.html` — the order is cascade-significant, and each file co-locates its own responsive
 `@media` rules.
 
 **PWA.** `static/sw.js` caches static assets under the `CACHE_NAME` constant.

@@ -49,6 +49,7 @@ export async function getAuthStatus() {
   // be printed as fact on the next gate.
   knownSessionDays = null;
   try {
+    // Bare fetch, not apiFetch(): see the login submit in renderLoginView().
     const response = await fetch("/api/auth/me");
     // The service worker answers /api/* with a synthetic 503 while offline.
     // Treating that as "not logged in" would show a login form that cannot
@@ -78,6 +79,7 @@ export async function getAuthStatus() {
  */
 export async function logout() {
   try {
+    // Bare fetch, not apiFetch(): see the login submit in renderLoginView().
     await fetch("/api/auth/logout", { method: "POST" });
   } catch {
     // Ignore network errors: the cookie may already be gone, and the caller
@@ -313,6 +315,10 @@ export function renderLoginView(onSuccess) {
     submit.textContent = "Signing in…";
 
     try {
+      // Bare fetch, not apiFetch(): a 401 here means "wrong password", not
+      // "session expired". Latching it would re-enter renderLoginView()
+      // mid-submit — wiping this error message and the typed value — and then
+      // swallow every genuine expiry until the next successful login.
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
