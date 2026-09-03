@@ -10,4 +10,4 @@ package-lock.json
 
 # Ported design reference from a sibling project; its fenced snippets are
 # excerpts, not standalone parseable sources.
-login-implementation.md
+docs/login-implementation.md

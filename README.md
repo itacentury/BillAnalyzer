@@ -112,6 +112,54 @@ trigger still renders and the endpoint returns `503`.
 The model — Claude Haiku, Sonnet, or Opus — is chosen in the UI (default: Haiku)
 and remembered per browser, so it is **not** an environment variable.
 
+## Password Protection
+
+Summa can put a single-password gate in front of the whole deployment. There are
+no accounts and no roles — one password lets you in, and a signed `HttpOnly`
+cookie keeps you in. It is meant for "keep the public internet out" on a
+self-hosted instance, not for telling users apart.
+
+It is **off by default**, so an existing deployment keeps working unchanged.
+
+**Enabling it**
+
+1. Generate a password hash — the app never accepts a plaintext password:
+
+   ```bash
+   uv run python -m summa.hashpw
+   ```
+
+2. Generate a signing secret:
+
+   ```bash
+   uv run python -c "import secrets; print(secrets.token_urlsafe(32))"
+   ```
+
+3. Put both in `.env` alongside `AUTH_ENABLED=1`, and set `COOKIE_SECURE=0` if
+   you are testing over plain HTTP. See [`.env.example`](.env.example).
+
+Everything needed to render the login screen — `/` and `/static/` — stays public;
+every other route answers `401` without a session. Wrong passwords are throttled
+per client (ten failures per five minutes).
+
+**Limitations, so you can decide consciously:**
+
+- **No individual revocation.** Sessions are stateless signed cookies, so
+  "sign out everywhere" means rotating `SESSION_SECRET`, which signs everyone
+  out including you.
+- **No sliding renewal.** With "Stay signed in", the session ends `SESSION_DAYS`
+  after login regardless of activity.
+- **Throttling is per process.** The default `gunicorn --workers 2` gives each
+  worker its own counter, so the effective allowance is doubled.
+- **Throttling needs the real client IP.** Behind a reverse proxy every request
+  appears to come from the proxy, collapsing all clients into one bucket. Fixing
+  that requires `ProxyFix` and a trusted-proxy list, which Summa does not
+  currently configure.
+- **Docker Compose and `$`.** A password hash contains `$`, which Compose treats
+  as a variable reference. `docker-compose.yml` sets `format: raw` on the
+  `env_file` to disable interpolation; verify with
+  `docker exec summa printenv AUTH_PASSWORD_HASH`.
+
 ## Configuration
 
 Copy [`.env.example`](.env.example) to `.env` and fill in the values you need.
@@ -123,6 +171,12 @@ Copy [`.env.example`](.env.example) to `.env` and fill in the values you need.
 | `DATABASE_PATH`         | `invoices.db` | Path to SQLite database                                                                                                       |
 | `CORS_ALLOWED_ORIGINS`  | _(empty)_     | Cross-origin allowlist — a comma-separated list of origins, or `*` for the wildcard. Empty = same-origin only.                |
 | `FLASK_DEBUG`           | `0` (off)     | Set to `1` to enable the Flask/Werkzeug debugger on the dev server. Never enable in production — it allows RCE.               |
+| `AUTH_ENABLED`          | `0` (off)     | Master switch for [password protection](#password-protection). Unset/`0` leaves the app open to anyone who can reach it.      |
+| `AUTH_PASSWORD_HASH`    | _(unset)_     | Hash of the login password, from `uv run python -m summa.hashpw`. Without it nobody can log in — the gate fails closed.       |
+| `SESSION_SECRET`        | _(unset)_     | Key used to sign the session cookie. Required once the gate is on; otherwise sessions die on every restart and per worker.    |
+| `SESSION_DAYS`          | `30`          | How long "Stay signed in" keeps a session alive, in days.                                                                     |
+| `COOKIE_SECURE`         | `1` (on)      | `Secure` flag on the session cookie. Set to `0` for plain-HTTP testing — a Secure cookie is dropped over `http://`.           |
+| `COOKIE_SAMESITE`       | `lax`         | `SameSite` flag on the session cookie. `lax` is what defends against CSRF here; there is no CSRF token.                       |
 
 ## API
 
