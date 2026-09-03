@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -7,6 +10,17 @@ import {
   setupSignOut,
 } from "../../static/js/auth.js";
 import { jsonResponse } from "./helpers.js";
+
+/**
+ * The real component stylesheet, so the sign-out cases assert what a browser
+ * would actually paint rather than only the `hidden` IDL property. Resolved via
+ * `import.meta.dirname` because happy-dom replaces the global `URL`, and
+ * `node:fs` rejects its file URLs.
+ */
+const sidebarCss = readFileSync(
+  join(import.meta.dirname, "../../static/css/sidebar.css"),
+  "utf8",
+);
 
 /** Submit the rendered login form and let its async handler settle. */
 const submitLogin = async (password, { remember = false } = {}) => {
@@ -185,19 +199,29 @@ describe("renderLoginView", () => {
 
 describe("setupSignOut", () => {
   beforeEach(() => {
-    document.body.innerHTML = '<button data-el="logout" hidden></button>';
+    // happy-dom ships no UA stylesheet, so the `[hidden]` default is stated
+    // here. It comes first, exactly as the UA origin would: sidebar.css can
+    // still override it by cascade order, which is the bug being guarded.
+    document.body.innerHTML = `
+      <style>[hidden] { display: none }</style>
+      <style>${sidebarCss}</style>
+      <button class="sidebar-action-btn" data-el="logout" hidden></button>`;
   });
 
   it("reveals the control when the gate is enabled", () => {
     setupSignOut(true);
 
-    expect(document.querySelector('[data-el="logout"]').hidden).toBe(false);
+    const button = document.querySelector('[data-el="logout"]');
+    expect(button.hidden).toBe(false);
+    expect(getComputedStyle(button).display).toBe("flex");
   });
 
   it("leaves it hidden on a deployment without a password", () => {
     setupSignOut(false);
 
-    expect(document.querySelector('[data-el="logout"]').hidden).toBe(true);
+    const button = document.querySelector('[data-el="logout"]');
+    expect(button.hidden).toBe(true);
+    expect(getComputedStyle(button).display).toBe("none");
   });
 });
 
