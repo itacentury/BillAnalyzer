@@ -27,11 +27,16 @@ UNREADABLE_HASHES: list[str] = [
 ]
 
 
+def _session_cookies(response: TestResponse) -> list[str]:
+    """Return every Set-Cookie header that carries the session cookie."""
+    headers: list[str] = response.headers.getlist("Set-Cookie")
+    return [value for value in headers if "summa_session=" in value]
+
+
 def _session_cookie(response: TestResponse) -> str:
     """Return the Set-Cookie header that carries the session cookie."""
-    headers: list[str] = response.headers.getlist("Set-Cookie")
-    matching: list[str] = [value for value in headers if "summa_session=" in value]
-    assert matching, f"no session cookie in {headers}"
+    matching: list[str] = _session_cookies(response)
+    assert matching, f"no session cookie in {response.headers.getlist('Set-Cookie')}"
     return matching[0]
 
 
@@ -288,9 +293,22 @@ def test_logout_clears_the_session(authed_client: FlaskClient) -> None:
     }
 
 
-def test_logout_succeeds_without_a_session(gated_client: FlaskClient) -> None:
-    """Logging out when not logged in is a no-op, not an error."""
-    assert gated_client.post("/api/auth/logout").status_code == 200
+def test_logout_without_a_session_sends_no_cookie(gated_client: FlaskClient) -> None:
+    """A cookie-less logout must not emit a deletion a cross-site POST could use."""
+    response = gated_client.post("/api/auth/logout")
+
+    assert response.status_code == 200
+    assert response.get_json() == {"success": True, "authed": False}
+    assert not _session_cookies(response)
+
+
+def test_logout_is_inert_when_the_gate_is_off(client: FlaskClient) -> None:
+    """The endpoint stays reachable on an ungated deployment and touches nothing."""
+    response = client.post("/api/auth/logout")
+
+    assert response.status_code == 200
+    assert response.get_json() == {"success": True, "authed": False}
+    assert not _session_cookies(response)
 
 
 def test_me_reports_an_authenticated_client(authed_client: FlaskClient) -> None:

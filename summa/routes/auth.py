@@ -47,7 +47,11 @@ def login() -> ApiResponse:
 @auth_bp.route("/logout", methods=["POST"])
 def logout() -> ApiResponse:
     """Clear the session cookie. Always succeeds."""
-    end_session()
+    # Clearing an already-empty session still marks it modified, which makes
+    # Flask emit a cookie deletion — so a cookie-less cross-site POST could log
+    # a real session out. Nothing to clear means nothing to send.
+    if is_authenticated():
+        end_session()
     return jsonify({"success": True, "authed": False})
 
 
