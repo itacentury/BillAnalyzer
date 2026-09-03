@@ -169,6 +169,7 @@ beforeEach(() => {
 
 afterEach(() => {
   consoleError.mockRestore();
+  vi.unstubAllGlobals();
 });
 
 describe("init", () => {
@@ -306,5 +307,60 @@ describe("boot gate", () => {
     for (const name of ALL_STEPS) {
       expect(steps[name], name).toHaveBeenCalledTimes(1);
     }
+  });
+});
+
+describe("session expiry", () => {
+  /**
+   * Drive a 401 through the real http.js, the way an expired cookie would.
+   *
+   * http.js is deliberately not mocked in this file, and no resetModules() runs
+   * between runInit() and this import, so app.js and the test share one module
+   * instance — including the latch that raises the gate exactly once.
+   */
+  const expireSession = async () => {
+    const { apiFetch } = await import("../../static/js/http.js");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: false, status: 401 }),
+    );
+    await apiFetch("/api/invoices");
+  };
+
+  /** Re-login, by calling back the way the login form does. */
+  const logBackIn = () => steps.renderLoginView.mock.calls[0][0]();
+
+  it("raises the login gate when a session expires mid-use", async () => {
+    await runInit();
+
+    await expireSession();
+
+    expect(steps.renderLoginView).toHaveBeenCalledTimes(1);
+  });
+
+  it("reloads the data without re-wiring the listeners on re-login", async () => {
+    // The expiry path bypasses init() on purpose: its listeners are still wired
+    // from the first start, and wiring them again fires every handler twice.
+    await runInit();
+    await expireSession();
+
+    logBackIn();
+
+    expect(steps.refreshAllData).toHaveBeenCalledTimes(2);
+    for (const name of WIRING_STEPS) {
+      expect(steps[name], name).toHaveBeenCalledTimes(1);
+    }
+  });
+
+  it("re-arms the gate for the next expiry", async () => {
+    // clearAuthExpired() resets the latch. Without it the first expiry would be
+    // the only one ever shown, and the second would leave the app on stale data.
+    await runInit();
+    await expireSession();
+    logBackIn();
+
+    await expireSession();
+
+    expect(steps.renderLoginView).toHaveBeenCalledTimes(2);
   });
 });

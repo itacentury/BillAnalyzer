@@ -16,6 +16,7 @@ from werkzeug.security import generate_password_hash
 from summa import config, create_app, db, ratelimit
 
 SeedInvoice = Callable[..., int]
+BuildClient = Callable[..., FlaskClient]
 
 TEST_PASSWORD: Final[str] = "test-password"
 ALLOWED_ORIGIN: Final[str] = "https://app.example"
@@ -84,18 +85,35 @@ def wildcard_origin(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture
-def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> FlaskClient:
-    """Return a Flask test client backed by a fresh, per-test SQLite database."""
+def build_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> BuildClient:
+    """Return a builder for a test client, taking environment overrides.
+
+    For the configuration ``create_app()`` reads once at construction time (the
+    cookie attributes, the CORS allowlist), which a plain ``monkeypatch.setenv``
+    in the test body would already be too late for.
+    """
     db_path: Path = tmp_path / "test.db"
     # get_db() reads this module global on every call, so patching it redirects
     # every connection (including the one init_db() opens) to the temp database.
     monkeypatch.setattr(db, "DATABASE", str(db_path))
-    app = create_app()
-    app.config["TESTING"] = True
-    # Keep producing real 500 responses for uncaught exceptions (as gunicorn does)
-    # instead of letting TESTING re-raise them into the test.
-    app.config["PROPAGATE_EXCEPTIONS"] = False
-    return app.test_client()
+
+    def _build(environment: dict[str, str] | None = None) -> FlaskClient:
+        for name, value in (environment or {}).items():
+            monkeypatch.setenv(name, value)
+        app = create_app()
+        app.config["TESTING"] = True
+        # Keep producing real 500 responses for uncaught exceptions (as gunicorn
+        # does) instead of letting TESTING re-raise them into the test.
+        app.config["PROPAGATE_EXCEPTIONS"] = False
+        return app.test_client()
+
+    return _build
+
+
+@pytest.fixture
+def client(build_client: BuildClient) -> FlaskClient:
+    """Return a Flask test client backed by a fresh, per-test SQLite database."""
+    return build_client()
 
 
 @pytest.fixture

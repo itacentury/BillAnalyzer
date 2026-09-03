@@ -403,6 +403,89 @@ describe("renderLoginView", () => {
   });
 });
 
+describe("reveal toggle", () => {
+  const revealButton = () => document.querySelector(".login-reveal");
+  const passwordField = () => document.querySelector(".login-input");
+
+  /** Whether the button shows the crossed-out eye, which only EYE_OFF carries. */
+  const isSlashed = () => revealButton().innerHTML.includes('x1="2"');
+
+  /** Assert both halves of the state: the input type and the icon. */
+  const expectRevealed = (revealed) => {
+    expect(passwordField().type).toBe(revealed ? "text" : "password");
+    expect(isSlashed()).toBe(revealed);
+  };
+
+  // happy-dom has no PointerEvent constructor, and `blur` does not bubble —
+  // both are dispatched straight at the button, where the listeners sit.
+  const press = (name) => revealButton().dispatchEvent(new Event(name));
+
+  const key = (name, value) => {
+    const event = new KeyboardEvent(name, { key: value, cancelable: true });
+    revealButton().dispatchEvent(event);
+    return event;
+  };
+
+  beforeEach(() => {
+    renderLoginView(() => {});
+  });
+
+  it("starts with the password hidden", () => {
+    expectRevealed(false);
+  });
+
+  it("reveals the password while the pointer is held", () => {
+    press("pointerdown");
+
+    expectRevealed(true);
+  });
+
+  it.each(["pointerup", "pointerleave", "pointercancel", "blur"])(
+    "hides the password again on %s",
+    (name) => {
+      // The whole point of a press-and-hold: a released, departed or cancelled
+      // pointer — or focus moving away — must never strand the password in
+      // plain text.
+      press("pointerdown");
+
+      press(name);
+
+      expectRevealed(false);
+    },
+  );
+
+  it.each([" ", "Enter"])("reveals the password while %s is held", (value) => {
+    key("keydown", value);
+    expectRevealed(true);
+
+    key("keyup", value);
+
+    expectRevealed(false);
+  });
+
+  it("suppresses the browser default on the reveal keys", () => {
+    // Space scrolls the page and both keys synthesize a click on keyup, which
+    // would fight the hold by toggling the state a second time.
+    expect(key("keydown", " ").defaultPrevented).toBe(true);
+    expect(key("keydown", "Enter").defaultPrevented).toBe(true);
+  });
+
+  it("ignores keys that are not the reveal keys", () => {
+    key("keydown", "a");
+
+    expectRevealed(false);
+  });
+
+  it("keeps the focus on the password input", () => {
+    // Without this, clicking the eye would move focus off the input and Enter
+    // would re-trigger the button instead of submitting the form.
+    const event = new MouseEvent("mousedown", { cancelable: true });
+    revealButton().dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(true);
+  });
+});
+
 describe("setupSignOut", () => {
   beforeEach(() => {
     // happy-dom ships no UA stylesheet, so the `[hidden]` default is stated

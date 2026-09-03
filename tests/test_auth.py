@@ -1,13 +1,18 @@
 """Tests for the login, logout and session-status endpoints."""
 
 import logging
+import time
+from datetime import timedelta
 
 import pytest
+from flask import Flask
+from flask.sessions import SecureCookieSessionInterface
 from flask.testing import FlaskClient
+from itsdangerous import TimestampSigner
 from werkzeug.test import TestResponse
 
 from summa import auth, config, ratelimit
-from tests.conftest import TEST_PASSWORD, TEST_PASSWORD_HASH
+from tests.conftest import TEST_PASSWORD, TEST_PASSWORD_HASH, BuildClient
 
 # Every shape a hash can arrive in that Werkzeug cannot read. The first four are
 # what Docker Compose's '$' interpolation leaves behind; only the last two reach
@@ -28,6 +33,31 @@ def _session_cookie(response: TestResponse) -> str:
     matching: list[str] = [value for value in headers if "summa_session=" in value]
     assert matching, f"no session cookie in {headers}"
     return matching[0]
+
+
+def _backdated_session_cookie(app: Flask, age: timedelta) -> str:
+    """Mint a valid session cookie, signed as if it had been issued `age` ago.
+
+    The alternative is sleeping past a shortened lifetime, which buys the same
+    assertion for a slower, flakier test.
+    """
+    interface = app.session_interface
+    # Narrowed rather than assumed: only the signed-cookie interface has a
+    # serializer to borrow, and it is what create_app() leaves in place.
+    assert isinstance(interface, SecureCookieSessionInterface)
+    serializer = interface.get_signing_serializer(app)
+    assert serializer is not None, "the app has no signing key"
+
+    class BackdatedSigner(TimestampSigner):
+        """A signer that stamps the cookie into the past."""
+
+        def get_timestamp(self) -> int:
+            return int(time.time() - age.total_seconds())
+
+    # `signer` is the class make_signer() instantiates; overriding it on this
+    # one serializer backdates the timestamp Flask checks max_age against.
+    serializer.signer = BackdatedSigner
+    return serializer.dumps({"authed": True})
 
 
 def test_login_with_correct_password_starts_a_session(
@@ -145,6 +175,104 @@ def test_without_remember_the_cookie_is_session_scoped(
     )
 
     assert "Expires=" not in _session_cookie(response)
+
+
+def test_a_session_older_than_its_lifetime_is_refused(
+    gated_client: FlaskClient,
+) -> None:
+    """The hard expiry the fixed cookie timestamp exists for actually bites."""
+    expired: str = _backdated_session_cookie(
+        gated_client.application,
+        timedelta(days=config.DEFAULT_SESSION_DAYS + 1),
+    )
+    gated_client.set_cookie("summa_session", expired)
+
+    assert gated_client.get("/api/invoices").status_code == 401
+
+
+def test_a_session_inside_its_lifetime_is_accepted(gated_client: FlaskClient) -> None:
+    """Guards the test above: an unreadable cookie would 401 for the wrong reason."""
+    still_valid: str = _backdated_session_cookie(
+        gated_client.application,
+        timedelta(days=config.DEFAULT_SESSION_DAYS - 1),
+    )
+    gated_client.set_cookie("summa_session", still_valid)
+
+    assert gated_client.get("/api/invoices").status_code == 200
+
+
+def test_a_cookie_signed_with_another_secret_is_refused(
+    authed_client: FlaskClient, build_client: BuildClient
+) -> None:
+    """Rotating SESSION_SECRET is the one lever that invalidates every session."""
+    stolen = authed_client.get_cookie("summa_session")
+    assert stolen is not None
+
+    rotated: FlaskClient = build_client({config.SESSION_SECRET_ENV: "rotated-secret"})
+    rotated.set_cookie("summa_session", stolen.value)
+
+    assert rotated.get("/api/invoices").status_code == 401
+
+
+def test_a_session_survives_a_restart_with_the_same_secret(
+    authed_client: FlaskClient, build_client: BuildClient
+) -> None:
+    """Guards the test above: sessions are stateless, so only the secret matters."""
+    kept = authed_client.get_cookie("summa_session")
+    assert kept is not None
+
+    restarted: FlaskClient = build_client()
+    restarted.set_cookie("summa_session", kept.value)
+
+    assert restarted.get("/api/invoices").status_code == 200
+
+
+def test_the_cookie_carries_the_configured_samesite(
+    auth_enabled: str, build_client: BuildClient
+) -> None:
+    """COOKIE_SAMESITE reaches the browser, not just the config accessor."""
+    client: FlaskClient = build_client({config.COOKIE_SAMESITE_ENV: "strict"})
+
+    response = client.post("/api/auth/login", json={"password": auth_enabled})
+
+    assert "SameSite=Strict" in _session_cookie(response)
+
+
+def test_an_unknown_samesite_falls_back_on_the_cookie(
+    auth_enabled: str, build_client: BuildClient
+) -> None:
+    """A typo must degrade to Lax rather than reach Flask, which raises on it."""
+    client: FlaskClient = build_client({config.COOKIE_SAMESITE_ENV: "banana"})
+
+    response = client.post("/api/auth/login", json={"password": auth_enabled})
+
+    assert "SameSite=Lax" in _session_cookie(response)
+
+
+def test_the_cookie_is_secure_by_default(
+    auth_enabled: str, build_client: BuildClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A deployment opts out of HTTPS-only; it never has to opt in."""
+    # The auth_enabled fixture switches Secure off for the plain-HTTP test client.
+    monkeypatch.delenv(config.COOKIE_SECURE_ENV)
+    client: FlaskClient = build_client()
+
+    response = client.post("/api/auth/login", json={"password": auth_enabled})
+
+    cookie: str = _session_cookie(response)
+    assert "Secure" in cookie
+    assert "HttpOnly" in cookie
+
+
+def test_the_secure_attribute_can_be_switched_off(
+    auth_enabled: str, build_client: BuildClient
+) -> None:
+    """Plain-HTTP deployments (and this suite) need the escape hatch to work."""
+    client: FlaskClient = build_client({config.COOKIE_SECURE_ENV: "0"})
+
+    response = client.post("/api/auth/login", json={"password": auth_enabled})
+
+    assert "Secure" not in _session_cookie(response)
 
 
 def test_logout_clears_the_session(authed_client: FlaskClient) -> None:
