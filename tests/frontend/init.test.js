@@ -2,9 +2,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
  * Importing app.js *is* the test: module scripts run after parsing, so app.js
- * calls init() at import time unless document.readyState is still "loading" —
- * and it never is under happy-dom. The service-worker block is skipped for free
+ * boots at import time unless document.readyState is still "loading" — and it
+ * never is under happy-dom. The service-worker block is skipped for free
  * because happy-dom's navigator has no `serviceWorker`.
+ *
+ * init() now sits behind the auth check, so the import alone is not enough:
+ * runInit() also drains the microtask queue that getAuthStatus() resolves on.
  *
  * Every feature module is replaced with a spy, so what is under test is purely
  * init()'s control flow: one failing wiring step must not stop the others.
@@ -37,6 +40,7 @@ const steps = vi.hoisted(() => {
     "setupViewportListeners",
     "updateFilterBadge",
     "loadInvoices",
+    "renderLoginView",
   ];
   return Object.fromEntries(names.map((name) => [name, named(name)]));
 });
@@ -91,6 +95,14 @@ vi.mock("../../static/js/pagesize.js", () => ({
   setupPageSizeListeners: steps.setupPageSizeListeners,
 }));
 
+// Authed by default, so the existing cases exercise init() unchanged. The boot
+// gate itself is covered in its own describe block below.
+const authStatus = vi.hoisted(() => ({ value: { authed: true } }));
+vi.mock("../../static/js/auth.js", () => ({
+  getAuthStatus: () => Promise.resolve(authStatus.value),
+  renderLoginView: steps.renderLoginView,
+}));
+
 // Ordered as init() runs them: the pre-load block first, then the wiring loop.
 const PRE_LOAD_STEPS = ["setupComboboxes", "applyFilter", "refreshAllData"];
 const WIRING_STEPS = [
@@ -113,10 +125,19 @@ const ALL_STEPS = [...PRE_LOAD_STEPS, ...WIRING_STEPS];
 
 let consoleError;
 
-/** Import app.js fresh, so init() runs again against the current spy setup. */
+/** Import app.js fresh, so boot() runs again against the current spy setup. */
 const runInit = async () => {
   vi.resetModules();
   await import("../../static/js/app.js");
+  // boot() only reaches init() after getAuthStatus() settles.
+  await vi.waitFor(() => {
+    if (
+      !steps.setupComboboxes.mock.calls.length &&
+      !steps.renderLoginView.mock.calls.length
+    ) {
+      throw new Error("boot has not settled");
+    }
+  });
 };
 
 /** Names of the steps that ran, so a failure names the missing wiring. */
@@ -137,6 +158,7 @@ const loggedLabels = () =>
   consoleError.mock.calls.map(([message]) => String(message));
 
 beforeEach(() => {
+  authStatus.value = { authed: true };
   for (const step of Object.values(steps)) step.mockReset();
   consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
 });
@@ -246,5 +268,39 @@ describe("init", () => {
       expect.stringMatching(/^\[init\] setupModalListeners failed:/),
       expect.stringMatching(/^\[init\] setupDrawerListeners failed:/),
     ]);
+  });
+});
+
+describe("boot gate", () => {
+  it("starts the app directly when the session is valid", async () => {
+    await runInit();
+
+    expect(steps.renderLoginView).not.toHaveBeenCalled();
+    expect(steps.setupComboboxes).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows the login view instead of touching the API when unauthenticated", async () => {
+    // The point of the gate: nothing that talks to the API may run first.
+    authStatus.value = { authed: false };
+    await runInit();
+
+    expect(steps.renderLoginView).toHaveBeenCalledTimes(1);
+    expect(stepsThatRan()).toEqual([]);
+  });
+
+  it("wires the app exactly once when login succeeds", async () => {
+    // A re-login after an expired session must not double-wire the listeners,
+    // which would fire every handler twice.
+    authStatus.value = { authed: false };
+    await runInit();
+
+    const [onSuccess] = steps.renderLoginView.mock.calls[0];
+    onSuccess();
+    onSuccess();
+
+    expect(stepsThatRan()).toEqual(ALL_STEPS);
+    for (const name of ALL_STEPS) {
+      expect(steps[name], name).toHaveBeenCalledTimes(1);
+    }
   });
 });
