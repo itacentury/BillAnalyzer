@@ -17,7 +17,6 @@ for a self-hosted single-user app:
 
 import threading
 import time
-from collections import defaultdict
 from typing import Final
 
 # Ten wrong guesses per five minutes is far below what a brute-force run needs
@@ -29,25 +28,42 @@ WINDOW_SECONDS: Final[float] = 300.0
 # addresses cannot grow the store without limit.
 MAX_TRACKED_CLIENTS: Final[int] = 10_000
 
-_failures: defaultdict[str, list[float]] = defaultdict(list)
+# Written only by record_failed_login(), which keeps two invariants the eviction
+# helpers rely on: a stored list is never empty, and its timestamps ascend.
+_failures: dict[str, list[float]] = {}
 _lock: threading.Lock = threading.Lock()
 
 
 def _recent_failures(client: str, cutoff: float) -> list[float]:
-    """Prune and return the client's failures inside the window. Caller holds the lock."""
-    recent: list[float] = [stamp for stamp in _failures[client] if stamp > cutoff]
-    _failures[client] = recent
-    return recent
+    """Return the client's failures inside the window. Caller holds the lock.
+
+    Reads only: asking about a client must not start tracking it, or every
+    login request would grow the store past the cap.
+    """
+    return [stamp for stamp in _failures.get(client, []) if stamp > cutoff]
 
 
 def _evict_stale(cutoff: float) -> None:
     """Drop clients whose failures all fell out of the window. Caller holds the lock."""
     stale: list[str] = [
-        client
-        for client, timestamps in _failures.items()
-        if not timestamps or timestamps[-1] <= cutoff
+        client for client, timestamps in _failures.items() if timestamps[-1] <= cutoff
     ]
     for client in stale:
+        del _failures[client]
+
+
+def _evict_oldest(surplus: int) -> None:
+    """Drop the ``surplus`` clients whose last failure is furthest in the past.
+
+    The stale sweep frees nothing when every tracked client failed inside the
+    window, which is exactly the spray the cap exists for. Caller holds the lock.
+
+    :param surplus: how many clients the store is over the cap; ``<= 0`` is a no-op.
+    """
+    if surplus <= 0:
+        return
+    ranked: list[str] = sorted(_failures, key=lambda client: _failures[client][-1])
+    for client in ranked[:surplus]:
         del _failures[client]
 
 
@@ -69,13 +85,16 @@ def login_retry_after(client: str) -> int | None:
 def record_failed_login(client: str) -> None:
     """Count one wrong password against the client's window."""
     now: float = time.time()
+    cutoff: float = now - WINDOW_SECONDS
     with _lock:
-        recent: list[float] = _recent_failures(client, now - WINDOW_SECONDS)
+        recent: list[float] = _recent_failures(client, cutoff)
         recent.append(now)
-        # Evict only after appending, so this client's own entry is non-empty
-        # and cannot be dropped as stale by the sweep below.
+        _failures[client] = recent
+        # Enforce after storing, so this client's own entry is the newest one
+        # and cannot be what either sweep drops.
         if len(_failures) > MAX_TRACKED_CLIENTS:
-            _evict_stale(now - WINDOW_SECONDS)
+            _evict_stale(cutoff)
+            _evict_oldest(len(_failures) - MAX_TRACKED_CLIENTS)
 
 
 def reset() -> None:
