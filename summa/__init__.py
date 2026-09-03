@@ -16,7 +16,12 @@ from flask_cors import CORS
 from werkzeug.exceptions import RequestEntityTooLarge
 
 from summa import config
-from summa.auth import auth_config_warnings, is_authenticated, is_public
+from summa.auth import (
+    auth_config_warnings,
+    is_authenticated,
+    is_preflight,
+    is_public,
+)
 from summa.db import init_db
 from summa.helpers import ApiResponse, error_response
 from summa.routes.auth import auth_bp
@@ -53,21 +58,6 @@ SECURITY_CSP: str = "; ".join(_CSP_DIRECTIVES)
 MAX_CONTENT_LENGTH: Final[int] = 5 * 1024 * 1024  # 5 MB
 
 
-def _cors_origins() -> str | list[str]:
-    """Resolve the CORS allowlist from CORS_ALLOWED_ORIGINS.
-
-    Empty/unset -> no cross-origin access (the PWA is same-origin). The literal
-    '*' is an explicit opt-in for native mobile clients; otherwise a
-    comma-separated origin allowlist.
-    """
-    raw: str = os.environ.get("CORS_ALLOWED_ORIGINS", "").strip()
-    if not raw:
-        return []
-    if raw == "*":
-        return "*"
-    return [origin.strip() for origin in raw.split(",") if origin.strip()]
-
-
 def _configure_sessions(app: Flask) -> None:
     """Set the signing key and cookie attributes for the login session."""
     # Without a configured secret the key is per-process and per-restart, so
@@ -100,7 +90,11 @@ def create_app() -> Flask:
     # Cross-origin access is denied by default (the PWA is same-origin, so it
     # needs no CORS). Opt origins in via CORS_ALLOWED_ORIGINS; '*' re-enables the
     # wildcard for native mobile clients (SECURITY-TODO H1).
-    CORS(app, origins=_cors_origins())
+    origins: str | list[str] = config.cors_origins()
+    # Credentials only ride along on a concrete allowlist: with '*', flask-cors
+    # reflects whatever Origin asks, so any site could read this data using the
+    # visitor's session cookie.
+    CORS(app, origins=origins, supports_credentials=isinstance(origins, list))
     app.config["MAX_CONTENT_LENGTH"] = MAX_CONTENT_LENGTH
     _configure_sessions(app)
 
@@ -109,9 +103,18 @@ def create_app() -> Flask:
         """Gate every non-public route behind a valid session cookie.
 
         Deny by default: a new endpoint is protected the moment it exists, so
-        protection can never be forgotten at the route.
+        protection can never be forgotten at the route. CORS preflights are the
+        one exemption — see :func:`summa.auth.is_preflight`.
         """
-        if not config.auth_enabled() or is_public(request.path) or is_authenticated():
+        requested_method: str | None = request.headers.get(
+            "Access-Control-Request-Method"
+        )
+        if (
+            not config.auth_enabled()
+            or is_preflight(request.method, requested_method)
+            or is_public(request.path)
+            or is_authenticated()
+        ):
             return None
         return error_response("Authentication required", 401)
 

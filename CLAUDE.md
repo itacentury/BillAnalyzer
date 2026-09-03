@@ -78,7 +78,9 @@ and shared types/helpers in `summa/helpers.py`. Key conventions:
   `summa/auth.py` holds the allowlist. The invariant to preserve when adding
   routes: **everything needed to render the login screen is public, everything
   that returns data is not** — so `/` and `/static/` stay open, and a new API
-  route is protected the moment it exists. The session rides on Flask's own
+  route is protected the moment it exists. The one exemption is a CORS preflight
+  (`is_preflight()`): it arrives without cookies and returns no data, so gating it
+  would only stop the browser from ever sending the real request. The session rides on Flask's own
   signed cookie (configured in `_configure_sessions()`), and every config value
   is read inside its accessor, never at import, so tests can toggle the gate
   with `monkeypatch.setenv`.

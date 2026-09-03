@@ -18,6 +18,7 @@ from summa import config, create_app, db, ratelimit
 SeedInvoice = Callable[..., int]
 
 TEST_PASSWORD: Final[str] = "test-password"
+ALLOWED_ORIGIN: Final[str] = "https://app.example"
 # Hashed once per session: scrypt is deliberately slow, and every gated test
 # would otherwise pay for it again.
 TEST_PASSWORD_HASH: Final[str] = generate_password_hash(TEST_PASSWORD)
@@ -29,12 +30,13 @@ _AUTH_ENV_VARS: Final[tuple[str, ...]] = (
     config.SESSION_DAYS_ENV,
     config.COOKIE_SECURE_ENV,
     config.COOKIE_SAMESITE_ENV,
+    config.CORS_ORIGINS_ENV,
 )
 
 
 @pytest.fixture(autouse=True)
 def isolated_auth_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Keep the operator's own AUTH_* environment out of every test.
+    """Keep the operator's own auth/CORS environment out of every test.
 
     Autouse, so it is applied before the fixtures below: the suite must behave
     identically whether or not the developer has the gate enabled locally.
@@ -62,6 +64,23 @@ def auth_enabled(monkeypatch: pytest.MonkeyPatch) -> str:
     # The test client speaks plain HTTP and would drop a Secure cookie.
     monkeypatch.setenv(config.COOKIE_SECURE_ENV, "0")
     return TEST_PASSWORD
+
+
+@pytest.fixture
+def cross_origin(monkeypatch: pytest.MonkeyPatch) -> str:
+    """Allow one explicit cross-origin client, returning its origin.
+
+    Must be requested *before* a client fixture: ``create_app()`` reads the
+    allowlist once, when it installs the CORS extension.
+    """
+    monkeypatch.setenv(config.CORS_ORIGINS_ENV, ALLOWED_ORIGIN)
+    return ALLOWED_ORIGIN
+
+
+@pytest.fixture
+def wildcard_origin(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Open the wildcard opt-in, as a native mobile client deployment would."""
+    monkeypatch.setenv(config.CORS_ORIGINS_ENV, "*")
 
 
 @pytest.fixture

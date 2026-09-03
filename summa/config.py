@@ -15,6 +15,7 @@ SESSION_SECRET_ENV: Final[str] = "SESSION_SECRET"
 SESSION_DAYS_ENV: Final[str] = "SESSION_DAYS"
 COOKIE_SECURE_ENV: Final[str] = "COOKIE_SECURE"
 COOKIE_SAMESITE_ENV: Final[str] = "COOKIE_SAMESITE"
+CORS_ORIGINS_ENV: Final[str] = "CORS_ALLOWED_ORIGINS"
 
 # Spellings that read as "off" for a boolean switch. Matches summa.ai so the
 # whole app answers to the same vocabulary.
@@ -73,3 +74,18 @@ def cookie_samesite() -> str:
     if raw_value not in _VALID_SAMESITE:
         return DEFAULT_COOKIE_SAMESITE
     return raw_value.capitalize()
+
+
+def cors_origins() -> str | list[str]:
+    """Resolve the CORS allowlist from ``CORS_ALLOWED_ORIGINS``.
+
+    Empty/unset -> no cross-origin access (the PWA is same-origin). The literal
+    '*' is an explicit opt-in for native mobile clients; otherwise a
+    comma-separated origin allowlist.
+    """
+    raw_value: str = os.environ.get(CORS_ORIGINS_ENV, "").strip()
+    if not raw_value:
+        return []
+    if raw_value == "*":
+        return "*"
+    return [origin.strip() for origin in raw_value.split(",") if origin.strip()]

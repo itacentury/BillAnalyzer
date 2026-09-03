@@ -3,6 +3,8 @@
 import pytest
 from flask.testing import FlaskClient
 
+from tests.conftest import ALLOWED_ORIGIN
+
 
 def test_protected_route_is_rejected_without_a_session(
     gated_client: FlaskClient,
@@ -83,3 +85,68 @@ def test_nothing_is_gated_while_the_feature_is_off(
 ) -> None:
     """With the gate disabled the app behaves exactly as it did before."""
     assert client.get(path).status_code == 200
+
+
+def test_preflight_is_not_gated(gated_client: FlaskClient) -> None:
+    """A preflight carries no cookie, so gating it would block every real request."""
+    response = gated_client.options(
+        "/api/invoices",
+        headers={
+            "Origin": ALLOWED_ORIGIN,
+            "Access-Control-Request-Method": "GET",
+        },
+    )
+
+    assert response.status_code != 401
+
+
+def test_preflight_answers_an_allowed_origin(
+    cross_origin: str, gated_client: FlaskClient
+) -> None:
+    """The preflight response tells the browser the real request may proceed."""
+    response = gated_client.options(
+        "/api/invoices",
+        headers={"Origin": cross_origin, "Access-Control-Request-Method": "GET"},
+    )
+
+    assert response.status_code == 200
+    assert response.headers["Access-Control-Allow-Origin"] == cross_origin
+    assert response.headers["Access-Control-Allow-Credentials"] == "true"
+
+
+def test_bare_options_is_still_gated(gated_client: FlaskClient) -> None:
+    """Only an actual preflight is exempt — a plain OPTIONS stays behind the gate."""
+    assert gated_client.options("/api/invoices").status_code == 401
+
+
+def test_preflight_does_not_admit_the_real_request(gated_client: FlaskClient) -> None:
+    """Passing the preflight buys nothing without a session."""
+    response = gated_client.get("/api/invoices", headers={"Origin": ALLOWED_ORIGIN})
+
+    assert response.status_code == 401
+
+
+def test_allowed_origin_may_send_the_session_cookie(
+    cross_origin: str, authed_client: FlaskClient
+) -> None:
+    """Without this header the browser discards the response of a credentialed call."""
+    response = authed_client.get("/api/invoices", headers={"Origin": cross_origin})
+
+    assert response.status_code == 200
+    assert response.headers["Access-Control-Allow-Credentials"] == "true"
+
+
+def test_wildcard_origin_does_not_allow_credentials(
+    wildcard_origin: None, gated_client: FlaskClient
+) -> None:
+    """With '*' any site would otherwise read this data via the visitor's cookie."""
+    response = gated_client.options(
+        "/api/invoices",
+        headers={
+            "Origin": "https://evil.example",
+            "Access-Control-Request-Method": "GET",
+        },
+    )
+
+    assert response.status_code == 200
+    assert "Access-Control-Allow-Credentials" not in response.headers

@@ -46,6 +46,16 @@ def is_public(path: str) -> bool:
     return any(path.startswith(prefix) for prefix in _PUBLIC_PREFIXES)
 
 
+def is_preflight(method: str, requested_method: str | None) -> bool:
+    """Return whether this request is a CORS preflight.
+
+    A preflight is sent without cookies, so it can never authenticate, and it
+    returns no data — only the ``Allow`` and CORS headers. It has to pass the
+    gate or a cross-origin client's real request is never sent at all.
+    """
+    return method == "OPTIONS" and bool(requested_method)
+
+
 def verify_password(candidate: str) -> bool:
     """Check a candidate password against the configured hash.
 
