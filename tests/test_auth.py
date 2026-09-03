@@ -1,11 +1,25 @@
 """Tests for the login, logout and session-status endpoints."""
 
+import logging
+
 import pytest
 from flask.testing import FlaskClient
 from werkzeug.test import TestResponse
 
-from summa import config, ratelimit
-from tests.conftest import TEST_PASSWORD
+from summa import auth, config, ratelimit
+from tests.conftest import TEST_PASSWORD, TEST_PASSWORD_HASH
+
+# Every shape a hash can arrive in that Werkzeug cannot read. The first four are
+# what Docker Compose's '$' interpolation leaves behind; only the last two reach
+# check_password_hash's ValueError, the rest come back as a plain False.
+UNREADABLE_HASHES: list[str] = [
+    "not-a-real-hash",
+    "scrypt:32768:8:1$$",
+    "scrypt:32768:8:1$$abcd",
+    "$salt$abcd",
+    "notamethod$salt$abcd",
+    "scrypt:32768:8$salt$abcd",
+]
 
 
 def _session_cookie(response: TestResponse) -> str:
@@ -70,6 +84,35 @@ def test_login_with_a_malformed_hash_fails_closed(
     response = gated_client.post("/api/auth/login", json={"password": TEST_PASSWORD})
 
     assert response.status_code == 401
+
+
+@pytest.mark.parametrize("configured_hash", UNREADABLE_HASHES)
+def test_login_with_an_unreadable_hash_never_500s(
+    gated_client: FlaskClient, monkeypatch: pytest.MonkeyPatch, configured_hash: str
+) -> None:
+    """Every unreadable hash shape is a 401 — including the ones that raise."""
+    monkeypatch.setenv(config.PASSWORD_HASH_ENV, configured_hash)
+
+    response = gated_client.post("/api/auth/login", json={"password": TEST_PASSWORD})
+
+    assert response.status_code == 401
+
+
+def test_login_with_an_unknown_hash_method_is_logged(
+    gated_client: FlaskClient,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """The shapes Werkzeug raises on say so in the log rather than 500-ing."""
+    monkeypatch.setenv(config.PASSWORD_HASH_ENV, "notamethod$salt$abcd")
+
+    with caplog.at_level(logging.WARNING, logger="summa.auth"):
+        response = gated_client.post(
+            "/api/auth/login", json={"password": TEST_PASSWORD}
+        )
+
+    assert response.status_code == 401
+    assert "is not a valid hash" in caplog.text
 
 
 def test_remember_makes_the_cookie_persistent(gated_client: FlaskClient) -> None:
@@ -179,3 +222,53 @@ def test_successful_logins_are_not_counted(gated_client: FlaskClient) -> None:
             "/api/auth/login", json={"password": TEST_PASSWORD}
         )
         assert response.status_code == 200
+
+
+def test_a_sound_configuration_warns_about_nothing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A set secret and a readable hash produce no startup warnings."""
+    monkeypatch.setenv(config.SESSION_SECRET_ENV, "test-secret")
+    monkeypatch.setenv(config.PASSWORD_HASH_ENV, TEST_PASSWORD_HASH)
+
+    assert auth.auth_config_warnings() == []
+
+
+def test_a_missing_hash_warns_that_none_is_configured(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An unset hash reads as "not configured", not as an unreadable one."""
+    monkeypatch.setenv(config.SESSION_SECRET_ENV, "test-secret")
+
+    warnings: list[str] = auth.auth_config_warnings()
+
+    assert warnings == [
+        f"No password configured — set {config.PASSWORD_HASH_ENV} "
+        "(generate one with: uv run python -m summa.hashpw)"
+    ]
+
+
+@pytest.mark.parametrize("configured_hash", UNREADABLE_HASHES)
+def test_an_unreadable_hash_warns_at_startup(
+    monkeypatch: pytest.MonkeyPatch, configured_hash: str
+) -> None:
+    """The mangling the login path cannot report is caught where an operator looks."""
+    monkeypatch.setenv(config.SESSION_SECRET_ENV, "test-secret")
+    monkeypatch.setenv(config.PASSWORD_HASH_ENV, configured_hash)
+
+    warnings: list[str] = auth.auth_config_warnings()
+
+    assert len(warnings) == 1
+    assert "is not a readable hash" in warnings[0]
+
+
+def test_a_missing_session_secret_warns_at_startup(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An unsigned-key deployment is reported alongside a sound password."""
+    monkeypatch.setenv(config.PASSWORD_HASH_ENV, TEST_PASSWORD_HASH)
+
+    warnings: list[str] = auth.auth_config_warnings()
+
+    assert len(warnings) == 1
+    assert config.SESSION_SECRET_ENV in warnings[0]

@@ -68,8 +68,9 @@ def verify_password(candidate: str) -> bool:
     try:
         return check_password_hash(configured_hash, candidate)
     except ValueError:
-        # A malformed hash (commonly a Docker Compose-mangled '$') must not
-        # surface as a 500 — fail closed and say so once in the log.
+        # An unusable hash method or KDF parameters — Werkzeug raises here rather
+        # than returning False. Fail closed instead of 500-ing; the startup
+        # warning from auth_config_warnings() is what an operator actually sees.
         logger.warning("Configured %s is not a valid hash", config.PASSWORD_HASH_ENV)
         return False
 
@@ -95,6 +96,29 @@ def is_authenticated() -> bool:
     return session.get(_AUTHED_KEY) is True
 
 
+def _hash_is_parseable(configured_hash: str) -> bool:
+    """Return whether Werkzeug can read the configured hash at all.
+
+    ``check_password_hash`` answers a hash it cannot split with a plain
+    ``False``, so a truncated or Compose-interpolated value is indistinguishable
+    from a wrong password at login time. Checking the shape at startup turns
+    that into one warning where an operator will look. It only proves the hash
+    parses — not that it hashes any particular password.
+    """
+    method, separator, remainder = configured_hash.partition("$")
+    salt, inner_separator, hash_value = remainder.partition("$")
+    if not (method and separator and salt and inner_separator and hash_value):
+        return False
+    try:
+        # The only call that validates the method name and its parameters. It
+        # runs a full scrypt derivation, but once per worker at boot, and only
+        # while the gate is on; the candidate password is irrelevant.
+        check_password_hash(configured_hash, "")
+    except ValueError:
+        return False
+    return True
+
+
 def auth_config_warnings() -> list[str]:
     """Return startup misconfiguration warnings (empty when the setup is sound).
 
@@ -106,9 +130,16 @@ def auth_config_warnings() -> list[str]:
             f"{config.SESSION_SECRET_ENV} is not set — sessions are signed with an "
             "ephemeral key, so every worker and every restart invalidates them"
         )
-    if not config.password_hash():
+    configured_hash: str = config.password_hash()
+    if not configured_hash:
         warnings.append(
             f"No password configured — set {config.PASSWORD_HASH_ENV} "
             "(generate one with: uv run python -m summa.hashpw)"
+        )
+    elif not _hash_is_parseable(configured_hash):
+        warnings.append(
+            f"{config.PASSWORD_HASH_ENV} is not a readable hash, so nobody can "
+            "log in — a Docker Compose-interpolated '$' is the usual cause "
+            "(regenerate one with: uv run python -m summa.hashpw)"
         )
     return warnings

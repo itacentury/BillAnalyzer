@@ -169,7 +169,9 @@ per client (ten failures per five minutes).
 - **Docker Compose and `$`.** A password hash contains `$`, which Compose treats
   as a variable reference. `docker-compose.yml` sets `format: raw` on the
   `env_file` to disable interpolation; verify with
-  `docker exec summa printenv AUTH_PASSWORD_HASH`.
+  `docker exec summa printenv AUTH_PASSWORD_HASH`. If a mangled hash does reach
+  the app it logs `AUTH_PASSWORD_HASH is not a readable hash` at startup, so it
+  shows up in the container log rather than only as a login that never works.
 
 ## Configuration
 
