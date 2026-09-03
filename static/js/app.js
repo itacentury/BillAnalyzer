@@ -30,7 +30,7 @@ import { setupDrawerListeners } from "./drawer.js";
 import { setupSheetGestures } from "./sheet.js";
 import { setupViewportListeners } from "./viewport.js";
 import { setupPageSizeListeners } from "./pagesize.js";
-import { getAuthStatus, renderLoginView } from "./auth.js";
+import { getAuthStatus, renderLoginView, setupSignOut } from "./auth.js";
 import {
   state,
   PAGE_SIZE_OPTIONS,
@@ -152,7 +152,8 @@ function startApp() {
  */
 function boot() {
   getAuthStatus()
-    .then(({ authed }) => {
+    .then(({ authed, enabled }) => {
+      setupSignOut(enabled);
       if (authed) startApp();
       else renderLoginView(startApp);
     })

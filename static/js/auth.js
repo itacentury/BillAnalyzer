@@ -54,6 +54,27 @@ export async function logout() {
 }
 
 /**
+ * Reveal and wire the sign-out control.
+ *
+ * @param {boolean} enabled - Whether the deployment has the password gate on.
+ *   When it does not, the button stays hidden rather than offering to end a
+ *   session that does not exist.
+ */
+export function setupSignOut(enabled) {
+  const button = document.querySelector('[data-el="logout"]');
+  if (!button || !enabled) return;
+
+  button.hidden = false;
+  button.addEventListener("click", async () => {
+    await logout();
+    // A full reload rather than re-rendering the gate in place: signing out
+    // ends the session deliberately, and reloading is the cheapest way to
+    // guarantee every listener, timer and cached render is gone.
+    location.reload();
+  });
+}
+
+/**
  * Build the password field: an input plus a press-and-hold reveal toggle.
  *
  * @returns {{wrap: HTMLDivElement, input: HTMLInputElement}}

@@ -41,6 +41,7 @@ const steps = vi.hoisted(() => {
     "updateFilterBadge",
     "loadInvoices",
     "renderLoginView",
+    "setupSignOut",
   ];
   return Object.fromEntries(names.map((name) => [name, named(name)]));
 });
@@ -97,10 +98,13 @@ vi.mock("../../static/js/pagesize.js", () => ({
 
 // Authed by default, so the existing cases exercise init() unchanged. The boot
 // gate itself is covered in its own describe block below.
-const authStatus = vi.hoisted(() => ({ value: { authed: true } }));
+const authStatus = vi.hoisted(() => ({
+  value: { authed: true, enabled: false },
+}));
 vi.mock("../../static/js/auth.js", () => ({
   getAuthStatus: () => Promise.resolve(authStatus.value),
   renderLoginView: steps.renderLoginView,
+  setupSignOut: steps.setupSignOut,
 }));
 
 // Ordered as init() runs them: the pre-load block first, then the wiring loop.
@@ -158,7 +162,7 @@ const loggedLabels = () =>
   consoleError.mock.calls.map(([message]) => String(message));
 
 beforeEach(() => {
-  authStatus.value = { authed: true };
+  authStatus.value = { authed: true, enabled: false };
   for (const step of Object.values(steps)) step.mockReset();
   consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
 });
@@ -281,7 +285,7 @@ describe("boot gate", () => {
 
   it("shows the login view instead of touching the API when unauthenticated", async () => {
     // The point of the gate: nothing that talks to the API may run first.
-    authStatus.value = { authed: false };
+    authStatus.value = { authed: false, enabled: true };
     await runInit();
 
     expect(steps.renderLoginView).toHaveBeenCalledTimes(1);
@@ -291,7 +295,7 @@ describe("boot gate", () => {
   it("wires the app exactly once when login succeeds", async () => {
     // A re-login after an expired session must not double-wire the listeners,
     // which would fire every handler twice.
-    authStatus.value = { authed: false };
+    authStatus.value = { authed: false, enabled: true };
     await runInit();
 
     const [onSuccess] = steps.renderLoginView.mock.calls[0];
