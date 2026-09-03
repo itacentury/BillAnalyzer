@@ -13,6 +13,7 @@ with, which is the usual way a hand-rolled logout fails.
 """
 
 import logging
+from typing import Final
 
 from flask import session
 from werkzeug.security import check_password_hash
@@ -24,6 +25,25 @@ logger: logging.Logger = logging.getLogger(__name__)
 # Marker stored in the signed session. The security comes from the signature and
 # the cookie lifetime, not from this value.
 _AUTHED_KEY: str = "authed"
+
+# Reachable without a session. The app shell and the auth endpoints themselves
+# must stay public — the login form is part of the bundle, so gating "/" would
+# leave no UI to log in with, and the service worker (which holds "/"
+# cache-first) would persist the rejection as the app shell.
+_PUBLIC_EXACT_PATHS: Final[frozenset[str]] = frozenset(
+    {"/", "/api/auth/login", "/api/auth/logout", "/api/auth/me"}
+)
+
+# Covers the static folder and the three asset manifests the service worker
+# fetches at install time, which live under the same namespace.
+_PUBLIC_PREFIXES: Final[tuple[str, ...]] = ("/static/",)
+
+
+def is_public(path: str) -> bool:
+    """Return whether a request path is reachable without authentication."""
+    if path in _PUBLIC_EXACT_PATHS:
+        return True
+    return any(path.startswith(prefix) for prefix in _PUBLIC_PREFIXES)
 
 
 def verify_password(candidate: str) -> bool:

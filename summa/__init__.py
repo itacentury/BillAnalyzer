@@ -11,12 +11,12 @@ from datetime import timedelta
 from pathlib import Path
 from typing import Final
 
-from flask import Flask, Response
+from flask import Flask, Response, request
 from flask_cors import CORS
 from werkzeug.exceptions import RequestEntityTooLarge
 
 from summa import config
-from summa.auth import auth_config_warnings
+from summa.auth import auth_config_warnings, is_authenticated, is_public
 from summa.db import init_db
 from summa.helpers import ApiResponse, error_response
 from summa.routes.auth import auth_bp
@@ -103,6 +103,17 @@ def create_app() -> Flask:
     CORS(app, origins=_cors_origins())
     app.config["MAX_CONTENT_LENGTH"] = MAX_CONTENT_LENGTH
     _configure_sessions(app)
+
+    @app.before_request
+    def require_authentication() -> ApiResponse | None:
+        """Gate every non-public route behind a valid session cookie.
+
+        Deny by default: a new endpoint is protected the moment it exists, so
+        protection can never be forgotten at the route.
+        """
+        if not config.auth_enabled() or is_public(request.path) or is_authenticated():
+            return None
+        return error_response("Authentication required", 401)
 
     @app.after_request
     def set_security_headers(response: Response) -> Response:
