@@ -84,7 +84,7 @@ describe("getAuthStatus", () => {
 
     await expect(getAuthStatus()).resolves.toEqual({
       authed: true,
-      enabled: false,
+      enabled: null,
       sessionDays: null,
     });
   });
@@ -94,7 +94,7 @@ describe("getAuthStatus", () => {
 
     await expect(getAuthStatus()).resolves.toEqual({
       authed: true,
-      enabled: false,
+      enabled: null,
       sessionDays: null,
     });
   });
@@ -349,6 +349,38 @@ describe("setupSignOut", () => {
     const button = document.querySelector('[data-el="logout"]');
     expect(button.hidden).toBe(true);
     expect(getComputedStyle(button).display).toBe("none");
+  });
+
+  it("leaves it hidden while the gate state is unknown", () => {
+    setupSignOut(null);
+
+    const button = document.querySelector('[data-el="logout"]');
+    expect(button.hidden).toBe(true);
+    button.click();
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it("reveals it once the network comes back after an offline boot", async () => {
+    setupSignOut(null);
+    global.fetch.mockResolvedValue(
+      jsonResponse({ authed: true, enabled: true, session_days: 7 }),
+    );
+
+    window.dispatchEvent(new Event("online"));
+    const button = document.querySelector('[data-el="logout"]');
+    await vi.waitFor(() => expect(button.hidden).toBe(false));
+
+    expect(getComputedStyle(button).display).toBe("flex");
+  });
+
+  it("wires the control only once across repeated setup", async () => {
+    setupSignOut(true);
+    setupSignOut(true);
+
+    document.querySelector('[data-el="logout"]').click();
+
+    await vi.waitFor(() => expect(global.fetch).toHaveBeenCalled());
+    expect(global.fetch).toHaveBeenCalledTimes(1);
   });
 });
 

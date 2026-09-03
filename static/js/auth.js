@@ -37,9 +37,11 @@ let knownSessionDays = null;
 /**
  * Fetch the current authentication status.
  *
- * @returns {Promise<{authed: boolean, enabled: boolean, sessionDays: number|null}>}
+ * @returns {Promise<{authed: boolean, enabled: boolean|null, sessionDays: number|null}>}
  *   `authed` is whether the app may start, `enabled` whether the password gate
- *   exists at all (which is what decides if the sign-out control is shown), and
+ *   exists at all (which is what decides if the sign-out control is shown) —
+ *   true for on, false for off, and null while the server cannot be reached, so
+ *   an unknown is never mistaken for a deployment without a password — and
  *   `sessionDays` how long "stay signed in" lasts (null when unknown).
  */
 export async function getAuthStatus() {
@@ -52,7 +54,7 @@ export async function getAuthStatus() {
     // Treating that as "not logged in" would show a login form that cannot
     // possibly succeed, so an offline PWA is let through instead.
     if (response.status === 503)
-      return { authed: true, enabled: false, sessionDays: null };
+      return { authed: true, enabled: null, sessionDays: null };
     if (!response.ok)
       return { authed: false, enabled: true, sessionDays: null };
     const data = await response.json();
@@ -65,7 +67,7 @@ export async function getAuthStatus() {
     };
   } catch {
     // Network error without a service worker: same reasoning as the 503 above.
-    return { authed: true, enabled: false, sessionDays: null };
+    return { authed: true, enabled: null, sessionDays: null };
   }
 }
 
@@ -84,17 +86,35 @@ export async function logout() {
 }
 
 /**
- * Reveal and wire the sign-out control.
+ * Reveal and wire the sign-out control, retrying once the answer is knowable.
  *
- * @param {boolean} enabled - Whether the deployment has the password gate on.
- *   When it does not, the button stays hidden rather than offering to end a
- *   session that does not exist.
+ * @param {boolean|null} enabled - Whether the deployment has the password gate
+ *   on. When it is off the button stays hidden rather than offering to end a
+ *   session that does not exist. When it is unknown — the boot ran offline —
+ *   the control would otherwise stay hidden for the life of the page, so the
+ *   status is asked for again as soon as the network comes back.
  */
 export function setupSignOut(enabled) {
   const button = document.querySelector('[data-el="logout"]');
-  if (!button || !enabled) return;
+  if (!button) return;
+
+  if (enabled === null) {
+    // Only "the network came back" is caught here. A server that was down while
+    // the browser stayed online never fires this, and still needs a reload —
+    // the same tradeoff the offline branch of getAuthStatus() already accepts.
+    const retry = async () => setupSignOut((await getAuthStatus()).enabled);
+    window.addEventListener("online", retry, { once: true });
+    return;
+  }
+  if (!enabled) return;
 
   button.hidden = false;
+
+  // setupSignOut() can run more than once per page (the retry above), and a
+  // second listener would sign out and reload twice over.
+  if (button.dataset.wired) return;
+  button.dataset.wired = "true";
+
   button.addEventListener("click", async () => {
     await logout();
     // A full reload rather than re-rendering the gate in place: signing out
