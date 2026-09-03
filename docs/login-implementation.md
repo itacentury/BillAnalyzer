@@ -972,9 +972,10 @@ const EYE_OFF =
   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c6.5 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3.5 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/><line x1="2" y1="2" x2="22" y2="22"/></svg>';
 
 /**
- * Build the password field: input plus a press-and-hold reveal toggle.
+ * Build the password field: a hidden label, an input and a press-and-hold
+ * reveal toggle.
  *
- * @returns {{ wrap: HTMLDivElement, input: HTMLInputElement }}
+ * @returns {{ label: HTMLLabelElement, wrap: HTMLDivElement, input: HTMLInputElement }}
  */
 function buildPasswordField() {
   const wrap = document.createElement("div");
@@ -984,8 +985,18 @@ function buildPasswordField() {
   input.type = "password";
   input.className = "auth-input";
   input.placeholder = "Password";
+  input.id = "auth-password";
+  input.setAttribute("aria-describedby", "auth-error");
+  input.setAttribute("aria-invalid", "false");
   input.autocomplete = "current-password";
   input.required = true;
+
+  // The placeholder is not a name: it vanishes on the first keystroke and
+  // voice control cannot target it. `.visually-hidden` keeps the card's design.
+  const label = document.createElement("label");
+  label.className = "visually-hidden";
+  label.htmlFor = "auth-password";
+  label.textContent = "Password";
 
   const toggle = document.createElement("button");
   toggle.type = "button";
@@ -1025,7 +1036,7 @@ function buildPasswordField() {
 
   wrap.appendChild(input);
   wrap.appendChild(toggle);
-  return { wrap, input };
+  return { label, wrap, input };
 }
 
 /**
@@ -1038,7 +1049,10 @@ export function renderLoginView(onSuccess) {
   const appEl = /** @type {HTMLElement | null} */ (
     document.querySelector(".app")
   );
-  if (appEl) appEl.style.display = "none";
+  if (appEl) {
+    appEl.style.display = "none";
+    appEl.toggleAttribute("inert", true);
+  }
 
   // Reuse an existing gate if present (e.g. session expired mid-session).
   document.querySelector('[data-el="authGate"]')?.remove();
@@ -1059,7 +1073,11 @@ export function renderLoginView(onSuccess) {
   subtitle.className = "auth-subtitle";
   subtitle.textContent = "Enter your password to continue";
 
-  const { wrap: passwordWrap, input: passwordInput } = buildPasswordField();
+  const {
+    label: passwordLabel,
+    wrap: passwordWrap,
+    input: passwordInput,
+  } = buildPasswordField();
 
   const rememberLabel = document.createElement("label");
   rememberLabel.className = "auth-remember";
@@ -1072,6 +1090,8 @@ export function renderLoginView(onSuccess) {
 
   const error = document.createElement("p");
   error.className = "auth-error";
+  error.id = "auth-error";
+  error.setAttribute("role", "alert");
   error.hidden = true;
 
   const submit = document.createElement("button");
@@ -1081,6 +1101,7 @@ export function renderLoginView(onSuccess) {
 
   card.appendChild(title);
   card.appendChild(subtitle);
+  card.appendChild(passwordLabel);
   card.appendChild(passwordWrap);
   card.appendChild(rememberLabel);
   card.appendChild(error);
@@ -1093,6 +1114,7 @@ export function renderLoginView(onSuccess) {
   card.addEventListener("submit", async (event) => {
     event.preventDefault();
     error.hidden = true;
+    passwordInput.setAttribute("aria-invalid", "false");
     submit.disabled = true;
     submit.textContent = "Signing in…";
 
@@ -1107,18 +1129,24 @@ export function renderLoginView(onSuccess) {
       });
 
       if (!response.ok) {
-        error.textContent = "Invalid password";
+        // Unhidden before the text is written: an alert region only announces
+        // content inserted while it is rendered.
         error.hidden = false;
+        error.textContent = "Invalid password";
+        passwordInput.setAttribute("aria-invalid", "true");
         passwordInput.select();
         return;
       }
 
       gate.remove();
-      if (appEl) appEl.style.display = "";
+      if (appEl) {
+        appEl.style.display = "";
+        appEl.removeAttribute("inert");
+      }
       onSuccess();
     } catch {
-      error.textContent = "Network error — please try again";
       error.hidden = false;
+      error.textContent = "Network error — please try again";
     } finally {
       submit.disabled = false;
       submit.textContent = "Sign in";
@@ -1137,12 +1165,16 @@ template instead. This is exactly what the DOM code above produces:
   <form class="auth-card" novalidate>
     <h1 class="auth-title">Tickr</h1>
     <p class="auth-subtitle">Enter your password to continue</p>
+    <label class="visually-hidden" for="auth-password">Password</label>
     <div class="auth-password">
       <input
         type="password"
         class="auth-input"
+        id="auth-password"
         placeholder="Password"
         autocomplete="current-password"
+        aria-describedby="auth-error"
+        aria-invalid="false"
         required
       />
       <button
@@ -1157,7 +1189,7 @@ template instead. This is exactly what the DOM code above produces:
       <input type="checkbox" />
       <span>Stay signed in for 30 days</span>
     </label>
-    <p class="auth-error" hidden></p>
+    <p class="auth-error" id="auth-error" role="alert" hidden></p>
     <button type="submit" class="auth-submit">Sign in</button>
   </form>
 </div>
@@ -1169,6 +1201,18 @@ template instead. This is exactly what the DOM code above produces:
   browser password-manager integration for free. `noValidate` suppresses the native
   validation bubble so the inline `.auth-error` paragraph is the only error UI — but
   `required` stays on the input as an accessibility hint.
+- **The field is named by a `<label for>`, not by its placeholder.** A placeholder
+  disappears on the first keystroke and is not a target for voice control, so the label
+  stays in the accessibility tree via a `visually-hidden` class rather than being dropped.
+  This is the one place an `id` is warranted: `label[for]` and `aria-describedby` both
+  reference by id, and the gate removes any previous copy of itself before rendering, so
+  the ids cannot collide.
+- **The error paragraph is a `role="alert"` region**, referenced by the input's
+  `aria-describedby`, and it is **unhidden before its text is written** — an alert region
+  only announces content inserted while it is rendered. Both happen in the same task, so
+  the empty box never paints. `aria-invalid="true"` is set on the _wrong password_ branch
+  only: a throttled or failed request says nothing about the value the user typed, and the
+  flag is reset at the top of every submit.
 - **`autocomplete="current-password"`** is what makes password managers offer to fill and
   save. Without it many managers ignore the field entirely.
 - **The reveal toggle is press-and-hold, not a latch.** `pointerdown` shows;
@@ -1189,7 +1233,10 @@ template instead. This is exactly what the DOM code above produces:
   the service worker.
 - **The `.app` shell is hidden via inline `style.display`**, restored with
   `style.display = ""` on success — deliberately not a class, so it cannot collide with
-  the app's own display rules.
+  the app's own display rules. It also gets the **`inert` attribute** for the duration:
+  `display: none` already takes the app's own `<h1>` and its focusables out of the
+  accessibility tree, and `inert` states that the whole subtree is off-limits, so the
+  gate's `<h1>` is unambiguously the document's only exposed heading.
 
 > **Porting note:** rename the "Tickr" title, the "Stay signed in for 30 days" label (keep
 > it in sync with `TICKR_SESSION_DAYS`), and the `.app` selector. The two SVG constants are

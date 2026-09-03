@@ -11,6 +11,15 @@
  * script is unaffected — the same reasoning as `applyCategoryBadge()` in dom.js.
  */
 
+/**
+ * Ids for the two ARIA relationships the login form needs: `label[for]` naming
+ * the password input, and `aria-describedby` pointing it at the error message.
+ * Ids rather than `data-el` hooks because both attributes reference by id.
+ * Unique by construction — `renderLoginView()` removes any existing gate first.
+ */
+const PASSWORD_ID = "login-password";
+const ERROR_ID = "login-error";
+
 const EYE_OPEN =
   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>';
 const EYE_OFF =
@@ -96,9 +105,10 @@ export function setupSignOut(enabled) {
 }
 
 /**
- * Build the password field: an input plus a press-and-hold reveal toggle.
+ * Build the password field: a hidden label, an input and a press-and-hold
+ * reveal toggle.
  *
- * @returns {{wrap: HTMLDivElement, input: HTMLInputElement}}
+ * @returns {{label: HTMLLabelElement, wrap: HTMLDivElement, input: HTMLInputElement}}
  */
 function buildPasswordField() {
   const wrap = document.createElement("div");
@@ -107,10 +117,20 @@ function buildPasswordField() {
   const input = document.createElement("input");
   input.type = "password";
   input.className = "login-input";
+  // A placeholder is not a name: it disappears on the first keystroke and
+  // voice control cannot target it, hence the real label below.
   input.placeholder = "Password";
+  input.id = PASSWORD_ID;
+  input.setAttribute("aria-describedby", ERROR_ID);
+  input.setAttribute("aria-invalid", "false");
   // Without this, most password managers ignore the field entirely.
   input.autocomplete = "current-password";
   input.required = true;
+
+  const label = document.createElement("label");
+  label.className = "visually-hidden";
+  label.htmlFor = PASSWORD_ID;
+  label.textContent = "Password";
 
   const toggle = document.createElement("button");
   toggle.type = "button";
@@ -149,7 +169,7 @@ function buildPasswordField() {
   });
 
   wrap.append(input, toggle);
-  return { wrap, input };
+  return { label, wrap, input };
 }
 
 /**
@@ -187,8 +207,14 @@ export function renderLoginView(onSuccess) {
   // Modals are siblings of `.app`, not children, so both have to go. Hidden via
   // `style.display` rather than a class so nothing can collide with the app's
   // own display rules; restored to "" (not "block") to hand control back.
+  // `inert` alongside it states the intent that nothing behind the gate is
+  // reachable: `display: none` already drops the app's own <h1> and its
+  // focusables, so the gate's <h1> is the document's only exposed heading.
   const covered = Array.from(document.querySelectorAll(".app, .modal-overlay"));
-  for (const element of covered) element.style.display = "none";
+  for (const element of covered) {
+    element.style.display = "none";
+    element.toggleAttribute("inert", true);
+  }
 
   document.querySelector('[data-el="login-gate"]')?.remove();
 
@@ -211,12 +237,18 @@ export function renderLoginView(onSuccess) {
   subtitle.className = "login-subtitle";
   subtitle.textContent = "Enter your password to continue";
 
-  const { wrap: passwordWrap, input: passwordInput } = buildPasswordField();
+  const {
+    label: passwordLabel,
+    wrap: passwordWrap,
+    input: passwordInput,
+  } = buildPasswordField();
   const { label: rememberLabel, checkbox: rememberCheckbox } =
     buildRememberField(knownSessionDays);
 
   const error = document.createElement("p");
   error.className = "login-error";
+  error.id = ERROR_ID;
+  error.setAttribute("role", "alert");
   error.hidden = true;
 
   const submit = document.createElement("button");
@@ -224,19 +256,31 @@ export function renderLoginView(onSuccess) {
   submit.className = "login-submit";
   submit.textContent = "Sign in";
 
-  card.append(title, subtitle, passwordWrap, rememberLabel, error, submit);
+  card.append(
+    title,
+    subtitle,
+    passwordLabel,
+    passwordWrap,
+    rememberLabel,
+    error,
+    submit,
+  );
   gate.appendChild(card);
   document.body.appendChild(gate);
   passwordInput.focus();
 
   const fail = (message) => {
-    error.textContent = message;
+    // Unhidden before the text is written: a role="alert" region only announces
+    // content inserted while it is rendered. Both happen in the same task, so
+    // the empty box never paints.
     error.hidden = false;
+    error.textContent = message;
   };
 
   card.addEventListener("submit", async (event) => {
     event.preventDefault();
     error.hidden = true;
+    passwordInput.setAttribute("aria-invalid", "false");
     submit.disabled = true;
     submit.textContent = "Signing in…";
 
@@ -256,13 +300,19 @@ export function renderLoginView(onSuccess) {
       }
       if (!response.ok) {
         fail("Invalid password");
+        // Only this branch marks the field invalid: a throttled or failed
+        // request says nothing about the value the user typed.
+        passwordInput.setAttribute("aria-invalid", "true");
         // Pre-select the wrong password so retyping overwrites it.
         passwordInput.select();
         return;
       }
 
       gate.remove();
-      for (const element of covered) element.style.display = "";
+      for (const element of covered) {
+        element.style.display = "";
+        element.removeAttribute("inert");
+      }
       onSuccess();
     } catch {
       fail("Network error — please try again");

@@ -37,6 +37,9 @@ const submitLogin = async (password, { remember = false } = {}) => {
 const rememberText = () =>
   document.querySelector(".login-remember span").textContent;
 
+const ariaInvalid = () =>
+  document.querySelector(".login-input").getAttribute("aria-invalid");
+
 const errorText = () =>
   document.querySelector(".login-error").hidden
     ? null
@@ -130,6 +133,57 @@ describe("renderLoginView", () => {
     expect(document.querySelector('[data-el="login-gate"]')).not.toBeNull();
   });
 
+  it("makes everything behind the gate inert", () => {
+    document.body.innerHTML = `
+      <div class="app"><h1>Summa</h1></div>
+      <div class="modal-overlay"></div>
+    `;
+
+    renderLoginView(vi.fn());
+
+    for (const selector of [".app", ".modal-overlay"]) {
+      expect(document.querySelector(selector).hasAttribute("inert")).toBe(true);
+    }
+  });
+
+  it("leaves the gate's heading as the only one on offer", () => {
+    // Two <h1>s exist in the document while the gate is up; only the gate's is
+    // reachable, because the app's is inside a hidden, inert subtree.
+    document.body.innerHTML = '<div class="app"><h1>Summa</h1></div>';
+
+    renderLoginView(vi.fn());
+
+    const exposed = Array.from(document.querySelectorAll("h1")).filter(
+      (heading) => !heading.closest("[inert]"),
+    );
+    expect(exposed).toHaveLength(1);
+    expect(exposed[0].className).toBe("login-title");
+  });
+
+  it("names the password field with a real label", () => {
+    // A placeholder is not an accessible name: it vanishes on the first
+    // keystroke and voice control cannot target it.
+    renderLoginView(vi.fn());
+
+    const input = document.querySelector(".login-input");
+    const label = document.querySelector(`label[for="${input.id}"]`);
+    expect(input.id).not.toBe("");
+    expect(label).not.toBeNull();
+    expect(label.textContent).toBe("Password");
+    // Named for a screen reader, still invisible in the card's design.
+    expect(label.className).toBe("visually-hidden");
+  });
+
+  it("points the field at the error region and announces it", () => {
+    renderLoginView(vi.fn());
+
+    const input = document.querySelector(".login-input");
+    const error = document.querySelector(".login-error");
+    expect(error.getAttribute("role")).toBe("alert");
+    expect(input.getAttribute("aria-describedby")).toBe(error.id);
+    expect(error.id).not.toBe("");
+  });
+
   it("replaces an existing gate instead of stacking a second one", () => {
     // Two concurrent expiries would otherwise leave one gate unreachable
     // underneath the other.
@@ -200,6 +254,7 @@ describe("renderLoginView", () => {
     expect(onSuccess).toHaveBeenCalledTimes(1);
     expect(document.querySelector('[data-el="login-gate"]')).toBeNull();
     expect(document.querySelector(".app").style.display).toBe("");
+    expect(document.querySelector(".app").hasAttribute("inert")).toBe(false);
   });
 
   it("keeps the gate up and reports a wrong password", async () => {
@@ -213,7 +268,25 @@ describe("renderLoginView", () => {
 
     expect(onSuccess).not.toHaveBeenCalled();
     expect(errorText()).toBe("Invalid password");
+    expect(ariaInvalid()).toBe("true");
     expect(document.querySelector('[data-el="login-gate"]')).not.toBeNull();
+  });
+
+  it("clears the invalid state when the next attempt starts", async () => {
+    global.fetch.mockResolvedValue(
+      jsonResponse({}, { ok: false, status: 401 }),
+    );
+    renderLoginView(vi.fn());
+    await submitLogin("wrong");
+
+    // A throttled second attempt: the gate stays up, so the reset done at the
+    // top of the submit handler is still observable on the field.
+    global.fetch.mockResolvedValue(
+      jsonResponse({}, { ok: false, status: 429 }),
+    );
+    await submitLogin("hunter2");
+
+    expect(ariaInvalid()).toBe("false");
   });
 
   it("distinguishes being throttled from being wrong", async () => {
@@ -225,6 +298,8 @@ describe("renderLoginView", () => {
     await submitLogin("wrong");
 
     expect(errorText()).toMatch(/Too many attempts/);
+    // Being throttled says nothing about the value that was typed.
+    expect(ariaInvalid()).toBe("false");
   });
 
   it("reports a network failure without blaming the password", async () => {
@@ -234,6 +309,7 @@ describe("renderLoginView", () => {
     await submitLogin("hunter2");
 
     expect(errorText()).toMatch(/Network error/);
+    expect(ariaInvalid()).toBe("false");
   });
 
   it("re-enables the submit button after a failure", async () => {
