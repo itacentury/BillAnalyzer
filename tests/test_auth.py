@@ -4,7 +4,7 @@ import pytest
 from flask.testing import FlaskClient
 from werkzeug.test import TestResponse
 
-from summa import config
+from summa import config, ratelimit
 from tests.conftest import TEST_PASSWORD
 
 
@@ -133,3 +133,37 @@ def test_me_reports_everyone_as_authed_when_the_gate_is_off(
 
     assert response.status_code == 200
     assert response.get_json() == {"authed": True, "enabled": False}
+
+
+def test_repeated_wrong_passwords_are_throttled(gated_client: FlaskClient) -> None:
+    """Guessing is cut off once the failure window is full."""
+    for _ in range(ratelimit.MAX_FAILURES):
+        assert (
+            gated_client.post("/api/auth/login", json={"password": "wrong"}).status_code
+            == 401
+        )
+
+    response = gated_client.post("/api/auth/login", json={"password": "wrong"})
+
+    assert response.status_code == 429
+    assert response.get_json()["error"] == "Too many login attempts"
+    assert int(response.headers["Retry-After"]) > 0
+
+
+def test_throttling_outlasts_the_correct_password(gated_client: FlaskClient) -> None:
+    """A locked-out client cannot get in by finally guessing right."""
+    for _ in range(ratelimit.MAX_FAILURES):
+        gated_client.post("/api/auth/login", json={"password": "wrong"})
+
+    response = gated_client.post("/api/auth/login", json={"password": TEST_PASSWORD})
+
+    assert response.status_code == 429
+
+
+def test_successful_logins_are_not_counted(gated_client: FlaskClient) -> None:
+    """Normal use never runs into the limit, because only failures are recorded."""
+    for _ in range(ratelimit.MAX_FAILURES * 2):
+        response = gated_client.post(
+            "/api/auth/login", json={"password": TEST_PASSWORD}
+        )
+        assert response.status_code == 200

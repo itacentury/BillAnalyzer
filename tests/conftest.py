@@ -13,7 +13,7 @@ import pytest
 from flask.testing import FlaskClient
 from werkzeug.security import generate_password_hash
 
-from summa import config, create_app, db
+from summa import config, create_app, db, ratelimit
 
 SeedInvoice = Callable[..., int]
 
@@ -41,6 +41,12 @@ def isolated_auth_env(monkeypatch: pytest.MonkeyPatch) -> None:
     """
     for name in _AUTH_ENV_VARS:
         monkeypatch.delenv(name, raising=False)
+
+
+@pytest.fixture(autouse=True)
+def reset_login_throttle() -> None:
+    """Clear the login failure window, which is module state shared across tests."""
+    ratelimit.reset()
 
 
 @pytest.fixture

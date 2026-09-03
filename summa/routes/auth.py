@@ -11,6 +11,7 @@ from flask import Blueprint, jsonify, request
 from summa import config
 from summa.auth import end_session, is_authenticated, start_session, verify_password
 from summa.helpers import ApiResponse, error_response
+from summa.ratelimit import login_retry_after, record_failed_login
 
 auth_bp: Blueprint = Blueprint("auth", __name__, url_prefix="/api/auth")
 
@@ -18,6 +19,13 @@ auth_bp: Blueprint = Blueprint("auth", __name__, url_prefix="/api/auth")
 @auth_bp.route("/login", methods=["POST"])
 def login() -> ApiResponse:
     """Verify the password and start a session on success."""
+    client: str = request.remote_addr or "unknown"
+    retry_after: int | None = login_retry_after(client)
+    if retry_after is not None:
+        response, status = error_response("Too many login attempts", 429)
+        response.headers["Retry-After"] = str(retry_after)
+        return response, status
+
     payload: Any = request.get_json(silent=True)
     if not isinstance(payload, dict):
         return error_response("Request body must be a JSON object", 400)
@@ -27,6 +35,9 @@ def login() -> ApiResponse:
         return error_response("Field 'password' must be a string", 400)
 
     if not verify_password(password):
+        # Only failures are counted, so a correct password never eats into
+        # anyone's allowance.
+        record_failed_login(client)
         return error_response("Invalid password", 401)
 
     start_session(remember=payload.get("remember") is True)
