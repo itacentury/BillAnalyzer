@@ -56,8 +56,8 @@ persisted in the `./data` bind mount.
 and calls `init_db()`. Importing the `summa` package itself has no side effects;
 the eager WSGI/CLI instance `app = create_app()` lives in `summa/wsgi.py`
 (`FLASK_APP=summa.wsgi`, gunicorn `summa.wsgi:app`). Routes are split into blueprints under
-`summa/routes/` (`web.py` → `/`, `invoices.py` → `/api/invoices*` + `/stores` +
-`/categories`, `stats.py` → `/api/stats`); the DB layer lives in `summa/db.py`
+`summa/routes/` (`web.py` → `/`, `auth.py` → `/api/auth/*`, `invoices.py` →
+`/api/invoices*` + `/stores` + `/categories`, `stats.py` → `/api/stats`); the DB layer lives in `summa/db.py`
 and shared types/helpers in `summa/helpers.py`. Key conventions:
 
 - **SQLite with two tables:** `invoices` and `invoice_items` (FK with
@@ -72,6 +72,23 @@ and shared types/helpers in `summa/helpers.py`. Key conventions:
 - **Soft deletes:** rows are never physically deleted. Delete endpoints set
   `deleted_at = CURRENT_TIMESTAMP`, and every read query filters
   `WHERE deleted_at IS NULL`. Preserve this filter in any new query.
+- **Optional password gate** (`summa/config.py`, `summa/auth.py`,
+  `summa/ratelimit.py`): off unless `AUTH_ENABLED` is set. A single
+  `before_request` hook in `create_app()` denies by default; `is_public()` in
+  `summa/auth.py` holds the allowlist. The invariant to preserve when adding
+  routes: **everything needed to render the login screen is public, everything
+  that returns data is not** — so `/` and `/static/` stay open, and a new API
+  route is protected the moment it exists. The one exemption is a CORS preflight
+  (`is_preflight()`): it arrives without cookies and returns no data, so gating it
+  would only stop the browser from ever sending the real request. The session rides on Flask's own
+  signed cookie (configured in `_configure_sessions()`), and every config value
+  is read inside its accessor, never at import, so tests can toggle the gate
+  with `monkeypatch.setenv`. What `create_app()` snapshots at boot (the cookie
+  attributes, `PERMANENT_SESSION_LIFETIME`, the CORS allowlist) is frozen for the
+  process, so a test changing one of those must build the client with the value
+  (the `build_client` fixture) rather than setting the env afterwards — and code
+  serving such a value to clients should read it back from `app.config`, not from
+  the environment, so the two can never disagree.
 - **REST API under `/api/`** (invoices CRUD, `/import`, `/bulk-update`,
   `/bulk-delete`, `/stores`, `/categories`, `/stats`). Handlers return
   `Response | tuple[Response, int]` (the `ApiResponse` alias) and wrap writes in
@@ -79,10 +96,18 @@ and shared types/helpers in `summa/helpers.py`. Key conventions:
   (empty string -> `None`). CORS is enabled globally for native mobile clients.
 
 **Frontend — `static/js/app.js` + `templates/index.html`.** Plain JS (no
-framework, no bundler) talking to the API. Styling is split per component under
-`static/css/` (`variables`, `base`, `header`, `filters`, `invoices`, `modals`,
-`components`, `stats`), loaded via ordered `<link>` tags in `index.html` — the
-order is cascade-significant, and each file co-locates its own responsive
+framework, no bundler) talking to the API. `app.js` boots behind the login gate:
+`getAuthStatus()` (`static/js/auth.js`) decides whether `init()` runs or the
+login view is rendered first, so nothing touches the API before the session is
+known. **Every API call goes through `apiFetch()` in `static/js/http.js`** — it
+latches the first 401 and re-raises the gate, so a new call site must use it
+rather than bare `fetch` — except the auth endpoints themselves, whose 401s are
+answers, not expiries: `auth.js` calls `/api/auth/*` with bare `fetch` on
+purpose, because latching a wrong password would re-enter the login view
+mid-submit and then swallow every genuine expiry. Styling is split per
+component under `static/css/` (`variables`, `base`, `header`, `filters`,
+`invoices`, `modals`, `components`, `stats`), loaded via ordered `<link>` tags
+in `index.html` — the order is cascade-significant, and each file co-locates its own responsive
 `@media` rules.
 
 **PWA.** `static/sw.js` caches static assets under the `CACHE_NAME` constant.
