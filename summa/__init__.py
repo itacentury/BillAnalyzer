@@ -70,6 +70,11 @@ def _configure_sessions(app: Flask) -> None:
     app.config["SESSION_COOKIE_SECURE"] = config.cookie_secure()
     app.config["SESSION_COOKIE_SAMESITE"] = config.cookie_samesite()
     app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=config.session_days())
+    # Flask re-sends a permanent session cookie on every response by default,
+    # which would slide both the Expires attribute and the signature timestamp
+    # max_age is checked against — a cookie in use (a stolen one included) would
+    # never expire. The gate promises a hard expiry SESSION_DAYS after login.
+    app.config["SESSION_REFRESH_EACH_REQUEST"] = False
 
     if not config.auth_enabled():
         return

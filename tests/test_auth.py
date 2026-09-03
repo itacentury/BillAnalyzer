@@ -81,6 +81,18 @@ def test_remember_makes_the_cookie_persistent(gated_client: FlaskClient) -> None
     assert "Expires=" in _session_cookie(response)
 
 
+def test_a_remembered_session_is_not_renewed_by_use(gated_client: FlaskClient) -> None:
+    """The expiry is fixed at login, so an active session still hard-expires."""
+    gated_client.post(
+        "/api/auth/login", json={"password": TEST_PASSWORD, "remember": True}
+    )
+
+    response = gated_client.get("/api/invoices")
+
+    assert response.status_code == 200
+    assert not response.headers.getlist("Set-Cookie")
+
+
 def test_without_remember_the_cookie_is_session_scoped(
     gated_client: FlaskClient,
 ) -> None:
