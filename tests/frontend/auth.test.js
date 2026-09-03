@@ -146,6 +146,85 @@ describe("renderLoginView", () => {
     }
   });
 
+  it("covers the toasts and the bulk toolbar, not just the app", () => {
+    // Both are siblings of `.app` and of the modals, so a selector naming only
+    // those two left them on top of the gate.
+    document.body.innerHTML = `
+      <div class="app"></div>
+      <div class="modal-overlay"></div>
+      <div class="bulk-action-toolbar"></div>
+      <div class="toast"></div>
+    `;
+
+    renderLoginView(vi.fn());
+
+    for (const selector of [
+      ".app",
+      ".modal-overlay",
+      ".bulk-action-toolbar",
+      ".toast",
+    ]) {
+      const element = document.querySelector(selector);
+      expect(element.style.display).toBe("none");
+      expect(element.hasAttribute("inert")).toBe(true);
+    }
+  });
+
+  it("leaves nothing outside the gate focusable", () => {
+    // The undo toast is the case that bit: still on screen when the session
+    // expires, its buttons invisible behind an opaque gate but tabbable, so
+    // "Undo" could be activated blind and fire a request that only 401s.
+    document.body.innerHTML = `
+      <div class="app"><button>Add</button></div>
+      <div class="toast">
+        <button data-el="toastUndo">Undo</button>
+        <button data-el="toastClose">Close</button>
+      </div>
+    `;
+
+    renderLoginView(vi.fn());
+
+    const gate = document.querySelector('[data-el="login-gate"]');
+    const escaped = Array.from(
+      document.querySelectorAll("a[href], button, input, select, textarea"),
+    ).filter(
+      (element) => !gate.contains(element) && !element.closest("[inert]"),
+    );
+    expect(escaped).toEqual([]);
+  });
+
+  it("restores the toolbar and the toasts once the password is accepted", async () => {
+    document.body.innerHTML = `
+      <div class="app"></div>
+      <div class="bulk-action-toolbar"></div>
+      <div class="toast"></div>
+    `;
+    global.fetch.mockResolvedValue(jsonResponse({ authed: true }));
+    renderLoginView(vi.fn());
+
+    await submitLogin("hunter2");
+
+    for (const selector of [".app", ".bulk-action-toolbar", ".toast"]) {
+      const element = document.querySelector(selector);
+      expect(element.style.display).toBe("");
+      expect(element.hasAttribute("inert")).toBe(false);
+    }
+  });
+
+  it("does not leave a replaced gate hidden in the page", async () => {
+    // The replaced gate is removed before the covered set is taken, so it is
+    // never restored as if it were part of the app.
+    document.body.innerHTML = '<div class="app"></div>';
+    global.fetch.mockResolvedValue(jsonResponse({ authed: true }));
+    renderLoginView(vi.fn());
+    renderLoginView(vi.fn());
+
+    await submitLogin("hunter2");
+
+    expect(document.querySelectorAll('[data-el="login-gate"]')).toHaveLength(0);
+    expect(document.querySelector(".app").style.display).toBe("");
+  });
+
   it("leaves the gate's heading as the only one on offer", () => {
     // Two <h1>s exist in the document while the gate is up; only the gate's is
     // reachable, because the app's is inside a hidden, inert subtree.

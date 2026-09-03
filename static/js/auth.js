@@ -224,19 +224,27 @@ function buildRememberField(days) {
  * @param {() => void} onSuccess - Called once, after a successful login.
  */
 export function renderLoginView(onSuccess) {
-  // Modals are siblings of `.app`, not children, so both have to go. Hidden via
-  // `style.display` rather than a class so nothing can collide with the app's
-  // own display rules; restored to "" (not "block") to hand control back.
-  // `inert` alongside it states the intent that nothing behind the gate is
-  // reachable: `display: none` already drops the app's own <h1> and its
+  // Removed before the snapshot below, so a stale gate is never captured as
+  // something to hide and later restore.
+  document.querySelector('[data-el="login-gate"]')?.remove();
+
+  // Everything else in <body> goes behind the gate — not just `.app` and the
+  // modals, but the bulk-action toolbar and the toasts, which are siblings of
+  // both and stayed focusable while the gate was up. Iterating the body rather
+  // than naming selectors means a future body-level sibling is covered without
+  // touching this code; the non-rendered children (`<script>`) come along too,
+  // where both `display: none` and `inert` are no-ops.
+  //
+  // Hidden via `style.display` rather than a class so nothing can collide with
+  // the app's own display rules; restored to "" (not "block") to hand control
+  // back. `inert` alongside it states the intent that nothing behind the gate
+  // is reachable: `display: none` already drops the app's own <h1> and its
   // focusables, so the gate's <h1> is the document's only exposed heading.
-  const covered = Array.from(document.querySelectorAll(".app, .modal-overlay"));
+  const covered = Array.from(document.body.children);
   for (const element of covered) {
     element.style.display = "none";
     element.toggleAttribute("inert", true);
   }
-
-  document.querySelector('[data-el="login-gate"]')?.remove();
 
   const gate = document.createElement("div");
   gate.dataset.el = "login-gate";
