@@ -7,7 +7,3 @@ package-lock.json
 *.db
 *.db-shm
 *.db-wal
-
-# Ported design reference from a sibling project; its fenced snippets are
-# excerpts, not standalone parseable sources.
-docs/login-implementation.md
